@@ -40,27 +40,8 @@
 ## 3. 기술 스택 (Tech Stack)
 * **Frontend**: `React`, `javascript`
 * **Backend**: `Spring Boot`, `Python (FastAPI)`
-* **AI / ML**: `Stable Diffusion`, `ControlNet`, `YOLO`, `Steganography`
+* **AI / ML**: `Stable Diffusion`, `ControlNet`, `Steganography`
 * **Database**: `MySQL`, `Redis`
 * **Infra**: `AWS (EC2, S3)`, `Docker`, `Nginx`
-
-<br>
-
-## 4. 프로젝트 실행 방법 (Getting Started)
-```bash
-# 1. 프로젝트 클론
-$ git clone [https://github.com/your-repo/AdPlanet.git](https://github.com/your-repo/AdPlanet.git)
-$ cd AdPlanet
-
-# 2. 백엔드 실행 (예시)
-$ cd backend
-$ pip install -r requirements.txt
-$ uvicorn main:app --reload
-
-# 3. 프론트엔드 실행 (예시)
-$ cd frontend
-$ npm install
-$ npm start
-```
 
 <br>
