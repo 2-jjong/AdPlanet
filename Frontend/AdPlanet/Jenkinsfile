@@ -10,9 +10,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'develop-frontend',
-                    credentialsId: 'wldnjssem6', // Jenkins에 등록한 GitLab 자격증명 ID
-                    url: 'https://lab.ssafy.com/s13-ai-image-sub1/S13P21D201.git'
+                 checkout scm
             }
         }
 
