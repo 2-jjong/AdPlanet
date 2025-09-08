@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE        = 'myorg/app-frontend:latest'   // 빌드할 Docker 이미지 태그
+        COMPOSE_DIR  = '/opt/app/compose'            // EC2의 docker-compose.yml 있는 경로
+        PROJECT_NAME = 'app'                         // compose 프로젝트명 (base+frontend 같이 묶음)
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'develop-fronted',
+                    credentialsId: 'wldnjssem6', // Jenkins에 등록한 GitLab 자격증명 ID
+                    url: 'https://lab.ssafy.com/s13-ai-image-sub1/S13P21D201.git'
+            }
+        }
+
+        stage('Build Docker image') {
+            steps {
+                sh 'docker build -t ${IMAGE} .'
+            }
+        }
+
+        stage('Deploy frontend') {
+            steps {
+                sh """
+                  cd ${COMPOSE_DIR}
+                  docker compose -p ${PROJECT_NAME} \
+                    -f base.yml -f frontend.yml up -d web
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Frontend deployed successfully'
+        }
+        failure {
+            echo 'Deployment failed'
+        }
+    }
+}
