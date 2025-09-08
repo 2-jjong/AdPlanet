@@ -15,9 +15,11 @@ pipeline {
         }
 
         stage('Build Docker image') {
-             dir('Frontend/AdPlanet') {      
+            steps {
+                dir('Frontend/AdPlanet') {
                 sh 'docker build -t ${IMAGE} .'
             }
+      }
         }
 
         stage('Deploy frontend') {
