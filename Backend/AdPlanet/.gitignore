@@ -35,3 +35,16 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Security Keys ###
+*.pem
+*.key
+*.p12
+*.pfx
+keys/
+secrets/
+
+### Environment Variables ###
+*.env
+.env*
+!.env.example
