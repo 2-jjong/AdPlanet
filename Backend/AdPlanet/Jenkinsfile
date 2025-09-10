@@ -1,0 +1,131 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "adplanet-app"
+        CONTAINER_NAME = "adplanet-container"
+        COMPOSE_PROJECT_NAME = "adplanet"
+        SECRETS_DIR = "/opt/app/secrets"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                script {
+                    updateGitlabCommitStatus name: 'build', state: 'pending'
+                }
+                sh """
+                    cd Backend/AdPlanet
+                    docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} .
+                    docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_NAME}:latest
+                """
+                script {
+                    updateGitlabCommitStatus name: 'build', state: 'success'
+                }
+            }
+        }
+
+        stage('Prepare Secrets') {
+            steps {
+                script {
+                    updateGitlabCommitStatus name: 'prepare-secrets', state: 'pending'
+                }
+                withCredentials([
+                    sshUserPrivateKey(credentialsId: 'rds-ssh-key', keyFileVariable: 'SSH_KEY'),
+                    file(credentialsId: 'app-env-file', variable: 'ENV_FILE')
+                ]) {
+                    sh """
+                        cp \${SSH_KEY} ${SECRETS_DIR}/ssh-key.pem
+                        cp \${ENV_FILE} ${SECRETS_DIR}/adplanet.env
+                        chmod 644 ${SECRETS_DIR}/ssh-key.pem
+                        chmod 644 ${SECRETS_DIR}/adplanet.env
+                    """
+                }
+                script {
+                    updateGitlabCommitStatus name: 'prepare-secrets', state: 'success'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    updateGitlabCommitStatus name: 'deploy', state: 'pending'
+                }
+                sh """
+                    cd Backend/AdPlanet
+
+                    export IMAGE_NAME=${IMAGE_NAME}
+                    export BUILD_NUMBER=${BUILD_NUMBER}
+                    export CONTAINER_NAME=${CONTAINER_NAME}
+                    export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+                    export SECRETS_DIR=${SECRETS_DIR}
+
+                    docker compose down || true
+                    docker image prune -f || true
+                    docker compose up -d
+                """
+                script {
+                    updateGitlabCommitStatus name: 'deploy', state: 'success'
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                    cd Backend/AdPlanet
+
+                    docker compose ps
+
+                    docker exec ${CONTAINER_NAME} ls -la /app/secrets/ || echo "시크릿 파일 확인 실패"
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ 배포 성공!"
+            script {
+                updateGitlabCommitStatus name: 'pipeline', state: 'success'
+            }
+            sh '''
+                echo "=== Docker 컨테이너 정보 ==="
+                docker compose ps
+            '''
+        }
+        failure {
+            echo "❌ 배포 실패"
+            script {
+                updateGitlabCommitStatus name: 'pipeline', state: 'failed'
+            }
+            sh '''
+                echo "=== 실패 시 디버깅 정보 ==="
+                echo "컨테이너 상태:"
+                docker compose ps || true
+                echo "애플리케이션 로그:"
+                docker compose logs --tail=100 || true
+                echo "시크릿 파일 상태:"
+                ls -la /opt/app/secrets/ || true
+                echo "시스템 리소스:"
+                df -h
+                free -h
+            '''
+        }
+        always {
+            sh '''
+                echo "=== 정리 작업 ==="
+                docker image prune -f || true
+                echo "현재 실행 중인 컨테이너:"
+                docker compose ps || true
+            '''
+        }
+    }
+}
