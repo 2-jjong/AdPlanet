@@ -1,0 +1,140 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "adplanet-app"
+        CONTAINER_NAME = "adplanet-container"
+        COMPOSE_PROJECT_NAME = "adplanet"
+        SECRETS_DIR = "/opt/app/secrets"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh """
+                    cd Backend/AdPlanet
+                    docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} .
+                    docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_NAME}:latest
+                """
+            }
+        }
+
+        stage('Prepare Secrets') {
+            steps {
+                withCredentials([
+                    sshUserPrivateKey(credentialsId: 'rds-ssh-key', keyFileVariable: 'SSH_KEY'),
+                    file(credentialsId: 'app-env-file', variable: 'ENV_FILE')
+                ]) {
+                    sh """
+                        echo "=== Credentials 파일 확인 ==="
+                        echo "SSH_KEY 파일: \${SSH_KEY}"
+                        echo "ENV_FILE 파일: \${ENV_FILE}"
+                        ls -la \${SSH_KEY} || echo "SSH_KEY 파일 접근 불가"
+                        ls -la \${ENV_FILE} || echo "ENV_FILE 파일 접근 불가"
+
+                        echo "=== 시크릿 디렉토리 확인 ==="
+                        ls -ld ${SECRETS_DIR}
+                        whoami
+                        id
+
+                        echo "=== 새 파일 복사 ==="
+                        cp \${SSH_KEY} ${SECRETS_DIR}/ssh-key.pem
+                        cp \${ENV_FILE} ${SECRETS_DIR}/adplanet.env
+
+                        echo "=== 파일 권한 설정 ==="
+                        chmod 644 ${SECRETS_DIR}/ssh-key.pem
+                        chmod 644 ${SECRETS_DIR}/adplanet.env
+
+                        echo "=== 최종 확인 ==="
+                        ls -la ${SECRETS_DIR}/
+                        echo "SSH Key 파일 크기: \$(wc -c < ${SECRETS_DIR}/ssh-key.pem) bytes"
+                        echo "ENV 파일 크기: \$(wc -c < ${SECRETS_DIR}/adplanet.env) bytes"
+                        echo "시크릿 파일 준비 완료"
+                    """
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh """
+                    cd Backend/AdPlanet
+
+                    echo "=== 환경 변수 설정 ==="
+                    export IMAGE_NAME=${IMAGE_NAME}
+                    export BUILD_NUMBER=${BUILD_NUMBER}
+                    export CONTAINER_NAME=${CONTAINER_NAME}
+                    export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+                    export SECRETS_DIR=${SECRETS_DIR}
+
+                    echo "=== 기존 서비스 중지 ==="
+                    docker compose down || true
+
+                    echo "=== 이전 이미지 정리 ==="
+                    docker image prune -f || true
+
+                    echo "=== 새 서비스 시작 ==="
+                    docker compose up -d
+
+                    echo "=== Docker Compose 배포 완료 ==="
+                    docker compose ps
+                """
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                    cd Backend/AdPlanet
+
+                    echo "=== 배포 상태 확인 ==="
+                    docker compose ps
+
+                    echo "=== 컨테이너 내부 시크릿 파일 확인 ==="
+                    docker exec ${CONTAINER_NAME} ls -la /app/secrets/ || echo "시크릿 파일 확인 실패"
+
+                    echo "=== 배포 완료 ==="
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ 배포 성공!"
+            sh '''
+                echo "=== Docker 컨테이너 정보 ==="
+                docker compose ps
+            '''
+        }
+        failure {
+            echo "❌ 배포 실패"
+            sh '''
+                echo "=== 실패 시 디버깅 정보 ==="
+                echo "컨테이너 상태:"
+                docker compose ps || true
+                echo "애플리케이션 로그:"
+                docker compose logs --tail=100 || true
+                echo "시크릿 파일 상태:"
+                ls -la /opt/app/secrets/ || true
+                echo "시스템 리소스:"
+                df -h
+                free -h
+            '''
+        }
+        always {
+            sh '''
+                echo "=== 정리 작업 ==="
+                docker image prune -f || true
+                echo "현재 실행 중인 컨테이너:"
+                docker compose ps || true
+            '''
+        }
+    }
+}
