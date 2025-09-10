@@ -72,15 +72,13 @@ public class SSHTunnelConfigJSch {
                 throw new RuntimeException("PEM 키 파일을 찾을 수 없습니다: " + privateKeyPath);
             }
 
-            // 개인 키 추가
-            log.info("개인 키 파일 로드 중: {}", privateKeyPath);
+            // SSH Key 추가
             jsch.addIdentity(privateKeyPath);
 
-            // 호스트 키 확인 비활성화 (개발용)
+            // 호스트 키 확인 비활성화
             jsch.setConfig("StrictHostKeyChecking", "no");
 
             // SSH 세션 생성
-            log.info("SSH 세션 생성: {}@{}:22", sshUsername, sshHost);
             session = jsch.getSession(sshUsername, sshHost, 22);
 
             // 연결 옵션 설정
@@ -94,14 +92,10 @@ public class SSHTunnelConfigJSch {
 
             if (session.isConnected()) {
                 log.info("SSH 세션 연결 성공");
-
-                // 포트 포워딩 설정
-                log.info("포트 포워딩 설정 중: localhost:{} -> {}:{}", 
-                        localPort, rdsHost, rdsPort);
                 
                 int assignedPort = session.setPortForwardingL(localPort, rdsHost, rdsPort);
                 
-                log.info("SSH 터널 설정 완료 - 포트: {}", assignedPort);
+                log.info("SSH 터널 설정 완료");
             } else {
                 throw new RuntimeException("SSH 세션 연결 실패");
             }
