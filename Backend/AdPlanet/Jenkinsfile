@@ -17,74 +17,63 @@ pipeline {
 
         stage('Build') {
             steps {
+                script {
+                    updateGitlabCommitStatus name: 'build', state: 'pending'
+                }
                 sh """
                     cd Backend/AdPlanet
                     docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} .
                     docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_NAME}:latest
                 """
+                script {
+                    updateGitlabCommitStatus name: 'build', state: 'success'
+                }
             }
         }
 
         stage('Prepare Secrets') {
             steps {
+                script {
+                    updateGitlabCommitStatus name: 'prepare-secrets', state: 'pending'
+                }
                 withCredentials([
                     sshUserPrivateKey(credentialsId: 'rds-ssh-key', keyFileVariable: 'SSH_KEY'),
                     file(credentialsId: 'app-env-file', variable: 'ENV_FILE')
                 ]) {
                     sh """
-                        echo "=== Credentials 파일 확인 ==="
-                        echo "SSH_KEY 파일: \${SSH_KEY}"
-                        echo "ENV_FILE 파일: \${ENV_FILE}"
-                        ls -la \${SSH_KEY} || echo "SSH_KEY 파일 접근 불가"
-                        ls -la \${ENV_FILE} || echo "ENV_FILE 파일 접근 불가"
-
-                        echo "=== 시크릿 디렉토리 확인 ==="
-                        ls -ld ${SECRETS_DIR}
-                        whoami
-                        id
-
-                        echo "=== 새 파일 복사 ==="
                         cp \${SSH_KEY} ${SECRETS_DIR}/ssh-key.pem
                         cp \${ENV_FILE} ${SECRETS_DIR}/adplanet.env
-
-                        echo "=== 파일 권한 설정 ==="
                         chmod 644 ${SECRETS_DIR}/ssh-key.pem
                         chmod 644 ${SECRETS_DIR}/adplanet.env
-
-                        echo "=== 최종 확인 ==="
-                        ls -la ${SECRETS_DIR}/
-                        echo "SSH Key 파일 크기: \$(wc -c < ${SECRETS_DIR}/ssh-key.pem) bytes"
-                        echo "ENV 파일 크기: \$(wc -c < ${SECRETS_DIR}/adplanet.env) bytes"
-                        echo "시크릿 파일 준비 완료"
                     """
+                }
+                script {
+                    updateGitlabCommitStatus name: 'prepare-secrets', state: 'success'
                 }
             }
         }
 
         stage('Deploy') {
             steps {
+                script {
+                    updateGitlabCommitStatus name: 'deploy', state: 'pending'
+                }
                 sh """
                     cd Backend/AdPlanet
 
-                    echo "=== 환경 변수 설정 ==="
                     export IMAGE_NAME=${IMAGE_NAME}
                     export BUILD_NUMBER=${BUILD_NUMBER}
                     export CONTAINER_NAME=${CONTAINER_NAME}
                     export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
                     export SECRETS_DIR=${SECRETS_DIR}
 
-                    echo "=== 기존 서비스 중지 ==="
                     docker compose down || true
-
-                    echo "=== 이전 이미지 정리 ==="
                     docker image prune -f || true
-
-                    echo "=== 새 서비스 시작 ==="
                     docker compose up -d
-
-                    echo "=== Docker Compose 배포 완료 ==="
-                    docker compose ps
                 """
+                script {
+                    updateGitlabCommitStatus name: 'deploy', state: 'success'
+                }
             }
         }
 
@@ -93,13 +82,9 @@ pipeline {
                 sh '''
                     cd Backend/AdPlanet
 
-                    echo "=== 배포 상태 확인 ==="
                     docker compose ps
 
-                    echo "=== 컨테이너 내부 시크릿 파일 확인 ==="
                     docker exec ${CONTAINER_NAME} ls -la /app/secrets/ || echo "시크릿 파일 확인 실패"
-
-                    echo "=== 배포 완료 ==="
                 '''
             }
         }
@@ -108,6 +93,9 @@ pipeline {
     post {
         success {
             echo "✅ 배포 성공!"
+            script {
+                updateGitlabCommitStatus name: 'pipeline', state: 'success'
+            }
             sh '''
                 echo "=== Docker 컨테이너 정보 ==="
                 docker compose ps
@@ -115,6 +103,9 @@ pipeline {
         }
         failure {
             echo "❌ 배포 실패"
+            script {
+                updateGitlabCommitStatus name: 'pipeline', state: 'failed'
+            }
             sh '''
                 echo "=== 실패 시 디버깅 정보 ==="
                 echo "컨테이너 상태:"
