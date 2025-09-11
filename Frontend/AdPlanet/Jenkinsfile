@@ -13,7 +13,6 @@ pipeline {
                 checkout scm
             }
         }
-
         // ✅ CI: PR/MR 열렸을 때만 (lint/test 등)
         stage('CI - Build & Test') {
             when {
@@ -68,6 +67,7 @@ pipeline {
             }
         }
     }
+
     post {
         success {
             echo 'Frontend deployed successfully'
