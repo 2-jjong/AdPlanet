@@ -14,58 +14,60 @@ pipeline {
             }
         }
 
-    
-    // ✅ CI: PR/MR 열렸을 때만 (lint/test 등)
-    stage('CI - Build & Test') {
-    when {
-        changeRequest() // PR/MR 파이프라인인 경우에만 실행
-    }
-    steps {
-        dir('Frontend/AdPlanet') {
-            sh '''
+        // ✅ CI: PR/MR 열렸을 때만 (lint/test 등)
+        stage('CI - Build & Test') {
+            when {
+                anyOf {
+                    changeRequest() // PR/MR 파이프라인인 경우에 실행
+                    expression { env.gitlabActionType == 'MERGE_REQUEST' } // GitLab 플러그인 이벤트일 경우
+                }
+            }
+            steps {
+                dir('Frontend/AdPlanet') {
+                    sh '''
             npm ci
             npm run build --if-present
             npm test --if-present
             '''
+                }
+            }
+            post {
+                success { echo 'CI passed for PR/MR' }
+            }
         }
-    }
-    post {
-        success { echo 'CI passed for PR/MR' }
-    }
-    }
 
-    // ✅ CD용 이미지 빌드: main 브랜치 push(=merge 후) 에만
-    stage('Build Docker image (CD)') {
-    when {
-        allOf {
-          not { changeRequest() } // PR/MR이 아닐 때
-        branch 'frontend/develop'          
+        // ✅ CD용 이미지 빌드: main 브랜치 push(=merge 후) 에만
+        stage('Build Docker image (CD)') {
+            when {
+                allOf {
+                    not { changeRequest() } // PR/MR이 아닐 때
+                    branch 'frontend/develop'
+                }
+            }
+            steps {
+                dir('Frontend/AdPlanet') {
+                    sh 'docker build -t ${IMAGE} .'
+                }
+            }
         }
-    }
-    steps {
-        dir('Frontend/AdPlanet') {
-            sh 'docker build -t ${IMAGE} .'
-        }
-    }
-    }
 
-    // ✅ 배포: main 브랜치 push(=merge 후) 에만
-    stage('Deploy frontend') {
-        when {
-            allOf {
-             not { changeRequest() }
-          branch 'frontend/develop'
-        }
-      }
-      steps {
-        sh """
-          cd ${COMPOSE_DIR}
-          docker compose -p ${PROJECT_NAME} \
+        // ✅ 배포: main 브랜치 push(=merge 후) 에만
+        stage('Deploy frontend') {
+            when {
+                allOf {
+                    not { changeRequest() }
+                    branch 'frontend/develop'
+                }
+            }
+            steps {
+                sh """
+            cd ${COMPOSE_DIR}
+            docker compose -p ${PROJECT_NAME} \
             -f base.yml -f frontend.yml up -d web
         """
-      }
+            }
+        }
     }
-  }
     post {
         success {
             echo 'Frontend deployed successfully'
