@@ -18,8 +18,8 @@ pipeline {
         stage('CI - Build & Test') {
             when {
                 anyOf {
-                    changeRequest() // PR/MR 파이프라인인 경우에 실행
-                    expression { env.gitlabActionType == 'MERGE_REQUEST' } // GitLab 플러그인 이벤트일 경우
+                    changeRequest()                                   // 멀티브랜치일 때
+                    expression { env.gitlabActionType == 'MERGE_REQUEST' } // GitLab 플러그인 이벤트
                 }
             }
             steps {
@@ -40,8 +40,12 @@ pipeline {
         stage('Build Docker image (CD)') {
             when {
                 allOf {
-                    not { changeRequest() } // PR/MR이 아닐 때
-                    branch 'frontend/develop'
+                    expression { env.gitlabActionType != 'MERGE_REQUEST' } // MR 이벤트는 배포 금지
+                        anyOf {
+                        branch 'frontend/develop'                            // 멀티브랜치일 때
+                        expression { env.gitlabBranch == 'frontend/develop' }        // push 이벤트(브랜치)
+                        expression { env.gitlabTargetBranch == 'frontend/develop' }  // 일부 플러그인 케이스
+                        }
                 }
             }
             steps {
@@ -55,17 +59,23 @@ pipeline {
         stage('Deploy frontend') {
             when {
                 allOf {
-                    not { changeRequest() }
-                    branch 'frontend/develop'
+                    expression { env.gitlabActionType != 'MERGE_REQUEST' }
+                    anyOf {
+                        branch 'frontend/develop'
+                        expression { env.gitlabBranch == 'frontend/develop' }
+                        expression { env.gitlabTargetBranch == 'frontend/develop' }
+                    }
                 }
             }
             steps {
                 sh """
+            set -eux
             cd ${COMPOSE_DIR}
-            docker compose -p ${PROJECT_NAME} \
-            -f base.yml -f frontend.yml up -d web
+            export COMPOSE_PROJECT_NAME=${PROJECT_NAME}
+            docker compose -p ${PROJECT_NAME} -f base.yml -f frontend.yml up -d --remove-orphans --wait web
         """
             }
+            post { success { echo 'Frontend deployed successfully 🚀' } }
         }
     }
     post {
