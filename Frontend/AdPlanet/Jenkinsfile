@@ -50,6 +50,7 @@ pipeline {
                 }
             }
         }
+        
 
         // ✅ 배포: main 브랜치 push(=merge 후) 에만
         stage('Deploy frontend') {
