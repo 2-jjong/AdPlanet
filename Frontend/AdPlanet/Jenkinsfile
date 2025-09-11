@@ -39,7 +39,7 @@ pipeline {
     when {
         allOf {
           not { changeRequest() } // PR/MR이 아닐 때
-          branch 'main'           // main으로 merge된 커밋일 때
+        branch 'frontend/develop'          
         }
     }
     steps {
@@ -54,7 +54,7 @@ pipeline {
         when {
             allOf {
              not { changeRequest() }
-          branch 'main'
+          branch 'frontend/develop'
         }
       }
       steps {
