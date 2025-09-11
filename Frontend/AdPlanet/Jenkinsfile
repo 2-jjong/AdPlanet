@@ -14,13 +14,21 @@ pipeline {
             }
         }
 
+        stage('Debug env') {
+            steps {
+                sh '''
+        echo "gitlabActionType=$gitlabActionType"
+        echo "gitlabSourceBranch=$gitlabSourceBranch"
+        echo "gitlabTargetBranch=$gitlabTargetBranch"
+        echo "gitlabBranch=$gitlabBranch"
+        echo "BRANCH_NAME=$BRANCH_NAME"
+    '''
+            }
+        }
         // ✅ CI: PR/MR 열렸을 때만 (lint/test 등)
         stage('CI - Build & Test') {
             when {
-                anyOf {
-                    changeRequest()                                   // 멀티브랜치일 때
-                    expression { env.gitlabActionType == 'MERGE_REQUEST' } // GitLab 플러그인 이벤트
-                }
+                expression { env.gitlabActionType == 'MERGE_REQUEST' } // GitLab 플러그인 이벤트
             }
             steps {
                 dir('Frontend/AdPlanet') {
@@ -40,12 +48,8 @@ pipeline {
         stage('Build Docker image (CD)') {
             when {
                 allOf {
-                    expression { env.gitlabActionType != 'MERGE_REQUEST' } // MR 이벤트는 배포 금지
-                        anyOf {
-                        branch 'frontend/develop'                            // 멀티브랜치일 때
-                        expression { env.gitlabBranch == 'frontend/develop' }        // push 이벤트(브랜치)
-                        expression { env.gitlabTargetBranch == 'frontend/develop' }  // 일부 플러그인 케이스
-                        }
+                    expression { env.gitlabActionType != 'MERGE_REQUEST' } // MR이면 안 돈다
+                    expression { env.gitlabBranch == 'frontend/develop' || env.gitlabTargetBranch == 'frontend/develop' }
                 }
             }
             steps {
