@@ -1,10 +1,7 @@
 package com.ssafy.adplanet.controller.logo;
 
 import com.ssafy.adplanet.dto.ResponseDto;
-import com.ssafy.adplanet.dto.logo.CreateLogoRequest;
-import com.ssafy.adplanet.dto.logo.LogoDetail;
-import com.ssafy.adplanet.dto.logo.LogoDto;
-import com.ssafy.adplanet.dto.logo.LogoListItem;
+import com.ssafy.adplanet.dto.logo.*;
 import com.ssafy.adplanet.enums.LogoListOrder;
 import com.ssafy.adplanet.service.LogoService;
 import lombok.RequiredArgsConstructor;
@@ -115,4 +112,21 @@ public class LogoController {
 
         return ResponseEntity.ok(new ResponseDto<>("S0000", detail, null));
     }
+
+    @GetMapping("/tags")
+    @Operation(
+            summary = "로고 태그 목록 조회",
+            description = "로고에 사용 가능한 태그 목록을 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청")
+    })
+    public ResponseEntity<ResponseDto<List<LogoTagItem>>> getLogoTags() {
+        var list = List.of(
+                new LogoTagItem(1L, "자연적인"),
+                new LogoTagItem(2L, "미니멀")
+        );
+        return ResponseEntity.ok(new ResponseDto<>("S0000", list, null));
+    }
+
 }
