@@ -129,4 +129,17 @@ public class LogoController {
         return ResponseEntity.ok(new ResponseDto<>("S0000", list, null));
     }
 
+    @PostMapping("/tags")
+    @Operation(
+            summary = "로고 태그 지정",
+            description = "logoId에 tagName을 지정합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청")
+    })
+    public ResponseEntity<ResponseDto<Void>> assignLogoTag (
+            @RequestBody LogoTagAssignRequest req
+    ) {
+        return ResponseEntity.ok(new ResponseDto<>("S0000", null, null));
+    }
 }
