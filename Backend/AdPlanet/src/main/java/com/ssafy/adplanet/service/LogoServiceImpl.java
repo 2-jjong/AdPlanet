@@ -35,12 +35,6 @@ public class LogoServiceImpl implements LogoService{
         logoRepository.save(logo);
         logo.changeImgUrl("image/logo_" + logo.getId());
 
-        // 인위적으로 7초 기다렸다가 응답
-        try {
-            TimeUnit.SECONDS.sleep(7);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
         return new LogoDto(logo.getId(), logo.getImgUrl());
     }
 }
