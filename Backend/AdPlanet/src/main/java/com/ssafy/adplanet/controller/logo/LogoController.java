@@ -142,4 +142,29 @@ public class LogoController {
     ) {
         return ResponseEntity.ok(new ResponseDto<>("S0000", null, null));
     }
+
+    @PostMapping("/{logoId}/ci-guideline")
+    @Operation(
+            summary = "CI 가이드라인 생성",
+            description = "logoId에 대해 CI(브랜드) 가이드라인을 생성합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청")
+    })
+    public ResponseEntity<ResponseDto<CiGuideDto>> generateCiGuide (
+            @Parameter(description = "로고 ID", example = "1")
+            @PathVariable Long logoId
+    ) {
+        CiGuideDto guide = new CiGuideDto(
+                "**기본 로고**- 메인 로고는 워드마크와 심볼을 함께 사용한다.\n- 가로형과 세로형 버전 두 가지를 제공하며, 사용 환경에 맞게 선택한다.",
+                "3D9FD8",
+                "46A9DB",
+                "87DEDA",
+                "Hex\n- #4FB1BA\nRGB\n- (79, 177, 186)\nCMYK\n- (65, 10, 25, 0)\n주 사용처\n- 로고, 주요 버튼, 강조 요소",
+                "Hex\n- #193747\nRGB\n- (25, 55, 71)\nCMYK\n- (90, 65, 50, 40)\n주 사용처\n- 텍스트, 배경, 보조 그래픽",
+                "Black: #000000\nWhite: #FFFFFF\nGray: #CCCCCC"
+        );
+        return ResponseEntity.ok(new ResponseDto<>("S0000", guide, null));
+    }
 }
