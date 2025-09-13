@@ -1,3 +1,3 @@
-package com.ssafy.adplanet.style;
+package com.ssafy.adplanet.enums;
 
 public enum LogoStyle {SIMPLE, MONO}

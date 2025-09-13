@@ -4,20 +4,21 @@ import com.ssafy.adplanet.dto.logo.CreateLogoRequest;
 import com.ssafy.adplanet.dto.logo.LogoDto;
 import com.ssafy.adplanet.entity.Logo;
 import com.ssafy.adplanet.repository.LogoRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.concurrent.TimeUnit;
 
 @Service
-@Transactional
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class LogoServiceImpl implements LogoService{
 
     private final LogoRepository logoRepository;
 
     @Override
+    @Transactional
     public LogoDto create(Long userId, CreateLogoRequest req) {
 
         if (userId == null) throw new IllegalArgumentException("userId는 필수입니다.");
