@@ -1,12 +1,10 @@
 package com.ssafy.adplanet.controller.logo;
 
-import com.ssafy.adplanet.dto.ApiResponse;
+import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.logo.CreateLogoRequest;
 import com.ssafy.adplanet.dto.logo.LogoDto;
-import com.ssafy.adplanet.entity.Logo;
 import com.ssafy.adplanet.service.LogoService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.java.Log;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +18,7 @@ public class LogoController {
     private final LogoService logoService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<LogoDto>> createLogo(
+    public ResponseEntity<ResponseDto<LogoDto>> createLogo(
 //            @RequestHeader("Authorization") String bearerToken,
             @RequestBody CreateLogoRequest req
     ) {
@@ -37,6 +35,6 @@ public class LogoController {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        return ResponseEntity.ok(ApiResponse.ok(dto));
+        return ResponseEntity.ok(ResponseDto.ok(dto));
     }
 }

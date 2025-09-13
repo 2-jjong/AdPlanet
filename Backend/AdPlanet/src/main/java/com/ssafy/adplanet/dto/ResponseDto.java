@@ -4,11 +4,11 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @JsonPropertyOrder({"code","data","message"})
-public record ApiResponse<T>(
+public record ResponseDto<T>(
         String code,
         T data,
         @JsonInclude(JsonInclude.Include.NON_NULL) String message
 ) {
-    public static <T> ApiResponse<T> ok(T data) { return new ApiResponse<>("S0001", data, null); }
-    public static <T> ApiResponse<T> error(String c, String m) { return new ApiResponse<>(c, null, m); }
+    public static <T> ResponseDto<T> ok(T data) { return new ResponseDto<>("S0001", data, null); }
+    public static <T> ResponseDto<T> error(String c, String m) { return new ResponseDto<>(c, null, m); }
 }
