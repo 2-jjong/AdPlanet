@@ -2,6 +2,7 @@ package com.ssafy.adplanet.controller.logo;
 
 import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.logo.CreateLogoRequest;
+import com.ssafy.adplanet.dto.logo.LogoDetail;
 import com.ssafy.adplanet.dto.logo.LogoDto;
 import com.ssafy.adplanet.dto.logo.LogoListItem;
 import com.ssafy.adplanet.enums.LogoListOrder;
@@ -82,5 +83,36 @@ public class LogoController {
         }
 
         return ResponseEntity.ok(ResponseDto.ok(list));
+    }
+
+    @GetMapping("/{logoId}")
+    @Operation(
+            summary = "로고 상세 조회",
+            description = "logoId로 로고 정보를 상세 조회합니다"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청")
+    })
+
+    public ResponseEntity<ResponseDto<LogoDetail>> getLogoDetail(
+//            @Parameter(description = "Bearer 액세스 토큰(문서 표기용)", example = "Bearer eyJhbGciOiJI...")
+//            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @Parameter(description = "로고 ID", example = "1")
+            @PathVariable Long logoId
+    ) {
+        if (logoId == null || logoId <= 0) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseDto<>("LG4001", null, "logoId가 유효하지 않습니다."));
+        }
+
+        LogoDetail detail = new LogoDetail(
+                "싸피컴퍼니",
+                "포기는 배추 셀 때나 하는 말",
+                "images/logo_1",
+                "아삭아삭한 배추 이미지, 싱싱한 초록색 활용"
+        );
+
+        return ResponseEntity.ok(new ResponseDto<>("S0000", detail, null));
     }
 }
