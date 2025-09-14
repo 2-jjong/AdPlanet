@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { PATHS } from '../constants/paths';
 
 const Navigation: React.FC = () => {
   const location = useLocation();
@@ -12,7 +13,7 @@ const Navigation: React.FC = () => {
   };
 
   const isGeneratorActive = () => {
-    return location.pathname === '/logo' || location.pathname === '/poster';
+    return location.pathname === PATHS.LOGO || location.pathname === PATHS.POSTER;
   };
 
   // 마우스가 들어왔을 때 실행할 함수
@@ -35,7 +36,7 @@ const Navigation: React.FC = () => {
   return (
     <header className="relative z-50 flex justify-between items-center p-4 lg:px-12">
       <Link 
-        to="/"
+        to={PATHS.HOME}
         className="text-xl lg:text-2xl font-bold text-cyan-400 hover:text-cyan-300 transition-colors"
       >
         AdPlanet
@@ -67,9 +68,9 @@ const Navigation: React.FC = () => {
             }`}
           >
             <Link 
-              to="/logo" 
+              to={PATHS.LOGO} 
               className={`block px-4 py-3 text-sm transition-colors ${
-                isActive('/logo') 
+                isActive(PATHS.LOGO) 
                   ? 'text-cyan-400 bg-slate-700/50' 
                   : 'text-white hover:text-cyan-400 hover:bg-slate-700/30'
               }`}
@@ -77,9 +78,9 @@ const Navigation: React.FC = () => {
               로고 생성
             </Link>
             <Link 
-              to="/poster" 
+              to={PATHS.POSTER} 
               className={`block px-4 py-3 text-sm transition-colors ${
-                isActive('/poster') 
+                isActive(PATHS.POSTER) 
                   ? 'text-cyan-400 bg-slate-700/50' 
                   : 'text-white hover:text-cyan-400 hover:bg-slate-700/30'
               }`}
@@ -90,9 +91,9 @@ const Navigation: React.FC = () => {
         </div>
 
         <Link 
-          to="/watermark-detection" 
+          to={PATHS.WATERMARK_DETECTION} 
           className={`transition-colors text-sm lg:text-base ${
-            isActive('/watermark-detection') 
+            isActive(PATHS.WATERMARK_DETECTION) 
               ? 'text-cyan-400 font-semibold' 
               : 'hover:text-cyan-400'
           }`}
@@ -100,9 +101,9 @@ const Navigation: React.FC = () => {
           Watermark Detection
         </Link>
         <Link 
-          to="/archive" 
+          to={PATHS.ARCHIVE} 
           className={`transition-colors text-sm lg:text-base ${
-            isActive('/archive') 
+            isActive(PATHS.ARCHIVE) 
               ? 'text-cyan-400 font-semibold' 
               : 'hover:text-cyan-400'
           }`}

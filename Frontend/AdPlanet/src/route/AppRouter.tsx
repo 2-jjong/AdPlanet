@@ -1,25 +1,42 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import HomePage from '../pages/HomePage';
 import LogoPage from '../pages/LogoPage';
 import PosterPage from '../pages/PosterPage';
 import WatermarkDetectionPage from '../pages/WatermarkDetectionPage';
 import ArchivePage from '../pages/ArchivePage';
 import MyPage from "../pages/MyPage.tsx";
+import { PATHS } from '../constants/paths';
 
-const AppRouter: React.FC = () => {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/logo" element={<LogoPage />} />
-        <Route path="/poster" element={<PosterPage />} />
-        <Route path="/watermark-detection" element={<WatermarkDetectionPage />} />
-        <Route path="/archive" element={<ArchivePage />} />
-        <Route path="/mypage" element={<MyPage />} />
-      </Routes>
-    </BrowserRouter>
-  );
+// 라우터 설정
+const router = createBrowserRouter([
+  {
+    path: PATHS.HOME,
+    element: <HomePage />,
+  },
+  {
+    path: PATHS.LOGO,
+    element: <LogoPage />,
+  },
+  {
+    path: PATHS.POSTER,
+    element: <PosterPage />,
+  },
+  {
+    path: PATHS.WATERMARK_DETECTION,
+    element: <WatermarkDetectionPage />,
+  },
+  {
+    path: PATHS.ARCHIVE,
+    element: <ArchivePage />,
+  },
+  {
+    path: PATHS.MYPAGE,
+    element: <MyPage />,
+  },
+]);
+
+const AppRouter = () => {
+  return <RouterProvider router={router} />;
 };
 
 export default AppRouter;

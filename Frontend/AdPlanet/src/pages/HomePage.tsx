@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navigation from '../components/Navigation';
+import { PATHS } from '../constants/paths';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -51,7 +52,7 @@ const HomePage: React.FC = () => {
           <div
             className="absolute top-16 sm:top-20 left-4 sm:left-8 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-amber-600 to-orange-700 opacity-90 animate-float cursor-pointer hover:opacity-100 transition-opacity duration-300"
             style={{animationDuration: '3s'}}
-            onClick={() => navigate('/poster')}
+            onClick={() => navigate(PATHS.POSTER)}
           >
             <div className="absolute -bottom-6 sm:-bottom-8 left-1/2 transform -translate-x-1/2 text-white text-xs whitespace-nowrap font-medium">
               포스터 생성
@@ -62,7 +63,7 @@ const HomePage: React.FC = () => {
           <div
             className="absolute top-24 sm:top-32 right-12 sm:right-20 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-red-500 to-pink-600 opacity-90 animate-float cursor-pointer hover:opacity-100 transition-opacity duration-300"
             style={{animationDuration: '4s'}}
-            onClick={() => navigate('/logo')}
+            onClick={() => navigate(PATHS.LOGO)}
           >
             <div className="absolute -bottom-6 sm:-bottom-8 left-1/2 transform -translate-x-1/2 text-white text-xs whitespace-nowrap font-medium">
               로고 생성
