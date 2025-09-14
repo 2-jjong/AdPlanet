@@ -139,4 +139,22 @@ public class PosterController {
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 
+    @PostMapping(value = "/{posterId}/copy", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
+    @Operation(summary = "포스터 저장", description = "문구를 포함한 포스터 이미지를 저장합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "저장 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<PosterResponse>> createPosterCopy(
+            @Parameter(description = "포스터 id", required = true)
+            @PathVariable("posterId") Long posterId,
+            @Parameter(description = "이미지", required = true)
+            @RequestPart("image") MultipartFile image
+    ) {
+        PosterResponse response = new PosterResponse(
+                posterId,
+                "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
+        );
+        return ResponseEntity.ok(ResponseDto.ok(response));
+    }
 }
