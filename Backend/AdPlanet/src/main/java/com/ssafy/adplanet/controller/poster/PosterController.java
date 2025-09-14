@@ -2,6 +2,8 @@ package com.ssafy.adplanet.controller.poster;
 
 import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.poster.response.ImageProcessingJob;
+import com.ssafy.adplanet.dto.poster.response.PosterResponse;
+import com.ssafy.adplanet.entity.Poster;
 import com.ssafy.adplanet.enums.JobStatus;
 import com.ssafy.adplanet.enums.PosterStyle;
 import com.ssafy.adplanet.service.PosterService;
@@ -10,10 +12,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cglib.core.Local;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -50,6 +54,28 @@ public class PosterController {
                 UUID.randomUUID().toString(),
                 JobStatus.QUEUED,
                 LocalDateTime.now()
+        );
+        return ResponseEntity.ok(ResponseDto.ok(response));
+    }
+
+    @GetMapping("/jobs/{jobId}")
+    @Operation(summary = "포스터 생성 상태 조회", description = "포스터 생성 상태를 조회합니다. 생성 완료 시 결과를 함께 반환합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<ImageProcessingJob>> getStatus(
+            @Parameter(description = "작업 id", required = true)
+            @PathVariable("jobId") String jobId
+    ) {
+        PosterResponse poster = new PosterResponse(
+                1L, "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
+        );
+        ImageProcessingJob response = new ImageProcessingJob(
+                UUID.randomUUID().toString(),
+                JobStatus.COMPLETED,
+                LocalDateTime.now(),
+                poster
         );
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
