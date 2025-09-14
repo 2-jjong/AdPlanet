@@ -1,6 +1,7 @@
 package com.ssafy.adplanet.controller.poster;
 
 import com.ssafy.adplanet.dto.ResponseDto;
+import com.ssafy.adplanet.dto.poster.response.CopyResponse;
 import com.ssafy.adplanet.dto.poster.response.ImageProcessingJob;
 import com.ssafy.adplanet.dto.poster.response.PosterResponse;
 import com.ssafy.adplanet.entity.Poster;
@@ -121,4 +122,21 @@ public class PosterController {
         );
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
+
+    @GetMapping("/{posterId}/copy")
+    @Operation(summary = "포스터 문구 생성", description = "포스터 문구를 자동 생성합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<CopyResponse>> getPosterCopy(
+            @Parameter(description = "포스터 id", required = true)
+            @PathVariable("posterId") Long posterId
+    ) {
+        CopyResponse response = new CopyResponse(
+                "시원한 청정라거, 테라!"
+        );
+        return ResponseEntity.ok(ResponseDto.ok(response));
+    }
+
 }
