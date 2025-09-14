@@ -1,0 +1,9 @@
+# 이미지 용량/빌드 속도에 중요 
+node_modules
+dist
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+*.log
+.env*
