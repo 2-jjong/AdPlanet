@@ -5,6 +5,7 @@ import PosterPage from '../pages/PosterPage';
 import WatermarkDetectionPage from '../pages/WatermarkDetectionPage';
 import ArchivePage from '../pages/ArchivePage';
 import MyPage from "../pages/MyPage.tsx";
+import AuthCallbackPage from '../pages/AuthCallbackPage';
 import { PATHS } from '../constants/paths';
 
 const routeConfig = [
@@ -31,6 +32,10 @@ const routeConfig = [
   {
     path: PATHS.MYPAGE,
     element: <MyPage />,
+  },
+  {
+    path: PATHS.AUTH_CALLBACK,
+    element: <AuthCallbackPage />,
   },
 ] as RouteObject[]
 // 라우터 설정
