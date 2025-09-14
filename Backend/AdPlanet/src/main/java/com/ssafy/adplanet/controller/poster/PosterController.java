@@ -6,6 +6,7 @@ import com.ssafy.adplanet.dto.poster.response.ImageProcessingJob;
 import com.ssafy.adplanet.dto.poster.response.PosterResponse;
 import com.ssafy.adplanet.entity.Poster;
 import com.ssafy.adplanet.enums.JobStatus;
+import com.ssafy.adplanet.enums.PosterDownloadFormat;
 import com.ssafy.adplanet.enums.PosterStyle;
 import com.ssafy.adplanet.service.PosterService;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -16,13 +17,20 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cglib.core.Local;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -156,5 +164,46 @@ public class PosterController {
                 "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
         );
         return ResponseEntity.ok(ResponseDto.ok(response));
+    }
+
+    @GetMapping(value = "/{posterId}/download")
+    @Operation(summary="포스터 다운로드", description="포스터를 선택한 파일 포맷으로 다운로드합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "다운로드 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<byte[]> download(
+            @Parameter(description = "포스터 id", required = true)
+            @PathVariable("posterId") Long posterId,
+            @Parameter(description = "파일 확장자", required = true)
+            @RequestParam("format") PosterDownloadFormat format
+    ) {
+
+        // 더미 이미지 bytes 생성
+        byte[] bytes = tinyRaster(format.extension);
+
+        String filename = "poster_" + posterId + "." + format.extension;
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(filename).build().toString())
+                .contentType(MediaType.parseMediaType(format.contentType))
+                .body(bytes);
+    }
+
+    /**
+     * 더미 이미지 생성 (1x1 px)
+     */
+    private byte[] tinyRaster(String format) {
+        BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = img.createGraphics();
+        g2d.setColor(Color.WHITE); // 흰색으로 채움
+        g2d.fillRect(0, 0, 1, 1);
+        g2d.dispose();
+
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            ImageIO.write(img, format, baos);
+            return baos.toByteArray();
+        } catch (Exception e) { return new byte[0]; }
     }
 }
