@@ -2,10 +2,11 @@ package com.ssafy.adplanet.controller.logo;
 
 import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.logo.*;
+import com.ssafy.adplanet.enums.LogoDownloadFormat;
 import com.ssafy.adplanet.enums.LogoListOrder;
 import com.ssafy.adplanet.service.LogoService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +15,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -190,5 +195,65 @@ public class LogoController {
                 "Black: #000000\nWhite: #FFFFFF\nGray: #CCCCCC"
         );
         return ResponseEntity.ok(new ResponseDto<>("S0000", guide, null));
+    }
+
+    @GetMapping(value = "/{logoId}/download")
+    @Operation(
+            summary="로고 다운로드",
+            description="logoId의 로고 파일을 지정한 형식(png/jpg/svg)으로 다운로드합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청")
+    })
+    public ResponseEntity<byte[]> download(
+            @PathVariable Long logoId,
+            @RequestParam(defaultValue = "png") String format
+    ) {
+        String f = format == null ? "png" : format.trim().toLowerCase();
+        String contentType;
+        byte[] bytes;
+
+        switch (f) {
+            case "jpg":
+            case "jpeg":
+                contentType = "image/jpeg";
+                bytes = tinyRaster("jpg"); // 1x1 더미 JPG
+                break;
+            case "svg":
+                contentType = "image/svg+xml";
+                bytes = tinySvg(logoId).getBytes(StandardCharsets.UTF_8); // 더미 SVG
+                break;
+            default:
+                contentType = "image/png";
+                bytes = tinyRaster("png"); // 1x1 더미 PNG
+        }
+
+        String ext = (f.equals("jpg") || f.equals("jpeg")) ? "jpg" : (f.equals("svg") ? "svg" : "png");
+        String filename = "logo_" + logoId + "." + ext;
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(filename).build().toString())
+                .contentType(MediaType.parseMediaType(contentType))
+                .body(bytes);
+    }
+
+    // ---- 아래는 최소 더미 생성 유틸 (1x1 흰색) ----
+    private byte[] tinyRaster(String fmt) {
+        try {
+            BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+            img.setRGB(0, 0, 0xFFFFFF); // 흰색
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(img, fmt.equals("jpg") ? "jpg" : "png", baos);
+            return baos.toByteArray();
+        } catch (Exception e) { return new byte[0]; }
+    }
+
+    private String tinySvg(Long id) {
+        return """
+            <svg xmlns="http://www.w3.org/2000/svg" width="1" height="1">
+              <rect width="1" height="1" fill="#FFFFFF"/>
+            </svg>
+            """;
     }
 }
