@@ -3,10 +3,11 @@ package com.ssafy.adplanet.controller.poster;
 import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.poster.response.CopyResponse;
 import com.ssafy.adplanet.dto.poster.response.ImageProcessingJob;
+import com.ssafy.adplanet.dto.poster.response.PosterGroupResponse;
 import com.ssafy.adplanet.dto.poster.response.PosterResponse;
-import com.ssafy.adplanet.entity.Poster;
 import com.ssafy.adplanet.enums.JobStatus;
 import com.ssafy.adplanet.enums.PosterDownloadFormat;
+import com.ssafy.adplanet.enums.PosterListOrder;
 import com.ssafy.adplanet.enums.PosterStyle;
 import com.ssafy.adplanet.service.PosterService;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,14 +15,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cglib.core.Local;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,9 +27,9 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -205,5 +203,30 @@ public class PosterController {
             ImageIO.write(img, format, baos);
             return baos.toByteArray();
         } catch (Exception e) { return new byte[0]; }
+    }
+
+    @GetMapping("/group")
+    @Operation(summary = "포스터 그룹 목록 조회", description = "포스터 목록을 조회합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<List<PosterGroupResponse>>> getPosterGroup(
+            @Parameter(description = "정렬")
+            @RequestParam(value = "order", required = false) PosterListOrder order,
+            @Parameter(description = "태그 id")
+            @RequestParam(value = "tagId", required = false) Long tagId
+    ) {
+        List<PosterGroupResponse> list = new ArrayList<>();
+        for (long i = 1; i <= 15; i++) {
+            PosterGroupResponse group = new PosterGroupResponse(
+                    i,
+                    "https://dummyimage.com/600x400/000/fff&text=Poster+" + i,
+                    LocalDateTime.now().minusDays(15 - i) // 생성일 임의로 설정
+            );
+            list.add(group);
+        }
+
+        return ResponseEntity.ok(ResponseDto.ok(list));
     }
 }
