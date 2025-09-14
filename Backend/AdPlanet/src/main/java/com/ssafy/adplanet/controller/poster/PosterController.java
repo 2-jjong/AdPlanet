@@ -21,6 +21,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.awt.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -33,7 +34,7 @@ public class PosterController {
     private final PosterService posterService;
 
     @PostMapping(consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
-    @Operation(summary = "포스터 생성 요청", description = "포스터를 생성 합니다.")
+    @Operation(summary = "포스터 생성 요청", description = "포스터 생성을 요청합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "요청 성공"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
@@ -41,7 +42,7 @@ public class PosterController {
     public ResponseEntity<ResponseDto<ImageProcessingJob>> createPoster(
             @Parameter(description = "포스터 스타일")
             @RequestParam(value = "style", required = false) PosterStyle style,
-            @Parameter(description = "상세 프롬프트", required = true)
+            @Parameter(description = "프롬프트", required = true)
             @RequestPart("prompt") String prompt,
             @Parameter(description = "스케치 이미지")
             @RequestPart(value = "sketchImage", required = false) MultipartFile sketchImage,
@@ -97,5 +98,27 @@ public class PosterController {
                 "아삭아삭한 배추 이미지, 싱싱한 초록색 활용"
         );
         return ResponseEntity.ok(ResponseDto.ok(poster));
+    }
+
+    @PostMapping(value = "/{posterId}/inpaint", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
+    @Operation(summary = "포스터 수정", description = "마스크 이미지와 프롬프트로 포스터 수정을 요청합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "요청 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<ImageProcessingJob>> inpaintPoster(
+            @Parameter(description = "포스터 id", required = true)
+            @PathVariable("posterId") Long posterId,
+            @Parameter(description = "프롬프트", required = true)
+            @RequestPart("prompt") String prompt,
+            @Parameter(description = "마스크 이미지", required = true)
+            @RequestPart("maskImage") MultipartFile maskImage
+    ) {
+        ImageProcessingJob response = new ImageProcessingJob(
+                UUID.randomUUID().toString(),
+                JobStatus.QUEUED,
+                LocalDateTime.now()
+        );
+        return ResponseEntity.ok(ResponseDto.ok(response));
     }
 }
