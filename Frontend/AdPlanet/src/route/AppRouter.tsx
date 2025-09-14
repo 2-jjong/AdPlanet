@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import {createBrowserRouter, RouteObject, RouterProvider} from 'react-router-dom';
 import HomePage from '../pages/HomePage';
 import LogoPage from '../pages/LogoPage';
 import PosterPage from '../pages/PosterPage';
@@ -7,8 +7,7 @@ import ArchivePage from '../pages/ArchivePage';
 import MyPage from "../pages/MyPage.tsx";
 import { PATHS } from '../constants/paths';
 
-// 라우터 설정
-const router = createBrowserRouter([
+const routeConfig = [
   {
     path: PATHS.HOME,
     element: <HomePage />,
@@ -33,7 +32,9 @@ const router = createBrowserRouter([
     path: PATHS.MYPAGE,
     element: <MyPage />,
   },
-]);
+] as RouteObject[]
+// 라우터 설정
+const router = createBrowserRouter(routeConfig);
 
 const AppRouter = () => {
   return <RouterProvider router={router} />;
