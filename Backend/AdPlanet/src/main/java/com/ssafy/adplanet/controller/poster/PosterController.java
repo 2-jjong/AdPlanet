@@ -229,4 +229,34 @@ public class PosterController {
 
         return ResponseEntity.ok(ResponseDto.ok(list));
     }
+
+    @GetMapping("/group/{groupId}")
+    @Operation(summary = "특정 포스터 그룹 조회", description = "특정 포스터 그룹을 상세 조회합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<PosterGroupResponse>> getPosterGroupDetail(
+            @Parameter(description = "포스터 그룹 id", required = true)
+            @RequestParam(value = "groupId") Long groupId
+    ) {
+
+        List<PosterResponse> history = new ArrayList<>();
+        for (long i = 1; i <= 15; i++) {
+            PosterResponse poster = new PosterResponse(
+                    i,
+                    "https://dummyimage.com/600x400/000/fff&text=Poster+" + i,
+                    "시들시들한, 연두색 배추 이미지"
+            );
+            history.add(poster);
+        }
+
+        PosterGroupResponse response = new PosterGroupResponse(
+                "https://dummyimage.com/600x400/000/fff&text=Poster+0",
+                "아삭아삭한 배추 이미지, 싱싱한 초록색 활용",
+                history
+        );
+
+        return ResponseEntity.ok(ResponseDto.ok(response));
+    }
 }

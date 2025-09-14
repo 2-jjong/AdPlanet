@@ -1,10 +1,7 @@
 package com.ssafy.adplanet.dto.poster.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.ssafy.adplanet.enums.JobStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
-
-import java.time.LocalDateTime;
 
 public record PosterResponse (
 
