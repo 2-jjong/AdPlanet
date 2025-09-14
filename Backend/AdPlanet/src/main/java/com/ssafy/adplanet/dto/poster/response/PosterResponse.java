@@ -1,6 +1,10 @@
 package com.ssafy.adplanet.dto.poster.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.ssafy.adplanet.enums.JobStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.time.LocalDateTime;
 
 public record PosterResponse (
 
@@ -8,5 +12,13 @@ public record PosterResponse (
     Long posterId,
 
     @Schema(description = "이미지 url", example = "https://...")
-    String imgUrl
-){}
+    String imgUrl,
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(description = "프롬프트", example = "아삭아삭한 배추 이미지, 싱싱한 초록색 활용")
+    String prompt
+){
+    public PosterResponse(Long posterId, String imgUrl) {
+        this(posterId, imgUrl, null);
+    }
+}

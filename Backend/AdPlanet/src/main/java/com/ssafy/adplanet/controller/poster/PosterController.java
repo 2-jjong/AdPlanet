@@ -33,7 +33,7 @@ public class PosterController {
     private final PosterService posterService;
 
     @PostMapping(consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
-    @Operation(summary = "포스터 생성 요청", description = "포스터 생성 합니다.")
+    @Operation(summary = "포스터 생성 요청", description = "포스터를 생성 합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "요청 성공"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
@@ -69,7 +69,8 @@ public class PosterController {
             @PathVariable("jobId") String jobId
     ) {
         PosterResponse poster = new PosterResponse(
-                1L, "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
+                1L,
+                "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
         );
         ImageProcessingJob response = new ImageProcessingJob(
                 UUID.randomUUID().toString(),
@@ -78,5 +79,23 @@ public class PosterController {
                 poster
         );
         return ResponseEntity.ok(ResponseDto.ok(response));
+    }
+
+    @GetMapping("/{posterId}")
+    @Operation(summary = "포스터 단건 조회", description = "포스터를 단건 조회합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<PosterResponse>> getPoster(
+            @Parameter(description = "포스터 id", required = true)
+            @PathVariable("posterId") Long posterId
+    ) {
+        PosterResponse poster = new PosterResponse(
+                1L,
+                "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png",
+                "아삭아삭한 배추 이미지, 싱싱한 초록색 활용"
+        );
+        return ResponseEntity.ok(ResponseDto.ok(poster));
     }
 }
