@@ -1,10 +1,7 @@
 package com.ssafy.adplanet.controller.poster;
 
 import com.ssafy.adplanet.dto.ResponseDto;
-import com.ssafy.adplanet.dto.poster.response.CopyResponse;
-import com.ssafy.adplanet.dto.poster.response.ImageProcessingJob;
-import com.ssafy.adplanet.dto.poster.response.PosterGroupResponse;
-import com.ssafy.adplanet.dto.poster.response.PosterResponse;
+import com.ssafy.adplanet.dto.poster.response.*;
 import com.ssafy.adplanet.enums.JobStatus;
 import com.ssafy.adplanet.enums.PosterDownloadFormat;
 import com.ssafy.adplanet.enums.PosterListOrder;
@@ -256,6 +253,27 @@ public class PosterController {
                 "아삭아삭한 배추 이미지, 싱싱한 초록색 활용",
                 history
         );
+
+        return ResponseEntity.ok(ResponseDto.ok(response));
+    }
+
+    @GetMapping("/tags")
+    @Operation(summary = "포스터 태그 목록 조회", description = "포스터 태그 목록을 조회합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<List<PosterTagResponse>>> getPosterTag(
+    ) {
+
+        List<PosterTagResponse> response = new ArrayList<>();
+        for (long i = 1; i <= 15; i++) {
+            PosterTagResponse tag = new PosterTagResponse(
+                    i,
+                    "태그 " + i
+            );
+            response.add(tag);
+        }
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
