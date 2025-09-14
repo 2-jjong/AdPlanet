@@ -1,0 +1,94 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE        = 'myorg/app-frontend:latest'   // 빌드할 Docker 이미지 태그
+        COMPOSE_DIR  = '/opt/app/compose'            // EC2의 docker-compose.yml 있는 경로
+        PROJECT_NAME = 'app'                         // compose 프로젝트명 (base+frontend 같이 묶음)
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Debug env') {
+            steps {
+                sh '''
+        echo "gitlabActionType=$gitlabActionType"
+        echo "gitlabSourceBranch=$gitlabSourceBranch"
+        echo "gitlabTargetBranch=$gitlabTargetBranch"
+        echo "gitlabBranch=$gitlabBranch"
+        echo "BRANCH_NAME=$BRANCH_NAME"
+    '''
+            }
+        }
+        // ✅ CI: PR/MR 열렸을 때만 (lint/test 등)
+        stage('CI - Build & Test') {
+            when {
+                expression { env.gitlabActionType == 'MERGE_REQUEST' } // GitLab 플러그인 이벤트
+            }
+            steps {
+                dir('Frontend/AdPlanet') {
+                    sh '''
+            npm ci
+            npm run build --if-present
+            npm test --if-present
+            '''
+                }
+            }
+            post {
+                success { echo 'CI passed for PR/MR' }
+            }
+        }
+
+        // ✅ CD용 이미지 빌드: main 브랜치 push(=merge 후) 에만
+        stage('Build Docker image (CD)') {
+            when {
+                allOf {
+                    expression { env.gitlabActionType != 'MERGE_REQUEST' } // MR이면 안 돈다
+                    expression { env.gitlabBranch == 'frontend/develop' || env.gitlabTargetBranch == 'frontend/develop' }
+                }
+            }
+            steps {
+                dir('Frontend/AdPlanet') {
+                    sh 'docker build -t ${IMAGE} .'
+                }
+            }
+        }
+
+        // ✅ 배포: main 브랜치 push(=merge 후) 에만
+        stage('Deploy frontend') {
+            when {
+                allOf {
+                    expression { env.gitlabActionType != 'MERGE_REQUEST' }
+                    anyOf {
+                        branch 'frontend/develop'
+                        expression { env.gitlabBranch == 'frontend/develop' }
+                        expression { env.gitlabTargetBranch == 'frontend/develop' }
+                    }
+                }
+            }
+            steps {
+                sh """
+            set -eux
+            cd ${COMPOSE_DIR}
+            export COMPOSE_PROJECT_NAME=${PROJECT_NAME}
+            docker compose -p ${PROJECT_NAME} -f base.yml -f frontend.yml up -d --remove-orphans --wait web
+        """
+            }
+            post { success { echo 'Frontend deployed successfully 🚀' } }
+        }
+    }
+
+    post {
+        success {
+            echo 'Frontend deployed successfully'
+        }
+        failure {
+            echo 'Deployment failed'
+        }
+    }
+}
