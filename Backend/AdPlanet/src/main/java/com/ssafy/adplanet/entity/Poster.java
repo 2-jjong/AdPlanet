@@ -22,7 +22,7 @@ public class Poster {
     @JoinColumn(name = "group_id", nullable = false)
     private PosterGroup posterGroup;
 
-    @Column(name = "email", unique = true, nullable = false)
+    @Column(name = "prompt", nullable = false)
     private String prompt;
 
     @Column(name = "img_url", nullable = false)
