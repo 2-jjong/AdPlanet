@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { extractAuthCode, fetchUserInfo } from '../services/authService';
-import { useAuth } from '../contexts/AuthContext';
+import { extractAuthCode, loginWithAuthCode } from '../services/authService';
 import { PATHS } from '../constants/paths';
 
 const AuthCallbackPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
 
@@ -17,23 +15,30 @@ const AuthCallbackPage: React.FC = () => {
         const authCode = extractAuthCode();
         
         if (authCode) {
-          // 인증 코드로 사용자 정보 가져오기
-          const { user, token } = await fetchUserInfo(authCode);
+          // 인증 코드로 로그인 처리
+          const loginSuccess = await loginWithAuthCode(authCode);
           
-          // Context에 로그인 정보 저장
-          login(user, token);
-          
-          setStatus('success');
-          setMessage('로그인에 성공했습니다!');
-          
-          // 2초 후 홈페이지로 리다이렉트
-          setTimeout(() => {
-            navigate(PATHS.HOME);
-          }, 2000);
+          if (loginSuccess) {
+            setStatus('success');
+            setMessage('로그인에 성공했습니다!');
+            
+            // 2초 후 홈페이지로 리다이렉트
+            setTimeout(() => {
+              navigate(PATHS.HOME);
+            }, 2000);
+          } else {
+            setStatus('error');
+            setMessage('로그인에 실패했습니다.');
+            
+            // 3초 후 홈페이지로 리다이렉트
+            setTimeout(() => {
+              navigate(PATHS.HOME);
+            }, 3000);
+          }
         } else {
           // 인증 코드가 없으면 에러
           setStatus('error');
-          setMessage('로그인에 실패했습니다.');
+          setMessage('인증 코드를 찾을 수 없습니다.');
           
           // 3초 후 홈페이지로 리다이렉트
           setTimeout(() => {

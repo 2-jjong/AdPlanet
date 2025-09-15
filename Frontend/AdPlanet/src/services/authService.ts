@@ -1,4 +1,5 @@
 import {getEnvConfig} from '../constants/env';
+import apiClient from './apiClient';
 
 /**
  * SSAFY OAuth SSO 로그인 URL 생성
@@ -28,32 +29,43 @@ export const loginWithSSAFY = (): void => {
  */
 export const extractAuthCode = (): string | null => {
   const urlParams = new URLSearchParams(window.location.search);
+  console.log(urlParams.get('code'));
   return urlParams.get('code');
 };
 
 /**
- * 인증 코드로 사용자 정보 가져오기 (실제 서버 API 호출)
+ * OAuth 인가 코드를 사용하여 로그인
+ * @param authCode OAuth 인가 코드
+ * @returns 로그인 성공 여부
  */
-export const fetchUserInfo = async (authCode: string): Promise<unknown> => {
+export const loginWithAuthCode = async (authCode: string): Promise<boolean> => {
   try {
-    const response = await fetch('http://j13d201.p.ssafy.io/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        code: authCode,
-      }),
+    const response = await apiClient.post('/api/auth/login', {
+      code: authCode
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data;
+    // 성공 시 200 응답 코드만 오므로, 응답이 정상적으로 왔으면 성공으로 처리
+    // apiClient의 응답 인터셉터가 자동으로 토큰을 AuthContext에 저장하고 로그인 상태도 설정함
+    return response.status === 200;
   } catch (error) {
-    console.error('사용자 정보 가져오기 실패:', error);
-    throw error;
+    console.error('로그인 실패:', error);
+    return false;
+  }
+};
+
+/**
+ * 토큰 재발급
+ * @returns 재발급 성공 여부
+ */
+export const reissueToken = async (): Promise<boolean> => {
+  try {
+    const response = await apiClient.post('/api/auth/reissue');
+    
+    // 성공 시 200 응답 코드와 함께 새로운 토큰이 Authorization 헤더에 포함됨
+    // apiClient의 응답 인터셉터가 자동으로 새 토큰을 AuthContext에 저장함
+    return response.status === 200;
+  } catch (error) {
+    console.error('토큰 재발급 실패:', error);
+    return false;
   }
 };

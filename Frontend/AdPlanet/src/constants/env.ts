@@ -13,3 +13,4 @@ export const getEnvConfig = (): EnvConfig => {
     VITE_SSAFY_OAUTH_URL: import.meta.env.VITE_SSAFY_OAUTH_URL || 'https://project.ssafy.com/oauth/sso-check',
   };
 };
+  

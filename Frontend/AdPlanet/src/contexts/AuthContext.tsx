@@ -1,24 +1,16 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState } from 'react';
+import type { ReactNode } from 'react';
 
 // 인증 상태 타입 정의
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  profileImage?: string;
-}
-
 interface AuthState {
   isLoggedIn: boolean;
-  user: User | null;
   token: string | null;
 }
 
 // 인증 액션 타입 정의
 interface AuthActions {
-  login: (user: User, token: string) => void;
+  login: (token: string) => void;
   logout: () => void;
-  setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
 }
 
@@ -36,26 +28,18 @@ interface AuthProviderProps {
 // AuthProvider 컴포넌트
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
   // 로그인 액션
-  const login = (userData: User, authToken: string) => {
+  const login = (authToken: string) => {
     setIsLoggedIn(true);
-    setUser(userData);
     setToken(authToken);
   };
 
   // 로그아웃 액션
   const logout = () => {
     setIsLoggedIn(false);
-    setUser(null);
     setToken(null);
-  };
-
-  // 사용자 정보 설정
-  const setUserInfo = (userData: User | null) => {
-    setUser(userData);
   };
 
   // 토큰 설정
@@ -66,15 +50,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = {
     // 상태
     isLoggedIn,
-    user,
     token,
     
     // 액션
     login,
     logout,
-    setUser: setUserInfo,
     setToken: setAuthToken,
   };
+
+  // 전역 인스턴스 설정
+  React.useEffect(() => {
+    setGlobalAuthInstance(value);
+  }, [value]);
 
   return (
     <AuthContext.Provider value={value}>
@@ -94,30 +81,52 @@ export const useAuth = (): AuthContextType => {
   return context;
 };
 
+// 전역 Auth 인스턴스 (Context 외부에서 사용)
+let globalAuthInstance: AuthContextType | null = null;
+
+// 전역 인스턴스 설정 함수
+export const setGlobalAuthInstance = (authInstance: AuthContextType) => {
+  globalAuthInstance = authInstance;
+};
+
+// 전역 인스턴스 가져오기 함수
+export const getGlobalAuthInstance = (): AuthContextType | null => {
+  return globalAuthInstance;
+};
+
 // 편의 함수들 (Context 외부에서 사용)
 export const authActions = {
-  login: (user: User, token: string) => {
-    // 이 함수들은 Context 내부에서만 사용 가능
-    console.warn('authActions.login should be used within AuthProvider');
+  login: (token: string) => {
+    if (globalAuthInstance) {
+      globalAuthInstance.login(token);
+    } else {
+      console.warn('AuthProvider가 초기화되지 않았습니다.');
+    }
   },
   
   logout: () => {
-    console.warn('authActions.logout should be used within AuthProvider');
+    if (globalAuthInstance) {
+      globalAuthInstance.logout();
+    } else {
+      console.warn('AuthProvider가 초기화되지 않았습니다.');
+    }
+  },
+
+  setToken: (token: string | null) => {
+    if (globalAuthInstance) {
+      globalAuthInstance.setToken(token);
+    } else {
+      console.warn('AuthProvider가 초기화되지 않았습니다.');
+    }
   },
 };
 
 // 상태 선택자들
 export const authSelectors = {
   isLoggedIn: () => {
-    console.warn('authSelectors.isLoggedIn should be used within AuthProvider');
-    return false;
-  },
-  getUser: () => {
-    console.warn('authSelectors.getUser should be used within AuthProvider');
-    return null;
+    return globalAuthInstance?.isLoggedIn ?? false;
   },
   getToken: () => {
-    console.warn('authSelectors.getToken should be used within AuthProvider');
-    return null;
+    return globalAuthInstance?.token ?? null;
   },
 };

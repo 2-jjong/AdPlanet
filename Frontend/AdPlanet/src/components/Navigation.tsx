@@ -8,10 +8,10 @@ const Navigation: React.FC = () => {
   const location = useLocation();
   const [isGeneratorHovered, setIsGeneratorHovered] = useState(false);
   // setTimeout의 타이머 ID를 저장하기 위한 useRef
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // React Context에서 인증 상태 가져오기
-  const { isLoggedIn, user, logout } = useAuth();
+  const { isLoggedIn, logout } = useAuth();
 
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -130,7 +130,7 @@ const Navigation: React.FC = () => {
         onClick={handleLoginClick}
         className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 lg:px-6 rounded-lg transition-colors text-sm lg:text-base"
       >
-        {isLoggedIn ? (user?.name || 'Sign out') : 'Sign in'}
+        {isLoggedIn ? 'Sign out' : 'Sign in'}
       </button>
     </header>
   );
