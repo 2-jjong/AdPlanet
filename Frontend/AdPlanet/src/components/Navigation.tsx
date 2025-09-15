@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { PATHS } from '../constants/paths';
 import { loginWithSSAFY } from '../services/authService';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../constants/hooks/useAuth';
 
 const Navigation: React.FC = () => {
   const location = useLocation();

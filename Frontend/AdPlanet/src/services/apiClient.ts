@@ -1,7 +1,7 @@
 // src/services/apiClient.ts
 import axios from 'axios';
 import { API_BASE_URL } from '../constants/baseUrl'; // 상수 파일에서 URL 가져오기
-import { authSelectors, authActions } from '../contexts/AuthContext';
+import { authSelectors, authActions } from '../contexts/authActions';
 import { reissueToken } from './authService';
 import type { ApiResponse } from '../types/api';
 
