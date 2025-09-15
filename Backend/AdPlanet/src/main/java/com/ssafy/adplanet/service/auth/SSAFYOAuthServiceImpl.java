@@ -21,16 +21,19 @@ public class SSAFYOAuthServiceImpl implements SSAFYOAuthService {
     private final String clientId;
     private final String clientSecret;
     private final String redirectUri;
+    private final String testRedirectUri;
 
     public SSAFYOAuthServiceImpl(
             @Qualifier("ssafyWebClient") WebClient ssafyWebClient,
             @Value("${oauth.ssafy.client-id}") String clientId,
             @Value("${oauth.ssafy.client-secret}") String clientSecret,
-            @Value("${oauth.ssafy.redirect-uri}") String redirectUri) {
+            @Value("${oauth.ssafy.redirect-uri}") String redirectUri,
+            @Value("${oauth.ssafy.test.redirect.uri}") String testRedirectUri) {
         this.ssafyWebClient = ssafyWebClient;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.redirectUri = redirectUri;
+        this.testRedirectUri = testRedirectUri;
     }
 
     @Override
@@ -53,6 +56,29 @@ public class SSAFYOAuthServiceImpl implements SSAFYOAuthService {
         } catch (WebClientResponseException e) {
             log.error("OAuth 토큰 요청 실패: {}", e.getMessage());
             throw new RuntimeException("OAuth 토큰 발급 실패", e);
+        }
+    }
+
+    @Override
+    public SSAFYOAuthTokenResponse getOAuthTokenForTest(String authCode) {
+        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("grant_type", "authorization_code");
+        formData.add("client_id", clientId);
+        formData.add("client_secret", clientSecret);
+        formData.add("redirect_uri", testRedirectUri);
+        formData.add("code", authCode);
+
+        try {
+            return ssafyWebClient.post()
+                    .uri("/ssafy/oauth2/token")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(BodyInserters.fromFormData(formData))
+                    .retrieve()
+                    .bodyToMono(SSAFYOAuthTokenResponse.class)
+                    .block();
+        } catch (WebClientResponseException e) {
+            log.error("OAuth 토큰 요청 실패 (테스트): {}", e.getMessage());
+            throw new RuntimeException("OAuth 토큰 발급 실패 (테스트)", e);
         }
     }
 

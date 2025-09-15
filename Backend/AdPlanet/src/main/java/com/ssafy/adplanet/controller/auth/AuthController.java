@@ -136,10 +136,4 @@ public class AuthController {
                 .body(ResponseDto.ok(null));
     }
 
-    @GetMapping(value = "/code", produces = "text/plain;charset=UTF-8")
-    public ResponseEntity<String> getCode(@RequestParam("code") String code) {
-        return ResponseEntity.ok()
-                .contentType(MediaType.valueOf("text/plain;charset=UTF-8"))
-                .body(code);
-    }
 }
