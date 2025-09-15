@@ -59,8 +59,11 @@ public class AuthController {
 
         try {
             // SSAFY OAuth 로그인 처리 및 JWT 토큰 발급
-            LoginTokens tokens = authService.login(request.code());
+//            LoginTokens tokens = authService.login(request.code());
 
+            // 개발용 로그인 메소드, SSAFY OAuth 로그인이 Redirect 이중 검증을 하기 때문에 사용
+            LoginTokens tokens = authService.loginForTest(request.code());
+            
             // 리프레시 토큰을 쿠키에 설정
             ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", tokens.refreshToken())
                     .httpOnly(true)
