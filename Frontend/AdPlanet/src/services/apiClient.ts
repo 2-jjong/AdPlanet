@@ -3,6 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../constants/baseUrl'; // 상수 파일에서 URL 가져오기
 import { authSelectors, authActions } from '../contexts/AuthContext';
 import { reissueToken } from './authService';
+import type { ApiResponse } from '../types/api';
 
 // API 클라이언트 생성
 const apiClient = axios.create({
@@ -32,11 +33,28 @@ apiClient.interceptors.response.use(
   (response) => {
     // Authorization 헤더에서 토큰 추출하여 AuthContext에 저장
     const authHeader = response.headers.authorization;
+    console.log('응답 헤더:', response.headers);
+    console.log('Authorization 헤더:', authHeader);
+    
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.replace('Bearer ', ''); // 'Bearer ' 정확히 제거
+      console.log('토큰 추출:', token);
+      console.log('authActions.login 호출 전');
       authActions.login(token); // 토큰 설정과 함께 로그인 상태도 설정
+      console.log('authActions.login 호출 후');
     }
-    return response;
+
+    // 응답을 ApiResponse 형식으로 변환
+    const standardizedResponse = {
+      ...response,
+      data: {
+        code: response.data?.code,
+        data: response.data?.data || null, // 실제 데이터 (없으면 null)
+        message: response.data?.message || null // 메시지 (없으면 null)
+      } as ApiResponse<never>
+    };
+
+    return standardizedResponse;
   },
   async (error) => {
     const originalRequest = error.config;

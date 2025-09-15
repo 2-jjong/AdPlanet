@@ -1,5 +1,6 @@
 import {getEnvConfig} from '../constants/env';
 import apiClient from './apiClient';
+import type { ApiResponse } from '../types/api';
 
 /**
  * SSAFY OAuth SSO 로그인 URL 생성
@@ -40,12 +41,12 @@ export const extractAuthCode = (): string | null => {
  */
 export const loginWithAuthCode = async (authCode: string): Promise<boolean> => {
   try {
-    const response = await apiClient.post('/api/auth/login', {
+    const response = await apiClient.post<ApiResponse<null>>('/api/auth/login', {
       code: authCode
     });
 
-    // 성공 시 200 응답 코드만 오므로, 응답이 정상적으로 왔으면 성공으로 처리
-    // apiClient의 응답 인터셉터가 자동으로 토큰을 AuthContext에 저장하고 로그인 상태도 설정함
+    console.log('로그인 응답:', response.data);
+    console.log('로그인 응답 상태:', response.status);
     return response.status === 200;
   } catch (error) {
     console.error('로그인 실패:', error);
@@ -59,12 +60,16 @@ export const loginWithAuthCode = async (authCode: string): Promise<boolean> => {
  */
 export const reissueToken = async (): Promise<boolean> => {
   try {
-    const response = await apiClient.post('/api/auth/reissue');
+    const response = await apiClient.post<ApiResponse<null>>('/api/auth/reissue');
     
-    // 성공 시 200 응답 코드와 함께 새로운 토큰이 Authorization 헤더에 포함됨
+    console.log('토큰 재발급 응답:', response.data);
+    
+    // 성공 시 200 HTTP 응답 코드와 성공 비즈니스 코드 확인
     // apiClient의 응답 인터셉터가 자동으로 새 토큰을 AuthContext에 저장함
-    return response.status === 200;
-  } catch (error) {
+    console.log('토큰 재발급 응답 상태:', response.status);
+    console.log('토큰 재발급 응답 코드:', response.data);
+    return response.status === 200 ;
+    } catch (error) {
     console.error('토큰 재발급 실패:', error);
     return false;
   }
