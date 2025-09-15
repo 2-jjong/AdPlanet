@@ -1,5 +1,18 @@
 pipeline {
-    agent any
+    agent none
+
+    when {
+        anyOf {
+            allOf {
+                changeRequest()
+                changeRequest target: 'backend/develop'
+            }
+            allOf {
+                not { changeRequest() }
+                branch 'backend/develop'
+            }
+        }
+    }
 
     environment {
         IMAGE_NAME = "adplanet-app"
@@ -10,89 +23,97 @@ pipeline {
 
     stages {
         stage('Checkout') {
+            agent any
             steps {
                 checkout scm
             }
         }
 
         stage('Build') {
+            agent any
             steps {
                 script {
-                    try {
-                        updateGitlabCommitStatus name: 'build', state: 'pending'
-
-                        sh """
-                            cd Backend/AdPlanet
-                            docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} .
-                            docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_NAME}:latest
-                        """
-
-                        updateGitlabCommitStatus name: 'build', state: 'success'
-                    } catch (Exception e) {
-                        updateGitlabCommitStatus name: 'build', state: 'failed'
-                        throw e
-                    }
+                    updateGitlabCommitStatus name: 'build', state: 'pending'
+                }
+                sh """
+                    cd Backend/AdPlanet
+                    docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} .
+                    docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_NAME}:latest
+                """
+                script {
+                    updateGitlabCommitStatus name: 'build', state: 'success'
                 }
             }
         }
 
         stage('Prepare Secrets') {
+            agent any
+            when {
+                allOf {
+                    not { changeRequest() }
+                    branch 'backend/develop'
+                }
+            }
             steps {
                 script {
-                    try {
-                        updateGitlabCommitStatus name: 'prepare-secrets', state: 'pending'
-
-                        withCredentials([
-                            sshUserPrivateKey(credentialsId: 'rds-ssh-key', keyFileVariable: 'SSH_KEY'),
-                            file(credentialsId: 'app-env-file', variable: 'ENV_FILE')
-                        ]) {
-                            sh """
-                                cp \${SSH_KEY} ${SECRETS_DIR}/ssh-key.pem
-                                cp \${ENV_FILE} ${SECRETS_DIR}/adplanet.env
-                                chmod 644 ${SECRETS_DIR}/ssh-key.pem
-                                chmod 644 ${SECRETS_DIR}/adplanet.env
-                            """
-                        }
-
-                        updateGitlabCommitStatus name: 'prepare-secrets', state: 'success'
-                    } catch (Exception e) {
-                        updateGitlabCommitStatus name: 'prepare-secrets', state: 'failed'
-                        throw e
-                    }
+                    updateGitlabCommitStatus name: 'prepare-secrets', state: 'pending'
+                }
+                withCredentials([
+                    sshUserPrivateKey(credentialsId: 'rds-ssh-key', keyFileVariable: 'SSH_KEY'),
+                    file(credentialsId: 'app-env-file', variable: 'ENV_FILE')
+                ]) {
+                    sh """
+                        cp \${SSH_KEY} ${SECRETS_DIR}/ssh-key.pem
+                        cp \${ENV_FILE} ${SECRETS_DIR}/adplanet.env
+                        chmod 644 ${SECRETS_DIR}/ssh-key.pem
+                        chmod 644 ${SECRETS_DIR}/adplanet.env
+                    """
+                }
+                script {
+                    updateGitlabCommitStatus name: 'prepare-secrets', state: 'success'
                 }
             }
         }
 
         stage('Deploy') {
+            agent any
+            when {
+                allOf {
+                    not { changeRequest() }
+                    branch 'backend/develop'
+                }
+            }
             steps {
                 script {
-                    try {
-                        updateGitlabCommitStatus name: 'deploy', state: 'pending'
+                    updateGitlabCommitStatus name: 'deploy', state: 'pending'
+                }
+                sh """
+                    cd Backend/AdPlanet
 
-                        sh """
-                            cd Backend/AdPlanet
+                    export IMAGE_NAME=${IMAGE_NAME}
+                    export BUILD_NUMBER=${BUILD_NUMBER}
+                    export CONTAINER_NAME=${CONTAINER_NAME}
+                    export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+                    export SECRETS_DIR=${SECRETS_DIR}
 
-                            export IMAGE_NAME=${IMAGE_NAME}
-                            export BUILD_NUMBER=${BUILD_NUMBER}
-                            export CONTAINER_NAME=${CONTAINER_NAME}
-                            export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
-                            export SECRETS_DIR=${SECRETS_DIR}
-
-                            docker compose down || true
-                            docker image prune -f || true
-                            docker compose up -d
-                        """
-
-                        updateGitlabCommitStatus name: 'deploy', state: 'success'
-                    } catch (Exception e) {
-                        updateGitlabCommitStatus name: 'deploy', state: 'failed'
-                        throw e
-                    }
+                    docker compose down || true
+                    docker image prune -f || true
+                    docker compose up -d
+                """
+                script {
+                    updateGitlabCommitStatus name: 'deploy', state: 'success'
                 }
             }
         }
 
         stage('Verify Deployment') {
+            agent any
+            when {
+                allOf {
+                    not { changeRequest() }
+                    branch 'backend/develop'
+                }
+            }
             steps {
                 sh '''
                     cd Backend/AdPlanet
@@ -133,12 +154,6 @@ pipeline {
                 df -h
                 free -h
             '''
-        }
-        aborted {
-            echo "🔶 배포 중단됨"
-            script {
-                updateGitlabCommitStatus name: 'pipeline', state: 'canceled'
-            }
         }
         always {
             sh '''
