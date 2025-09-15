@@ -9,22 +9,7 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
         stage('Build') {
-            when {
-                anyOf {
-                    changeRequest()
-                    allOf {
-                        not { changeRequest() }
-                        branch 'backend/develop'
-                    }
-                }
-            }
             steps {
                 script {
                     updateGitlabCommitStatus name: 'build', state: 'pending'
@@ -41,12 +26,8 @@ pipeline {
         }
 
         stage('Prepare Secrets') {
-            agent any
             when {
-                allOf {
-                    not { changeRequest() }
-                    branch 'backend/develop'
-                }
+                not { changeRequest() }
             }
             steps {
                 script {
@@ -70,12 +51,8 @@ pipeline {
         }
 
         stage('Deploy') {
-            agent any
             when {
-                allOf {
-                    not { changeRequest() }
-                    branch 'backend/develop'
-                }
+                not { changeRequest() }
             }
             steps {
                 script {
@@ -101,12 +78,8 @@ pipeline {
         }
 
         stage('Verify Deployment') {
-            agent any
             when {
-                allOf {
-                    not { changeRequest() }
-                    branch 'backend/develop'
-                }
+                not { changeRequest() }
             }
             steps {
                 sh '''
