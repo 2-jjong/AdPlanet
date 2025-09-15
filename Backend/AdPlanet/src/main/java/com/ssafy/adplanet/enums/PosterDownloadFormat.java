@@ -7,5 +7,8 @@ public enum PosterDownloadFormat {
     public final String extension;
     public final String contentType;
 
-    PosterDownloadFormat(String e, String c) { this.extension = e; this.contentType = c; }
+    PosterDownloadFormat(String extension, String contentType) {
+        this.extension = extension;
+        this.contentType = contentType;
+    }
 }
