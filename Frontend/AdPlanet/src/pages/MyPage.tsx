@@ -1,8 +1,6 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import Navigation from '../components/Navigation';
 import LogoCardList from '../components/LogoCardList';
-import { LogoCard } from "./LogoCard";
 import ArchiveToolBar from '../components/ArchiveToolbar';
 
 const MyPage: React.FC = () => {
@@ -15,7 +13,7 @@ const MyPage: React.FC = () => {
       <main className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4 lg:px-12 text-center">
 
         {/* 타이틀 */}
-        <h1 className="text-4xl lg:text-5xl font-bold text-white mb-8"> Archive </h1>
+        <h1 className="text-4xl lg:text-5xl font-bold text-white"> Archive </h1>
 
         {/* 도구 : sort, logo/poster, 검색창 */}
         <ArchiveToolBar />

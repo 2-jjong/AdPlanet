@@ -2,7 +2,6 @@ import React from 'react';
 import AppRouter from './route/AppRouter';
 
 // swiper 설정
-import Swiper from 'swiper';
 import 'swiper/css';
 import 'swiper/css/scrollbar';
 
