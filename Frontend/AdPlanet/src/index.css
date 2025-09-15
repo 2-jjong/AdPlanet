@@ -1,9 +1,83 @@
+@font-face {
+  font-family: "Kravo";
+  src:
+    url("./assets/fonts/KravoRegular-8OBR2.otf") format("opentype"),
+    url("./assets/fonts/KravoRegular-R98Ao.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Kravo";
+  src:
+    url("./assets/fonts/KravoOblique-BLmq3.otf") format("opentype"),
+    url("./assets/fonts/KravoOblique-1jy9e.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  /* Oblique → italic로 지정 */
+  font-display: swap;
+}
+
+/* === The Jamsil (가중치별) === */
+@font-face {
+  font-family: "The Jamsil";
+  src: url("./assets/fonts/The Jamsil 1 Thin.ttf") format("truetype");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "The Jamsil";
+  src: url("./assets/fonts/The Jamsil 2 Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "The Jamsil";
+  src: url("./assets/fonts/The Jamsil 3 Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "The Jamsil";
+  src: url("./assets/fonts/The Jamsil 4 Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "The Jamsil";
+  src: url("./assets/fonts/The Jamsil 5 Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "The Jamsil";
+  src: url("./assets/fonts/The Jamsil 6 ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@layer base{
+  html, body{
+    @apply bg-background text-text-color
+  }
+}
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
