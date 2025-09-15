@@ -7,7 +7,7 @@ import org.springframework.cglib.core.Local;
 
 import java.time.LocalDateTime;
 
-@Schema(description = "로고 상세")
+@Schema(description = "포스터 생성 작업")
 public record ImageProcessingJob (
 
     @Schema(description = "작업 ID", example = "6dd7db67-5ab4-4ebe-b85f-6165bf6f3050")

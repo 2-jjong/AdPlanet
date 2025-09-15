@@ -3,6 +3,7 @@ package com.ssafy.adplanet.dto.poster.response;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description = "포스터")
 public record PosterResponse (
 
     @Schema(description = "포스터 id", example = "1")

@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import java.util.List;
 
-
+@Schema(description = "포스터 그룹")
 public record PosterGroupResponse(
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
