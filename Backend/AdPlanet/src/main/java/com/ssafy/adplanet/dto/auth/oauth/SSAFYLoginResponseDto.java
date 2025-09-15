@@ -1,4 +1,4 @@
-package com.ssafy.adplanet.dto.auth;
+package com.ssafy.adplanet.dto.auth.oauth;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -7,7 +7,7 @@ public record SSAFYLoginResponseDto(
         @Schema(description = "HTTP 메소드", example = "GET")
         String httpMethod,
 
-        @Schema(description = "로그인 URL", example = "https://ssafy.com/oauth/authorize?client_id=...")
+        @Schema(description = "로그인 URL", example = "https://...")
         String loginUrl
 ) {
 }

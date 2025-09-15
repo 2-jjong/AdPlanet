@@ -2,7 +2,9 @@ package com.ssafy.adplanet.controller.auth;
 
 import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.auth.LoginRequest;
-import com.ssafy.adplanet.dto.auth.SSAFYLoginResponseDto;
+import com.ssafy.adplanet.dto.auth.LoginTokens;
+import com.ssafy.adplanet.dto.auth.oauth.SSAFYLoginResponseDto;
+import com.ssafy.adplanet.service.auth.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -10,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +24,8 @@ import jakarta.servlet.http.HttpServletRequest;
 @Tag(name = "인증/인가", description = "인증 및 인가 관리 API")
 @RequiredArgsConstructor
 public class AuthController {
+
+    private final AuthService authService;
 
     @GetMapping("/oauth/ssafy")
     @Operation(
@@ -51,24 +56,28 @@ public class AuthController {
     public ResponseEntity<ResponseDto<Void>> login(
             @Parameter(description = "OAuth 인가 코드", required = true)
             @RequestBody LoginRequest request) {
-        
-        // 더미 토큰 생성
-        String accessToken = "Bearer dummy-access-token-12345";
-        String refreshToken = "dummy-refresh-token-67890";
-        
-        // 리프레시 토큰을 쿠키에 설정
-        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refreshToken)
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(7 * 24 * 60 * 60) // 7일
-                .build();
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.AUTHORIZATION, accessToken)
-                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(ResponseDto.ok(null));
+        try {
+            // SSAFY OAuth 로그인 처리 및 JWT 토큰 발급
+            LoginTokens tokens = authService.login(request.code());
+
+            // 리프레시 토큰을 쿠키에 설정
+            ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", tokens.refreshToken())
+                    .httpOnly(true)
+                    .secure(true)
+                    .sameSite("Strict")
+                    .path("/")
+                    .maxAge(7 * 24 * 60 * 60) // 7일
+                    .build();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.accessToken())
+                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                    .body(ResponseDto.ok(null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ResponseDto.error("A4010", "로그인 실패"));
+        }
     }
 
     @PostMapping("/reissue")
@@ -126,4 +135,5 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
                 .body(ResponseDto.ok(null));
     }
+
 }
