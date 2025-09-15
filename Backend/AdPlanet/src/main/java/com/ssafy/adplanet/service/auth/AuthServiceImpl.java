@@ -48,7 +48,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginTokens loginForTest(String authCode) {
-        // SSAFY OAuth 토큰 발급
+        // SSAFY OAuth 토큰 발급 (여러 redirect URI 자동 시도)
         SSAFYOAuthTokenResponse oauthToken = ssafyOAuthService.getOAuthTokenForTest(authCode);
 
         // SSAFY 사용자 정보 조회
