@@ -1,18 +1,5 @@
 pipeline {
-    agent none
-
-    when {
-        anyOf {
-            allOf {
-                changeRequest()
-                changeRequest target: 'backend/develop'
-            }
-            allOf {
-                not { changeRequest() }
-                branch 'backend/develop'
-            }
-        }
-    }
+    agent any
 
     environment {
         IMAGE_NAME = "adplanet-app"
@@ -23,14 +10,21 @@ pipeline {
 
     stages {
         stage('Checkout') {
-            agent any
             steps {
                 checkout scm
             }
         }
 
         stage('Build') {
-            agent any
+            when {
+                anyOf {
+                    changeRequest()
+                    allOf {
+                        not { changeRequest() }
+                        branch 'backend/develop'
+                    }
+                }
+            }
             steps {
                 script {
                     updateGitlabCommitStatus name: 'build', state: 'pending'
