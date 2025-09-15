@@ -5,7 +5,7 @@ import AppRouter from './route/AppRouter';
 import 'swiper/css';
 import 'swiper/css/scrollbar';
 
-// (선택) 우리 프로젝트 색(#87DEDA)에 맞춘 스크롤바 커스텀
+// 프로젝트 색(#87DEDA)에 맞춘 스크롤바 커스텀
 import "./styles/swiper-overrides.css";
 
 

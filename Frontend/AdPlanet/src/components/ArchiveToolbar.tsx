@@ -2,35 +2,35 @@
 import ArchiveTypeToggle from "./ArchiveTypeToggle";
 import SortTabs from "./SortTabs";
 
-export default function ArchiveLayout() {
+export default function ArchiveToolbar() {
   return (
-
-      <div className="mx-auto max-w-6xl px-4 pt-10">
-
-        <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center">
+    <div className="w-full max-w-6xl md:px-6 pt-10 pb-10">
+      <div
+        className="
+          grid grid-cols-3 items-center
+        "
+      >
         {/* 좌측: 정렬 */}
         <div className="justify-self-start">
-            <SortTabs />
+          <SortTabs />
         </div>
 
-        {/* 가운데: 타입 토글 (정중앙 고정) */}
+        {/* 가운데: 토글 (자동으로 중앙) */}
         <div className="justify-self-center">
-            <ArchiveTypeToggle />
+          <ArchiveTypeToggle />
         </div>
 
         {/* 우측: 검색 */}
-        <div className="justify-self-end flex items-center gap-2">
-            <input
-            placeholder="Search..."
-            className="w-64 rounded-md bg-[#232544] px-3 py-2 text-sm outline-none placeholder:text-slate-400"
-            />
-            <button className="rounded-md border border-[#87DEDA] px-3 py-2 text-sm">
+        <div className="ml-4 justify-self-end flex items-center gap-3">
+          <input
+            placeholder="검색어를 입력하세요"
+            className="w-60 lg:w-72 rounded-md bg-[#232544] px-3 py-2 text-sm outline-none placeholder:text-slate-400"
+          />
+          <button className="rounded-md border border-primary px-3 py-2 text-sm">
             검색
-            </button>
+          </button>
         </div>
-        </div>
-
       </div>
-
+    </div>
   );
 }

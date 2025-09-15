@@ -5,18 +5,20 @@ import ArchiveToolBar from '../components/ArchiveToolbar';
 
 const MyPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 items-center justify-center">
+    <div className="min-h-screen bg-background items-center justify-center">
       {/* 헤더 */}
       <Navigation />
 
       {/* 메인 컨텐츠 */}
-      <main className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4 lg:px-12 text-center">
+      <main className="font-jamsil relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] lg:px-12 text-center">
 
         {/* 타이틀 */}
         <h1 className="text-4xl lg:text-5xl font-bold text-white"> Archive </h1>
 
         {/* 도구 : sort, logo/poster, 검색창 */}
-        <ArchiveToolBar />
+        <div>
+          <ArchiveToolBar />
+        </div>
 
         {/* 로고 리스트 */}
         <LogoCardList />
