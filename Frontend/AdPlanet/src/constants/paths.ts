@@ -6,6 +6,7 @@ export const PATHS = {
   WATERMARK_DETECTION: '/watermark-detection',
   ARCHIVE: '/archive',
   MYPAGE: '/mypage',
+  AUTH_CALLBACK: '/auth/callback',
 } as const;
 
 // 경로 타입 정의

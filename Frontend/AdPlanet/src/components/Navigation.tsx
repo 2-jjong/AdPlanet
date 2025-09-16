@@ -1,12 +1,17 @@
 import React, { useState, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { PATHS } from '../constants/paths';
+import { loginWithSSAFY } from '../services/authService';
+import { useAuth } from '../constants/hooks/useAuth';
 
 const Navigation: React.FC = () => {
   const location = useLocation();
   const [isGeneratorHovered, setIsGeneratorHovered] = useState(false);
   // setTimeout의 타이머 ID를 저장하기 위한 useRef
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // React Context에서 인증 상태 가져오기
+  const { isLoggedIn, logout } = useAuth();
 
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -31,6 +36,15 @@ const Navigation: React.FC = () => {
     timeoutRef.current = setTimeout(() => {
       setIsGeneratorHovered(false);
     }, 150);
+  };
+
+  // 로그인 버튼 클릭 핸들러
+  const handleLoginClick = () => {
+    if (isLoggedIn) {
+      logout();
+    } else {
+      loginWithSSAFY();
+    }
   };
 
   return (
@@ -112,8 +126,11 @@ const Navigation: React.FC = () => {
         </Link>
       </nav>
       
-      <button className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 lg:px-6 rounded-lg transition-colors text-sm lg:text-base">
-        Sign in
+      <button 
+        onClick={handleLoginClick}
+        className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 lg:px-6 rounded-lg transition-colors text-sm lg:text-base"
+      >
+        {isLoggedIn ? 'Sign out' : 'Sign in'}
       </button>
     </header>
   );
