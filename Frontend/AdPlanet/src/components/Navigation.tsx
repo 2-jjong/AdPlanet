@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { PATHS } from '../constants/paths';
 import { loginWithSSAFY } from '../services/authService';
 import { useAuth } from '../constants/hooks/useAuth';
+import { fetchLogos } from '../services/logoService';
 
 const Navigation: React.FC = () => {
   const location = useLocation();
@@ -126,6 +127,24 @@ const Navigation: React.FC = () => {
         </Link>
       </nav>
       
+      {/* 테스트 버튼: /api/logos GET 호출 */}
+      <button
+        onClick={async () => {
+          try {
+            const res = await fetchLogos();
+            // 간단한 확인용 로그. 필요시 토스트 등으로 바꿀 수 있음
+            console.log('logos', res);
+            alert('로고 목록 API 호출 완료');
+          } catch (e) {
+            console.error(e);
+            alert('로고 목록 API 호출 실패');
+          }
+        }}
+        className="hidden md:inline-block mr-3 bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg text-sm"
+      >
+        Test API
+      </button>
+
       <button 
         onClick={handleLoginClick}
         className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 lg:px-6 rounded-lg transition-colors text-sm lg:text-base"
