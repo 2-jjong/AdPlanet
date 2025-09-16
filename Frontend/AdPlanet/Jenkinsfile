@@ -14,58 +14,93 @@ pipeline {
             }
         }
 
-        // ✅ CI: PR/MR 열렸을 때만 (lint/test 등)
+        stage('Debug env') {
+            steps {
+                sh '''
+                    echo "gitlabActionType=$gitlabActionType"
+                    echo "gitlabSourceBranch=$gitlabSourceBranch"
+                    echo "gitlabTargetBranch=$gitlabTargetBranch"
+                    echo "gitlabBranch=$gitlabBranch"
+                    echo "BRANCH_NAME=$BRANCH_NAME"
+                '''
+            }
+        }
+        //CI: PR/MR 열렸을 때만 (lint/test 등)
         stage('CI - Build & Test') {
             when {
-                anyOf {
-                    changeRequest() // PR/MR 파이프라인인 경우에 실행
-                    expression { env.gitlabActionType == 'MERGE_REQUEST' } // GitLab 플러그인 이벤트일 경우
-                }
+                expression { env.gitlabActionType == 'MERGE_REQUEST' } // GitLab 플러그인 이벤트
             }
             steps {
-                dir('Frontend/AdPlanet') {
-                    sh '''
-            npm ci
-            npm run build --if-present
-            npm test --if-present
-            '''
+                withCredentials([file(credentialsId: 'adplanet-frontend-env-file', variable: 'ENV_FILE')]) {
+                    dir('Frontend/AdPlanet') {
+                        sh '''
+                            set -eu
+                            cp "${ENV_FILE}" ./.env
+
+                            npm ci
+                            npm run build --if-present
+                            npm test --if-present
+                        '''
+                    }
                 }
             }
             post {
                 success { echo 'CI passed for PR/MR' }
             }
         }
-        // ✅ CD용 이미지 빌드: main 브랜치 push(=merge 후) 에만
+
+        // CD용 이미지 빌드: main 브랜치 push(=merge 후) 에만
         stage('Build Docker image (CD)') {
             when {
                 allOf {
-                    not { changeRequest() } // PR/MR이 아닐 때
-                    branch 'frontend/develop'
+                    expression { env.gitlabActionType != 'MERGE_REQUEST' } // MR이면 안 돈다
+                    expression { env.gitlabBranch == 'frontend/develop' || env.gitlabTargetBranch == 'frontend/develop' }
                 }
             }
             steps {
-                dir('Frontend/AdPlanet') {
-                    sh 'docker build -t ${IMAGE} .'
+                // Docker 빌드 컨텍스트 안에도 .env.production이 있어야 builder 단계에서 사용 가능
+                withCredentials([file(credentialsId: 'adplanet-frontend-env-file', variable: 'ENV_FILE')]) {
+                    dir('Frontend/AdPlanet') {
+                        sh '''
+                            set -eu
+                            # Docker 빌더가 .env를 포함해서 Vite build 수행하도록 컨텍스트에 포함
+                            cp "${ENV_FILE}" ./.env
+
+                            docker build -t ${IMAGE} .
+                        '''
+                    }
                 }
             }
         }
+
         // ✅ 배포: main 브랜치 push(=merge 후) 에만
         stage('Deploy frontend') {
             when {
                 allOf {
-                    not { changeRequest() }
-                    branch 'frontend/develop'
+                    expression { env.gitlabActionType != 'MERGE_REQUEST' }
+                    anyOf {
+                        branch 'frontend/develop'
+                        expression { env.gitlabBranch == 'frontend/develop' }
+                        expression { env.gitlabTargetBranch == 'frontend/develop' }
+                    }
                 }
             }
             steps {
-                sh """
-            cd ${COMPOSE_DIR}
-            docker compose -p ${PROJECT_NAME} \
-            -f base.yml -f frontend.yml up -d web
-        """
+                withCredentials([file(credentialsId: 'adplanet-frontend-env-file', variable: 'ENV_FILE')]) {
+                    sh """
+                        set -eux
+                        cd ${COMPOSE_DIR}
+                        export COMPOSE_PROJECT_NAME=${PROJECT_NAME}
+                        docker compose -p ${PROJECT_NAME} -f base.yml -f frontend.yml up -d --remove-orphans --wait web
+                    """
+                }
+            }
+            post {
+                success { echo 'Frontend deployed successfully 🚀' }
             }
         }
     }
+
     post {
         success {
             echo 'Frontend deployed successfully'

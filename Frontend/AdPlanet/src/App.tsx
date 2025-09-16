@@ -1,5 +1,6 @@
 import React from 'react';
 import AppRouter from './route/AppRouter';
+import { AuthProvider } from './contexts/AuthContext';
 
 // swiper 설정
 import 'swiper/css';
@@ -11,7 +12,11 @@ import "./styles/swiper-overrides.css";
 
 
 function App() {
-  return <AppRouter />;
+  return (
+    <AuthProvider>
+      <AppRouter />
+    </AuthProvider>
+  );
 }
 
 export default App;

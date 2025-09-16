@@ -8,7 +8,7 @@ import WatermarkDetectionPage from '../pages/WatermarkDetectionPage';
 import ArchivePage from '../pages/ArchivePage';
 import LogoCardList from "../components/LogoCardList";
 import PosterCardList from "../components/PosterCardList";
-
+import AuthCallbackPage from '../pages/AuthCallbackPage';
 import { PATHS } from '../constants/paths';
 
 const routeConfig = [
@@ -38,6 +38,10 @@ const routeConfig = [
         { path: "poster", element: <PosterCardList /> },
         { path: "poster/:id",   element: <PosterDetailPage /> },  // 포스터 상세 페이지
     ],
+  },
+  {
+    path: PATHS.AUTH_CALLBACK,
+    element: <AuthCallbackPage />,
   },
 ] as RouteObject[]
 // 라우터 설정
