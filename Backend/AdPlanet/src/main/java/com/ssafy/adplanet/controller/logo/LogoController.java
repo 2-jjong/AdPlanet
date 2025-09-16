@@ -71,8 +71,9 @@ public class LogoController {
     ) {
         List<LogoListItem> list = new ArrayList<>();
         list.add(new LogoListItem(1L, "싸피컴퍼니", "포기는 배추 셀 때나 하는 말", "/images/logo_1"));
-        list.add(new LogoListItem(2L, "AdPlanet", "로고와 포스터를 한 번에!", "/images/logo_2"));
-
+        for (long i = 2; i <= 10; i++) {
+            list.add(new LogoListItem(i, "AdPlanet", "로고와 포스터를 한 번에!", "/images/logo_2"));
+        }
         if (order == LogoListOrder.OLDEST) {
             Collections.reverse(list);
         }
