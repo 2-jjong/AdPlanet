@@ -16,7 +16,7 @@ const apiClient = axios.create({
 
 // 요청 인터셉터: 모든 요청에 토큰 자동 추가
 apiClient.interceptors.request.use(
-  (config) => {
+   (config) => {
     const token = authSelectors.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

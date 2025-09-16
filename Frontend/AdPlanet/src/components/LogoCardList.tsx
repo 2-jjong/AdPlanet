@@ -1,38 +1,93 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Mousewheel, Scrollbar } from "swiper/modules";
 import { LogoCard } from "./LogoCard";
+import { getLogoList } from "../services/logoService";
+import type { LogoCard as LogoCardType, LogoListOrder } from "../types/logo";
+
+function parseOrder(v: string | null): LogoListOrder {
+  return v === "OLDEST" ? "OLDEST" : "LATEST"; // 기본값 LATEST
+}
+function parseTagId(v: string | null): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
 
 export default function LogoCardList() {
-  const logos = ["Logo 1", "Logo 2", "Logo 3", "Logo 4", "Logo 5", "Logo 6"];
+  // debug : 컴포넌트 렌더 확인
+  console.debug("[LogoCardList] mount"); 
 
+
+  const [items, setItems] = useState<LogoCardType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]   = useState<string | null>(null);
+
+  const [sp, setSp] = useSearchParams();
+
+  // 쿼리 파싱
+  const order: LogoListOrder = parseOrder(sp.get("order"));
+  const tagId: number = parseTagId(sp.get("tagId"));
+
+  // 최초 및 필터 변경 시 목록 로드
+  useEffect(() => {
+    console.debug("[LogoCardList] effect run"); // 이펙트 실행 확인
+
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // debug : 어떤 파라미터로 호출되는지 보기
+        console.debug("[LogoCardList] fetch list", { order, tagId });
+
+        const data = await getLogoList({ order, tagId });
+
+        if (!alive) return;
+        setItems(data);
+
+        // debug : 결과 개수 확인
+        console.debug("[LogoCardList] fetched items:", data.length);
+      } catch (e: any) {
+        if (!alive) return;
+        console.error("[LogoCardList] fetch error:", e?.message ?? e);
+        setError(e instanceof Error ? e.message : "Failed to load logos");
+        setItems([]);
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [order, tagId]);
+
+  // 스택/전환 상태
   const [active, setActive] = useState(0);
-  const [ghost, setGhost] = useState<string | null>(null);
+  const [ghost, setGhost] = useState<LogoCardType | null>(null);
   const [ghostLeaving, setGhostLeaving] = useState(false);
 
-  // ===== 치수 고정 =====
-  const WRAP_W  = 480;  // 전체 보이는 너비
-  const WRAP_H  = 480;  // 전체 보이는 높이
-  const STACK_W = 400;  // 카드(LogoCard) 가로폭 (LogoCard h=400 → 정사각형)
+  // 데이터 바뀌면 active 보정
+  useEffect(() => {
+    if (active >= items.length) setActive(0);
+  }, [items.length, active]);
 
-  // ===== 스택 파라미터 =====
-  const OFFSET = 28;
-  const SCALE_STEP = 0.055;
-  const OP_STEP = 0.2;
-  const LAYERS = 4;
+  // 스택 파라미터/치수
+  const WRAP_W = 480, WRAP_H = 480, STACK_W = 400;
+  const OFFSET = 28, SCALE_STEP = 0.055, OP_STEP = 0.2, LAYERS = 4;
 
   const stack = useMemo(() => {
-    const out: { title: string; layer: number }[] = [];
+    const out: { item: LogoCardType; layer: number }[] = [];
     for (let layer = 0; layer < LAYERS; layer++) {
       const idx = active + layer;
-      if (idx >= logos.length) break;
-      out.push({ title: logos[idx], layer });
+      if (idx >= items.length) break;
+      out.push({ item: items[idx], layer });
     }
     return out;
-  }, [active, logos]);
+  }, [active, items]);
 
   const handleSlideChangeStart = (newIndex: number) => {
-    const leaving = logos[active];
+    const leaving = items[active];
     if (leaving) {
       setGhost(leaving);
       setGhostLeaving(false);
@@ -72,51 +127,117 @@ export default function LogoCardList() {
     pointerEvents: "none",
   });
 
-  return (
-    // 보이는 영역 강제 지정 + 오른쪽 패딩으로 스크롤바 공간
-    <div className="relative overflow-visible" style={{ width: WRAP_W, height: WRAP_H }}>
-      {/* 스택(보이는 카드들) : Swiper 위에 올림, 입력은 Swiper가 받게 */}
-      <div className="absolute inset-0 z-20 pointer-events-none">
-        {ghost && (
-          <div style={ghostStyle} onTransitionEnd={onGhostEnd}>
-            <LogoCard title={ghost} />
-          </div>
-        )}
-        {stack.map(({ title, layer }) => (
-          <div key={`${title}-${layer}`} style={layerStyle(layer)}>
-            <LogoCard title={title} />
-          </div>
-        ))}
+  // 상태 오버레이
+  const Overlay = () => {
+    if (loading) return (
+      <div className="absolute inset-0 z-30 flex items-center justify-center">
+        <div className="animate-pulse text-slate-300">로딩 중…</div>
       </div>
+    );
+    if (error) return (
+      <div className="absolute inset-0 z-30 flex items-center justify-center">
+        <div className="text-red-300 text-sm bg-red-900/30 px-3 py-2 rounded-lg border border-red-800">{error}</div>
+      </div>
+    );
+    if (!items.length) return (
+      <div className="absolute inset-0 z-30 flex items-center justify-center text-slate-400">
+        표시할 로고가 없습니다.
+      </div>
+    );
+    return null;
+  };
 
-      {/* Swiper: 입력/휠/스크롤바만 담당. 컨테이너 크기를 부모에 맞춰서 고정 */}
-      <Swiper
-        direction="vertical"
-        modules={[Mousewheel, Scrollbar]}
-        mousewheel={{ forceToAxis: true, releaseOnEdges: true }}
-        scrollbar={{ draggable: true }}
-        slidesPerView={1}
-        speed={380}
-        onSlideChangeTransitionStart={(sw) => handleSlideChangeStart(sw.activeIndex)}
-        className="absolute top-0 left-0 h-full w-full z-10"
-        style={
-          {
-            // 얇고 오른쪽에 살짝 띄운 스크롤바
-            "--swiper-scrollbar-size": "10px",
-            "--swiper-scrollbar-right": "0.75rem",
-            "--swiper-scrollbar-bg-color": "rgba(255,255,255,0.10)",
-            "--swiper-scrollbar-drag-bg-color": "#87DEDA",
-            "--swiper-scrollbar-sides-offset": "2rem",
-          } as React.CSSProperties
-        }
-      >
-        {logos.map((_, i) => (
-          // 슬라이드 높이를 '부모 높이 100%'로 — wrapper가 커도 컨테이너는 500px 유지
-          <SwiperSlide key={i} className="!h-full">
-            <div className="h-full opacity-0 pointer-events-none" />
-          </SwiperSlide>
-        ))}
-      </Swiper>
+  // 상세로 이동
+  const navigate = useNavigate();
+  const goDetail = () => {
+    const it = items[active];
+    if (!it) return;
+    navigate(String(it.id)); // /archive/logo/:id
+  };
+
+  // 🔧 필터 바: URLSearchParams는 새 인스턴스로 갱신하는 게 안전
+  const setOrder = (v: LogoListOrder) => {
+    const next = new URLSearchParams(sp);
+    next.set("order", v);
+    next.set("tagId", String(tagId)); // 유지
+    setSp(next, { replace: true });
+  };
+  const setTag = (v: number) => {
+    const next = new URLSearchParams(sp);
+    next.set("order", order);         // 유지
+    next.set("tagId", String(v));
+    setSp(next, { replace: true });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="relative overflow-visible" style={{ width: WRAP_W, height: WRAP_H }}>
+        <Overlay />
+
+        {/* 스택 */}
+        <div className="absolute inset-0 z-20 pointer-events-none">
+          {ghost && (
+            <div style={ghostStyle} onTransitionEnd={onGhostEnd}>
+              <LogoCard title={ghost.name} imgUrl={ghost.imageUrl} />
+            </div>
+          )}
+          {stack.map(({ item, layer }) => (
+            <div key={`${item.id}-${layer}`} style={layerStyle(layer)}>
+              <LogoCard
+                title={item.name}
+                imgUrl={item.imageUrl}
+                isActive={layer === 0}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* 클릭 타깃(최상단 카드 영역만 클릭 허용) */}
+        {items.length > 0 && (
+          <button
+            onClick={goDetail}
+            className="absolute z-30"
+            style={{
+              left: "50%",
+              transform: "translateX(-50%)",
+              bottom: 0,
+              width: STACK_W,
+              height: 400,
+              borderRadius: 16,
+              background: "transparent",
+            }}
+            aria-label="상세 보기"
+            title="상세 보기"
+          />
+        )}
+
+        {/* Swiper */}
+        <Swiper
+          direction="vertical"
+          modules={[Mousewheel, Scrollbar]}
+          mousewheel={{ forceToAxis: true, releaseOnEdges: true }}
+          scrollbar={{ draggable: true }}
+          slidesPerView={1}
+          speed={380}
+          onSlideChangeTransitionStart={(sw) => handleSlideChangeStart(sw.activeIndex)}
+          className="absolute top-0 left-0 h-full w-full z-10"
+          style={
+            {
+              "--swiper-scrollbar-size": "10px",
+              "--swiper-scrollbar-right": "0.75rem",
+              "--swiper-scrollbar-bg-color": "rgba(255,255,255,0.10)",
+              "--swiper-scrollbar-drag-bg-color": "#87DEDA",
+              "--swiper-scrollbar-sides-offset": "0.5rem",
+            } as React.CSSProperties
+          }
+        >
+          {Array.from({ length: Math.max(items.length, 1) }).map((_, i) => (
+            <SwiperSlide key={i} className="!h-full">
+              <div className="h-full opacity-0 pointer-events-none" />
+            </SwiperSlide>
+          ))}
+        </Swiper>
+      </div>
     </div>
   );
 }
