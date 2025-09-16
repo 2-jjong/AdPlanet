@@ -1,8 +1,10 @@
 package com.ssafy.adplanet.controller.logo;
 
 import com.ssafy.adplanet.dto.ResponseDto;
+import com.ssafy.adplanet.dto.ci.CiGuidelineResponse;
 import com.ssafy.adplanet.dto.logo.*;
 import com.ssafy.adplanet.enums.LogoListOrder;
+import com.ssafy.adplanet.service.ci.CiGuidelineServiceImpl;
 import com.ssafy.adplanet.service.logo.LogoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
@@ -31,6 +33,7 @@ import java.util.List;
 public class LogoController {
 
     private final LogoService logoService;
+    private final CiGuidelineServiceImpl ciGuidelineService;
 
     @PostMapping
     @Operation(summary = "로고 생성", description = "프롬프트를 기반으로 로고를 생성합니다.")
@@ -154,45 +157,46 @@ public class LogoController {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
-    public ResponseEntity<ResponseDto<CiGuideDto>> generateCiGuide (
+    public ResponseEntity<ResponseDto<CiGuidelineResponse>> generateCiGuide (
             @Parameter(description = "로고 ID", example = "1")
             @PathVariable Long logoId
     ) {
-        CiGuideDto guide = new CiGuideDto(
-                "**기본 로고**- 메인 로고는 워드마크와 심볼을 함께 사용한다.\n- 가로형과 세로형 버전 두 가지를 제공하며, 사용 환경에 맞게 선택한다.",
-                "3D9FD8",
-                "46A9DB",
-                "87DEDA",
-                "Hex\n- #4FB1BA\nRGB\n- (79, 177, 186)\nCMYK\n- (65, 10, 25, 0)\n주 사용처\n- 로고, 주요 버튼, 강조 요소",
-                "Hex\n- #193747\nRGB\n- (25, 55, 71)\nCMYK\n- (90, 65, 50, 40)\n주 사용처\n- 텍스트, 배경, 보조 그래픽",
-                "Black: #000000\nWhite: #FFFFFF\nGray: #CCCCCC"
-        );
-        return ResponseEntity.ok(new ResponseDto<>("S0000", guide, null));
+        try {
+            var resp = ciGuidelineService.createWithImageAi(logoId);
+            return ResponseEntity.ok(ResponseDto.ok(resp));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ResponseDto.error("CI4001", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDto.error("CI4091", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ResponseDto.error("CI5001", "서버 오류"));
+        }
+
     }
 
-    @GetMapping("{logoId}/ci-guideline")
-    @Operation(
-            summary = "CI 가이드라인 조회",
-            description = "logoId로 저장된 CI(브랜드) 가이드를 조회합니다."
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청")
-    })
-    public ResponseEntity<ResponseDto<CiGuideDto>> getCiGuide (
-            @PathVariable Long logoId
-    ) {
-        var guide = new CiGuideDto(
-                "**기본 로고**- 메인 로고는 워드마크와 심볼을 함께 사용한다.\n- 가로형과 세로형 버전 두 가지를 제공하며, 사용 환경에 맞게 선택한다.",
-                "3D9FD8",
-                "46A9DB",
-                "87DEDA",
-                "Hex\n- #4FB1BA\nRGB\n- (79, 177, 186)\nCMYK\n- (65, 10, 25, 0)\n주 사용처\n- 로고, 주요 버튼, 강조 요소",
-                "Hex\n- #193747\nRGB\n- (25, 55, 71)\nCMYK\n- (90, 65, 50, 40)\n주 사용처\n- 텍스트, 배경, 보조 그래픽",
-                "Black: #000000\nWhite: #FFFFFF\nGray: #CCCCCC"
-        );
-        return ResponseEntity.ok(new ResponseDto<>("S0000", guide, null));
-    }
+//    @GetMapping("{logoId}/ci-guideline")
+//    @Operation(
+//            summary = "CI 가이드라인 조회",
+//            description = "logoId로 저장된 CI(브랜드) 가이드를 조회합니다."
+//    )
+//    @ApiResponses({
+//            @ApiResponse(responseCode = "200", description = "조회 성공"),
+//            @ApiResponse(responseCode = "400", description = "잘못된 요청")
+//    })
+//    public ResponseEntity<ResponseDto<CiGuideDto>> getCiGuide (
+//            @PathVariable Long logoId
+//    ) {
+//        var guide = new CiGuideDto(
+//                "**기본 로고**- 메인 로고는 워드마크와 심볼을 함께 사용한다.\n- 가로형과 세로형 버전 두 가지를 제공하며, 사용 환경에 맞게 선택한다.",
+//                "3D9FD8",
+//                "46A9DB",
+//                "87DEDA",
+//                "Hex\n- #4FB1BA\nRGB\n- (79, 177, 186)\nCMYK\n- (65, 10, 25, 0)\n주 사용처\n- 로고, 주요 버튼, 강조 요소",
+//                "Hex\n- #193747\nRGB\n- (25, 55, 71)\nCMYK\n- (90, 65, 50, 40)\n주 사용처\n- 텍스트, 배경, 보조 그래픽",
+//                "Black: #000000\nWhite: #FFFFFF\nGray: #CCCCCC"
+//        );
+//        return ResponseEntity.ok(new ResponseDto<>("S0000", guide, null));
+//    }
 
     @GetMapping(value = "/{logoId}/download")
     @Operation(
