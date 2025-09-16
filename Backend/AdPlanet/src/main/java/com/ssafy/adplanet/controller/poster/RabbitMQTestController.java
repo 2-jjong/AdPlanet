@@ -13,7 +13,7 @@ public class RabbitMQTestController {
         this.publisher = publisher;
     }
 
-    @GetMapping("/test-rabbit")
+    @GetMapping("/api/test/rabbit")
     public String testRabbit() {
         publisher.sendMessage("햄 만세!!!🔥🐇");
         return "메시지 전송 완료!";
