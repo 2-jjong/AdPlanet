@@ -1,6 +1,6 @@
 package com.ssafy.adplanet.controller.poster;
 
-import com.ssafy.adplanet.service.MessagePublisher;
+import com.ssafy.adplanet.service.poster.MessagePublisher;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 

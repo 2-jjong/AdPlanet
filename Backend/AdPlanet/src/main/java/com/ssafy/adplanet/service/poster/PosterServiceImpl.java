@@ -1,4 +1,4 @@
-package com.ssafy.adplanet.service;
+package com.ssafy.adplanet.service.poster;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

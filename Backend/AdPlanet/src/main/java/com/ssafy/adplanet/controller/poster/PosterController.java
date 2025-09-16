@@ -6,7 +6,7 @@ import com.ssafy.adplanet.enums.JobStatus;
 import com.ssafy.adplanet.enums.PosterDownloadFormat;
 import com.ssafy.adplanet.enums.PosterListOrder;
 import com.ssafy.adplanet.enums.PosterStyle;
-import com.ssafy.adplanet.service.PosterService;
+import com.ssafy.adplanet.service.poster.PosterService;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

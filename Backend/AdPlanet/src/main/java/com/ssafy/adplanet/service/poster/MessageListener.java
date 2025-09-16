@@ -1,4 +1,4 @@
-package com.ssafy.adplanet.service;
+package com.ssafy.adplanet.service.poster;
 
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
