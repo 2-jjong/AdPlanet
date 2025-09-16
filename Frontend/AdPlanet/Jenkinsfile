@@ -35,7 +35,10 @@ pipeline {
                     dir('Frontend/AdPlanet') {
                         sh '''
                             set -eu
-                            cp "${ENV_FILE}" ./.env
+                            # .env 파일을 쓰지 않고, 셸 환경변수로 로드
+                            set -a
+                            . "${ENV_FILE}"
+                            set +a
 
                             npm ci
                             npm run build --if-present
@@ -63,10 +66,17 @@ pipeline {
                     dir('Frontend/AdPlanet') {
                         sh '''
                             set -eu
-                            # Docker 빌더가 .env를 포함해서 Vite build 수행하도록 컨텍스트에 포함
-                            cp "${ENV_FILE}" ./.env
+                            # ENV_FILE 로드 → Vite가 사용할 VITE_* 변수들만 꺼내서 build-arg로 전달
+                            set -a
+                            . "${ENV_FILE}"
+                            set +a
 
-                            docker build -t ${IMAGE} .
+                            docker build \
+                            --build-arg VITE_SSAFY_CLIENT_ID="${VITE_SSAFY_CLIENT_ID}" \
+                            --build-arg VITE_SSAFY_REDIRECT_URI="${VITE_SSAFY_REDIRECT_URI}" \
+                            --build-arg VITE_SSAFY_OAUTH_URL="${VITE_SSAFY_OAUTH_URL}" \
+                            --build-arg VITE_API_BASE_URL="${VITE_API_BASE_URL}" \
+                            -t ${IMAGE} .
                         '''
                     }
                 }
