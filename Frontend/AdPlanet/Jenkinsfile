@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        IMAGE        = 'myorg/app-frontend:latest'   // 빌드할 Docker 이미지 태그
-        COMPOSE_DIR  = '/opt/app/compose'            // EC2의 docker-compose.yml 있는 경로
-        PROJECT_NAME = 'app'                         // compose 프로젝트명 (base+frontend 같이 묶음)
+        IMAGE        = 'myorg/app-frontend:latest'
+        COMPOSE_DIR  = '/opt/app/compose'
+        PROJECT_NAME = 'app'
     }
 
     stages {
@@ -18,81 +18,60 @@ pipeline {
             steps {
                 sh '''
                     echo "gitlabActionType=$gitlabActionType"
-                    echo "gitlabSourceBranch=$gitlabSourceBranch"
-                    echo "gitlabTargetBranch=$gitlabTargetBranch"
                     echo "gitlabBranch=$gitlabBranch"
-                    echo "BRANCH_NAME=$BRANCH_NAME"
                 '''
             }
         }
-        //CI: PR/MR 열렸을 때만 (lint/test 등)
+
         stage('CI - Build & Test') {
             when {
-                expression { env.gitlabActionType == 'MERGE_REQUEST' } // GitLab 플러그인 이벤트
+                expression { env.gitlabActionType == 'MERGE_REQUEST' }
             }
             steps {
-                withCredentials([file(credentialsId: 'adplanet-frontend-env-file', variable: 'ENV_FILE')]) {
-                    dir('Frontend/AdPlanet') {
-                        sh '''
-                            set -eu
-                            # .env 파일을 쓰지 않고, 셸 환경변수로 로드
-                            set -a
-                            . "${ENV_FILE}"
-                            set +a
-
-                            npm ci
-                            npm run build --if-present
-                            npm test --if-present
-                        '''
-                    }
+                dir('Frontend/AdPlanet') {
+                    sh '''
+                        npm ci
+                        npm run build --if-present
+                        npm test --if-present
+                    '''
                 }
-            }
-            post {
-                success { echo 'CI passed for PR/MR' }
             }
         }
 
-        // CD용 이미지 빌드: main 브랜치 push(=merge 후) 에만
         stage('Build Docker image (CD)') {
             when {
                 allOf {
-                    expression { env.gitlabActionType != 'MERGE_REQUEST' } // MR이면 안 돈다
-                    expression { env.gitlabBranch == 'frontend/develop' || env.gitlabTargetBranch == 'frontend/develop' }
+                    expression { env.gitlabActionType != 'MERGE_REQUEST' }
+                    expression { env.gitlabBranch == 'frontend/develop' }
                 }
             }
             steps {
-                // Docker 빌드 컨텍스트 안에도 .env.production이 있어야 builder 단계에서 사용 가능
                 withCredentials([file(credentialsId: 'adplanet-frontend-env-file', variable: 'ENV_FILE')]) {
                     dir('Frontend/AdPlanet') {
                         sh '''
-                            set -eu
-                            # ENV_FILE 로드 → Vite가 사용할 VITE_* 변수들만 꺼내서 build-arg로 전달
-                            set -a
-                            . "${ENV_FILE}"
-                            set +a
+                    set -eu
+                    # .env 파일 로드
+                    set -a
+                    . "${ENV_FILE}"
+                    set +a
 
-                            docker build \
-                            --build-arg VITE_SSAFY_CLIENT_ID="${VITE_SSAFY_CLIENT_ID}" \
-                            --build-arg VITE_SSAFY_REDIRECT_URI="${VITE_SSAFY_REDIRECT_URI}" \
-                            --build-arg VITE_SSAFY_OAUTH_URL="${VITE_SSAFY_OAUTH_URL}" \
-                            --build-arg VITE_API_BASE_URL="${VITE_API_BASE_URL}" \
-                            -t ${IMAGE} .
-                        '''
+                    docker build \
+                        --build-arg VITE_SSAFY_CLIENT_ID="${VITE_SSAFY_CLIENT_ID}" \
+                        --build-arg VITE_SSAFY_REDIRECT_URI="${VITE_SSAFY_REDIRECT_URI}" \
+                        --build-arg VITE_SSAFY_OAUTH_URL="${VITE_SSAFY_OAUTH_URL}" \
+                        --build-arg VITE_API_BASE_URL="${VITE_API_BASE_URL}" \
+                        -t ${IMAGE} .
+                '''
                     }
                 }
             }
         }
 
-        // ✅ 배포: main 브랜치 push(=merge 후) 에만
         stage('Deploy frontend') {
             when {
                 allOf {
                     expression { env.gitlabActionType != 'MERGE_REQUEST' }
-                    anyOf {
-                        branch 'frontend/develop'
-                        expression { env.gitlabBranch == 'frontend/develop' }
-                        expression { env.gitlabTargetBranch == 'frontend/develop' }
-                    }
+                    expression { env.gitlabBranch == 'frontend/develop' }
                 }
             }
             steps {
@@ -101,22 +80,24 @@ pipeline {
                         set -eux
                         cd ${COMPOSE_DIR}
                         export COMPOSE_PROJECT_NAME=${PROJECT_NAME}
+
+                        docker compose down || true
+                        docker image prune -f || true
                         docker compose -p ${PROJECT_NAME} -f base.yml -f frontend.yml up -d --remove-orphans --wait web
                     """
                 }
-            }
-            post {
-                success { echo 'Frontend deployed successfully 🚀' }
             }
         }
     }
 
     post {
         success {
-            echo 'Frontend deployed successfully'
+            echo '✅ 프론트엔드 배포 성공!'
+            sh "docker compose -p ${PROJECT_NAME} -f ${COMPOSE_DIR}/base.yml -f ${COMPOSE_DIR}/frontend.yml ps"
         }
         failure {
-            echo 'Deployment failed'
+            echo '❌ 프론트엔드 배포 실패'
+            sh "docker compose -p ${PROJECT_NAME} -f ${COMPOSE_DIR}/base.yml -f ${COMPOSE_DIR}/frontend.yml logs --tail=100 || true"
         }
     }
 }
