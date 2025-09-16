@@ -16,6 +16,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.time.Duration;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -72,6 +73,16 @@ public class CiGuidelineServiceImpl implements CiGuidelineService {
                 .build();
 
         return CiGuidelineMapper.toResponse(ciRepo.save(entity));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<CiGuidelineResponse> getByLogoId(Long logoId) {
+        if (logoId == null || logoId <= 0) {
+            throw new IllegalArgumentException("logoId가 유효하지 않습니다.");
+        }
+        return ciRepo.findByLogoId(logoId)
+                .map(CiGuidelineMapper::toResponse);
     }
 
     private String presignGetUrl(String bucket, String key, Duration ttl) {
