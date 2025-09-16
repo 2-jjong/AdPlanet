@@ -3,6 +3,7 @@ package com.ssafy.adplanet.service.logo;
 import com.ssafy.adplanet.dto.logo.CreateLogoRequest;
 import com.ssafy.adplanet.dto.logo.LogoDto;
 import com.ssafy.adplanet.entity.Logo;
+import com.ssafy.adplanet.enums.LogoStyle;
 import com.ssafy.adplanet.repository.LogoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,36 +31,31 @@ public class LogoServiceImpl implements LogoService {
     private final S3Client s3;
     private final S3Presigner presigner;
 
-    // @Value로 직접 주입
-    @Value("${adplanet.s3.bucket}")
-    private String bucket;
-
-    @Value("${adplanet.s3.prefix:}")
-    private String prefix;
-
-    @Value("${adplanet.s3.presign-minutes:60}")
-    private int presignMinutes;
+    @Value("${adplanet.s3.bucket}") private String bucket;
+    @Value("${adplanet.s3.prefix:}") private String prefix;
+    @Value("${adplanet.s3.presign-minutes:60}") private int presignMinutes;
 
     @Override
     @Transactional
     public LogoDto create(Long userId, CreateLogoRequest req) {
         if (userId == null) throw new IllegalArgumentException("userId는 필수입니다.");
         if (req.title() == null || req.title().isBlank()) throw new IllegalArgumentException("title은 필수입니다.");
-        if (req.content() == null || req.content().isBlank()) throw new IllegalArgumentException("content는 필수입니다.");
         if (req.prompt() == null || req.prompt().isBlank()) throw new IllegalArgumentException("prompt는 필수입니다.");
+        if (req.style() == null) throw new IllegalArgumentException("style은 필수입니다.");
 
-        // 1) 저장 & ID 확보
+        String slogan = (req.content() == null) ? "" : req.content().trim();
+
         Logo logo = Logo.builder()
                 .userId(userId)
                 .name(req.title())
-                .slogan(req.content())
+                .slogan(slogan)
                 .prompt(req.prompt())
+                .style(req.style())
                 .imgUrl("s3:pending")
                 .build();
         logoRepository.saveAndFlush(logo);
 
-        // 2) 더미 PNG 생성 (추후 파이썬 결과 바이트로 교체)
-        byte[] imageBytes = generateDummyPng(req.title(), req.content());
+        byte[] imageBytes = generateDummyPng(req.title(), slogan);
 
         // 3) S3 업로드
         String key = ensureSlash(prefix) + "logo_" + logo.getId() + ".png";
@@ -98,11 +94,17 @@ public class LogoServiceImpl implements LogoService {
             BufferedImage img = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g = img.createGraphics();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
             g.setColor(new Color(0xF2F7FA)); g.fillRect(0,0,W,H);
             g.setColor(new Color(0x46A9DB)); g.fillOval(W/2-120, H/2-120, 240, 240);
             g.setColor(new Color(0x193747));
-            g.setFont(new Font("SansSerif", Font.BOLD, 28)); drawCentered(g, title, W/2, H/2+10);
-            g.setFont(new Font("SansSerif", Font.PLAIN, 16)); drawCentered(g, slogan, W/2, H/2+40);
+
+            g.setFont(new Font("SansSerif", Font.BOLD, 28));
+            drawCentered(g, (title == null ? "" : title), W/2, H/2+10);
+
+            g.setFont(new Font("SansSerif", Font.PLAIN, 16));
+            drawCentered(g, (slogan == null ? "" : slogan), W/2, H/2+40);
+
             g.dispose();
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ImageIO.write(img, "png", baos);
@@ -113,6 +115,7 @@ public class LogoServiceImpl implements LogoService {
     }
 
     private static void drawCentered(Graphics2D g, String text, int cx, int cy) {
+        if (text == null || text.isBlank()) return; // 빈 문자열이면 스킵
         var fm = g.getFontMetrics();
         int x = cx - fm.stringWidth(text)/2;
         int y = cy - fm.getHeight()/2 + fm.getAscent();
