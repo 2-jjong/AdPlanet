@@ -9,8 +9,8 @@ export interface EnvConfig {
 export const getEnvConfig = (): EnvConfig => {
   return {
     VITE_SSAFY_CLIENT_ID: import.meta.env.VITE_SSAFY_CLIENT_ID || '',
-    VITE_SSAFY_REDIRECT_URI: import.meta.env.VITE_SSAFY_REDIRECT_URI || 'http://localhost:5173/auth/callback',
-    VITE_SSAFY_OAUTH_URL: import.meta.env.VITE_SSAFY_OAUTH_URL || 'https://project.ssafy.com/oauth/sso-check',
+    VITE_SSAFY_REDIRECT_URI: import.meta.env.VITE_SSAFY_REDIRECT_URI || '',
+    VITE_SSAFY_OAUTH_URL: import.meta.env.VITE_SSAFY_OAUTH_URL || '',
   };
 };
   
