@@ -60,7 +60,10 @@ pipeline {
         
         stage('Deploy frontend') {
             when {
-                expression { env.gitlabActionType == 'PUSH' }
+                anyOf {
+                    expression { env.gitlabActionType == 'PUSH' }
+                    expression { env.gitlabActionType == null || env.gitlabActionType == '' }
+                }
             }
             steps {
                 script {
