@@ -1,5 +1,4 @@
 // Logos and Posters toggle component
-import { NavLink } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";   // 쿼리 파라미터 훅
 
 type View = "logo" | "poster";

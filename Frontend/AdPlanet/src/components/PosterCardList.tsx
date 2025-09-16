@@ -16,7 +16,9 @@ export default function PosterCardList() {
       <Swiper
         // 가로 슬라이더 + 스크롤바
         modules={[Scrollbar, Mousewheel]}
-        mousewheel={{ forceToAxis: true, releaseOnEdges: true }}
+        mousewheel={{ releaseOnEdges: true }}
+        // 부드러운 스크롤 위해 적용
+        freeMode={{ enabled: true, sticky: true }}
         scrollbar={{ draggable: true }}
         slidesPerView={1.1}          // 모바일에서 살짝 넘치게
         spaceBetween={48}
@@ -25,22 +27,19 @@ export default function PosterCardList() {
           1024: { slidesPerView: 3,   spaceBetween: 64 },
           1280: { slidesPerView: 4,   spaceBetween: 72 },
         }}
-        // 하단 스크롤바가 겹치지 않도록 여백
-        className="pb-8"
+
         // 스크롤바 색상/두께 (Tailwind 변수처럼 inline으로 지정)
         style={
           {
             // @ts-ignore
-            "--swiper-scrollbar-bg-color": "rgba(255,255,255,0.12)",
-            "--swiper-scrollbar-drag-bg-color": "#87DEDA",
             "--swiper-scrollbar-size": "10px",
             "--swiper-scrollbar-bottom": "8px",
-            "--swiper-scrollbar-sides-offset": "1.5%",
+            "--swiper-scrollbar-sides-offset": "2.5%",
           } as React.CSSProperties
         }
       >
         {posters.map((p) => (
-          <SwiperSlide key={p.id} className="!h-auto">
+          <SwiperSlide key={p.id} className="!h-auto pb-12">
             <PosterCard item={p} />
           </SwiperSlide>
         ))}
