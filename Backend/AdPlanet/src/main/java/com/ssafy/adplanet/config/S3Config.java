@@ -31,7 +31,7 @@ public class S3Config {
 
     // 선택: 비워두면 자동감지/폴백 사용
     @Value("${adplanet.s3.region:}")
-    private String regionProp;
+    private String region;
 
     // 자격증명 (비워두면 DefaultCredentialsProvider)
     @Value("${adplanet.s3.access-key:}")
@@ -46,10 +46,10 @@ public class S3Config {
     @Bean
     public S3Client s3Client() {
         Region region = resolveRegion();
-        log.info("[S3] Using region={}", region);
+        log.info("[S3] 사용중인 region ={}", region);
         return S3Client.builder()
                 .region(region)
-                .credentialsProvider(creds())
+                .credentialsProvider(credentialsProvider())
                 .serviceConfiguration(S3Configuration.builder().build())
                 .build();
     }
@@ -59,12 +59,12 @@ public class S3Config {
         Region region = resolveRegion();
         return S3Presigner.builder()
                 .region(region)
-                .credentialsProvider(creds())
+                .credentialsProvider(credentialsProvider())
                 .build();
     }
 
     // ---- 내부 유틸 ----
-    private AwsCredentialsProvider creds() {
+    private AwsCredentialsProvider credentialsProvider() {
         if (StringUtils.hasText(accessKey) && StringUtils.hasText(secretKey)) {
             if (StringUtils.hasText(sessionToken)) {
                 return StaticCredentialsProvider.create(
@@ -76,8 +76,8 @@ public class S3Config {
     }
 
     private Region resolveRegion() {
-        if (StringUtils.hasText(regionProp)) {
-            return Region.of(regionProp.trim());
+        if (StringUtils.hasText(region)) {
+            return Region.of(region.trim());
         }
         Optional<Region> byBucket = tryResolveBucketRegion(bucket);
         if (byBucket.isPresent()) return byBucket.get();
@@ -85,15 +85,15 @@ public class S3Config {
             return new DefaultAwsRegionProviderChain().getRegion();
         } catch (SdkClientException e) {
             log.warn("[S3] Region autodetect failed: {}. Falling back to ap-northeast-2", e.getMessage());
-            return Region.AP_NORTHEAST_2; // 폴백(원하면 제거)
+            return Region.AP_NORTHEAST_2;
         }
     }
 
     private Optional<Region> tryResolveBucketRegion(String bucket) {
         if (!StringUtils.hasText(bucket)) return Optional.empty();
         try (S3Client tmp = S3Client.builder()
-                .region(Region.US_EAST_1)            // GetBucketLocation은 us-east-1에서 호출해도 됨
-                .credentialsProvider(creds())
+                .region(Region.US_EAST_1)
+                .credentialsProvider(credentialsProvider())
                 .build()) {
 
             GetBucketLocationResponse r = tmp.getBucketLocation(
@@ -107,8 +107,4 @@ public class S3Config {
             return Optional.empty();
         }
     }
-
-    // 서비스에서도 prefix/bucket을 쓰니 getter 있으면 편함(선택)
-    public String bucket() { return bucket; }
-    public String prefix() { return prefix; }
 }

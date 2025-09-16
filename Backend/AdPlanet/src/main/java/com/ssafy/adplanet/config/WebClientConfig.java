@@ -15,7 +15,6 @@ import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
-@EnableConfigurationProperties(AiProps.class)
 public class WebClientConfig {
 
     @Bean
@@ -32,22 +31,5 @@ public class WebClientConfig {
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(1024 * 1024))
                 .build();
     }
-
-//    @Bean(name = "pythonAiClient")
-//    public WebClient pythonAiClient(AiProps props) {
-//        HttpClient http = HttpClient.create()
-//                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, props.connectTimeoutMs())
-//                .responseTimeout(Duration.ofSeconds(props.readTimeoutSec()))
-//                .doOnConnected(conn -> conn
-//                        .addHandlerLast(new ReadTimeoutHandler(props.readTimeoutSec(), TimeUnit.SECONDS))
-//                        .addHandlerLast(new WriteTimeoutHandler(30, TimeUnit.SECONDS)));
-//
-//        return WebClient.builder()
-//                .baseUrl(props.baseUrl())
-//                .clientConnector(new ReactorClientHttpConnector(http))
-//                .defaultHeader("X-Service", "adplanet-be")
-//                .codecs(c -> c.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
-//                .build();
-//    }
 
 }
