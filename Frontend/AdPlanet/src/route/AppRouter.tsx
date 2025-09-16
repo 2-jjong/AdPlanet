@@ -1,10 +1,12 @@
-import {createBrowserRouter, RouteObject, RouterProvider} from 'react-router-dom';
+import {createBrowserRouter, RouteObject, RouterProvider, Navigate} from 'react-router-dom';
 import HomePage from '../pages/HomePage';
 import LogoPage from '../pages/LogoPage';
 import PosterPage from '../pages/PosterPage';
 import WatermarkDetectionPage from '../pages/WatermarkDetectionPage';
 import ArchivePage from '../pages/ArchivePage';
-import MyPage from "../pages/MyPage.tsx";
+import LogoCardList from "../components/LogoCardList";
+import PosterCardList from "../components/PosterCardList";
+
 import { PATHS } from '../constants/paths';
 
 const routeConfig = [
@@ -27,10 +29,11 @@ const routeConfig = [
   {
     path: PATHS.ARCHIVE,
     element: <ArchivePage />,
-  },
-  {
-    path: PATHS.MYPAGE,
-    element: <MyPage />,
+      children: [
+        { index: true, element: <Navigate to="logo" replace /> }, // 기본 진입은 /archive/logo
+        { path: "logo",   element: <LogoCardList /> },
+        { path: "poster", element: <PosterCardList /> },
+    ],
   },
 ] as RouteObject[]
 // 라우터 설정
