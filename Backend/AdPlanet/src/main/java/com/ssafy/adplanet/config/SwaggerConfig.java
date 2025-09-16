@@ -23,8 +23,9 @@ public class SwaggerConfig {
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
-                                .description("JWT 토큰을 입력하세요")));
-//                .addSecurityItem(new SecurityRequirement()
-//                        .addList("bearerAuth"));
+                                .in(SecurityScheme.In.HEADER)
+                                .name("Authorization")))
+                .addSecurityItem(new SecurityRequirement()
+                        .addList("bearerAuth"));
     }
 }
