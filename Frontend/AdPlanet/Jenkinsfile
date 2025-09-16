@@ -25,7 +25,6 @@ pipeline {
                 '''
             }
         }
-
         // ✅ CI: PR/MR 열렸을 때만 (lint/test 등)
         stage('CI - Build & Test') {
             when {
@@ -76,6 +75,8 @@ pipeline {
                 withCredentials([file(credentialsId: 'adplanet-frontend-env-file', variable: 'ENV_FILE')]) {
                     sh """
                         set -eux
+                        mkdir -p ${COMPOSE_DIR}
+
                         echo "Copying .env file to ${COMPOSE_DIR}"
                         cp ${ENV_FILE} ${COMPOSE_DIR}/.env
                         cd ${COMPOSE_DIR}
