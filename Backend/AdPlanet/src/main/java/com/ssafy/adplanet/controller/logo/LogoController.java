@@ -2,11 +2,11 @@ package com.ssafy.adplanet.controller.logo;
 
 import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.logo.*;
-import com.ssafy.adplanet.enums.LogoDownloadFormat;
 import com.ssafy.adplanet.enums.LogoListOrder;
-import com.ssafy.adplanet.service.LogoService;
+import com.ssafy.adplanet.service.logo.LogoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,7 +22,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api/logos")
@@ -40,10 +39,11 @@ public class LogoController {
     })
     public ResponseEntity<ResponseDto<LogoDto>> createLogo(
             @Parameter(description = "로고 생성 요청 바디", required = true)
-            @RequestBody CreateLogoRequest req
+            @RequestBody CreateLogoRequest req,
+            Authentication auth
     ) {
         try {
-            Long userId = 1L;
+            Long userId = (Long) auth.getPrincipal();
             LogoDto dto = logoService.create(userId, req);
             return ResponseEntity.ok(ResponseDto.ok(dto));
         } catch (IllegalArgumentException e) {
