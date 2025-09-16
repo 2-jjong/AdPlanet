@@ -6,4 +6,5 @@ dist
 Dockerfile
 docker-compose.yml
 *.log
-.env*
+.env.*
+!.env
