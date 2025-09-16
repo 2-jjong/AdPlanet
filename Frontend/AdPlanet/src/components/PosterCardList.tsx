@@ -17,8 +17,8 @@ export default function PosterCardList() {
         // 가로 슬라이더 + 스크롤바
         modules={[Scrollbar, Mousewheel]}
         mousewheel={{ releaseOnEdges: true }}
-        // 부드러운 스크롤 위해 적용
-        freeMode={{ enabled: true, sticky: true }}
+        // 스크롤 효과 수정
+        freeMode={{ enabled: false, sticky: true }}
         scrollbar={{ draggable: true }}
         slidesPerView={1.1}          // 모바일에서 살짝 넘치게
         spaceBetween={48}
