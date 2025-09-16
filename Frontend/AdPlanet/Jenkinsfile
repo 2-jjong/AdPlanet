@@ -71,14 +71,22 @@ pipeline {
                     }
                 }
             }
-            steps {
-                sh """
-            set -eux
-            cd ${COMPOSE_DIR}
-            export COMPOSE_PROJECT_NAME=${PROJECT_NAME}
-            docker compose -p ${PROJECT_NAME} -f base.yml -f frontend.yml up -d --remove-orphans --wait web
-        """
-            }
+             steps {
+                    withCredentials([file(credentialsId: 'adplanet-frontend-env-file', variable: 'ENV_FILE')]) {
+                        sh """
+                            set -eux
+
+                            # 1. 젠킨스에 있던 .env 파일을 실제 배포 경로로 복사합니다.
+                            echo "Copying .env file to ${COMPOSE_DIR}"
+                            cp ${ENV_FILE} ${COMPOSE_DIR}/.env
+
+                            # 2. 기존 배포 스크립트를 실행합니다.
+                            cd ${COMPOSE_DIR}
+                            export COMPOSE_PROJECT_NAME=${PROJECT_NAME}
+                            docker compose -p ${PROJECT_NAME} -f base.yml -f frontend.yml up -d --remove-orphans --wait web
+                        """
+                    }
+                }
             post { success { echo 'Frontend deployed successfully 🚀' } }
         }
     }
