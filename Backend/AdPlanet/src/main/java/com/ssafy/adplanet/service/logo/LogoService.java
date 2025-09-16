@@ -1,4 +1,4 @@
-package com.ssafy.adplanet.service;
+package com.ssafy.adplanet.service.logo;
 
 import com.ssafy.adplanet.dto.logo.CreateLogoRequest;
 import com.ssafy.adplanet.dto.logo.LogoDto;
