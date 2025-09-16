@@ -14,21 +14,13 @@ pipeline {
             }
         }
 
-        stage('Debug env') {
-            steps {
-                sh '''
-        echo "gitlabActionType=$gitlabActionType"
-        echo "gitlabSourceBranch=$gitlabSourceBranch"
-        echo "gitlabTargetBranch=$gitlabTargetBranch"
-        echo "gitlabBranch=$gitlabBranch"
-        echo "BRANCH_NAME=$BRANCH_NAME"
-    '''
-            }
-        }
         // ✅ CI: PR/MR 열렸을 때만 (lint/test 등)
         stage('CI - Build & Test') {
             when {
-                expression { env.gitlabActionType == 'MERGE_REQUEST' } // GitLab 플러그인 이벤트
+                anyOf {
+                    changeRequest() // PR/MR 파이프라인인 경우에 실행
+                    expression { env.gitlabActionType == 'MERGE_REQUEST' } // GitLab 플러그인 이벤트일 경우
+                }
             }
             steps {
                 dir('Frontend/AdPlanet') {
@@ -43,13 +35,12 @@ pipeline {
                 success { echo 'CI passed for PR/MR' }
             }
         }
-
         // ✅ CD용 이미지 빌드: main 브랜치 push(=merge 후) 에만
         stage('Build Docker image (CD)') {
             when {
                 allOf {
-                    expression { env.gitlabActionType != 'MERGE_REQUEST' } // MR이면 안 돈다
-                    expression { env.gitlabBranch == 'frontend/develop' || env.gitlabTargetBranch == 'frontend/develop' }
+                    not { changeRequest() } // PR/MR이 아닐 때
+                    branch 'frontend/develop'
                 }
             }
             steps {
@@ -58,17 +49,12 @@ pipeline {
                 }
             }
         }
-
         // ✅ 배포: main 브랜치 push(=merge 후) 에만
         stage('Deploy frontend') {
             when {
                 allOf {
-                    expression { env.gitlabActionType != 'MERGE_REQUEST' }
-                    anyOf {
-                        branch 'frontend/develop'
-                        expression { env.gitlabBranch == 'frontend/develop' }
-                        expression { env.gitlabTargetBranch == 'frontend/develop' }
-                    }
+                    not { changeRequest() }
+                    branch 'frontend/develop'
                 }
             }
              steps {
@@ -90,7 +76,6 @@ pipeline {
             post { success { echo 'Frontend deployed successfully 🚀' } }
         }
     }
-
     post {
         success {
             echo 'Frontend deployed successfully'

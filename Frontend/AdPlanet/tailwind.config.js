@@ -7,9 +7,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        'space-blue': '#0f172a',
-        'space-purple': '#1e1b4b',
-        'space-cyan': '#06b6d4',
+        'primary': '#87DEDA',
+        'background': '#1D1F33',
+        'text-color': '#FFFFFF',
+      },
+      fontFamily: {
+        kravo: ["Kravo", "system-ui", "sans-serif"],
+        jamsil: ['"The Jamsil"', "system-ui", "sans-serif"],
       },
       animation: {
         'float': 'float 6s ease-in-out infinite',
