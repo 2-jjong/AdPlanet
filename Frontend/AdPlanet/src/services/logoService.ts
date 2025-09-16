@@ -2,7 +2,6 @@ import type { LogoCard, LogoDetail, CiGuideline, LogoTag, LogoListQuery } from "
 import {
   fetchLogoListDto, fetchLogoDetailDto, fetchCiGuidelineDto, fetchLogoTagsDto,
   type LogoListItemDto, toAbsolute,
-  type LogoListQueryDto,
 } from "./dto/logo.dto";
 
 

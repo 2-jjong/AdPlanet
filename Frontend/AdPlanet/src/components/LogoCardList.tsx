@@ -152,7 +152,7 @@ export default function LogoCardList() {
   const goDetail = () => {
     const it = items[active];
     if (!it) return;
-    navigate(String(it.id)); // /archive/logo/:id
+    navigate(`/archive/logo/${it.id}`);
   };
 
   // 🔧 필터 바: URLSearchParams는 새 인스턴스로 갱신하는 게 안전

@@ -37,40 +37,21 @@ export const toAbsolute = (p: string) => {
 
 // API 호출
 export async function fetchLogoListDto(params: LogoListQueryDto) {
-  const res = await apiClient.get<ApiResponse<LogoListItemDto[]>>("/api/logos", {
-    params,
-    headers: { "Cache-Control": "no-store" }, // 개발 캐시 회피
-  });
-
-  const body: any = res.data;
-
-  // 1) 배열만 오는 경우(프록시/스켈레톤)
-  if (Array.isArray(body)) return body as LogoListItemDto[];
-
-  // 2) 공통 래퍼 { code?, data, message? }
-  if (body && typeof body === "object" && "data" in body) {
-    // 실패코드가 명시된 경우만 에러로 간주
-    if (typeof body.code === "string" && body.code.startsWith("E")) {
-      throw new Error(body.message || `API ${body.code}`);
-    }
-    const d = body.data;
-    if (Array.isArray(d)) return d as LogoListItemDto[];
-    if (d == null) return [];                    // 👈 data가 null/undefined면 빈 리스트로 처리
+  const { data } = await apiClient.get<ApiResponse<LogoListItemDto[]>>("/api/logos", { params });
+  if (data.code !== "S0000" || !Array.isArray(data.data)) {
+    throw new Error(data.message || `API ${data.code}`);
   }
-
-  // 3) 그 외: 미리보기 포함해서 디버깅
-  const preview = (() => { try { return JSON.stringify(body).slice(0,200); } catch { return String(body).slice(0,200);} })();
-  throw new Error(`Unexpected logos shape: ${preview}`);
+  return data.data;
 }
 
-
-
+// 로고 상세 정보
 export async function fetchLogoDetailDto(logoId: number) {
   const { data } = await apiClient.get<ApiResponse<LogoDetailDto>>(`/api/logos/${logoId}`);
   if (!ok(data?.code)) throw new Error(data?.message || `API ${data?.code}`);
   return data.data;
 }
 
+// CI 가이드라인 정보
 export async function fetchCiGuidelineDto(logoId: number) {
   const { data } = await apiClient.get<ApiResponse<CiGuidelineDto>>(`/api/logos/${logoId}/ci-guideline`);
   if (!ok(data?.code)) throw new Error(data?.message || `API ${data?.code}`);
@@ -86,6 +67,7 @@ export async function fetchCiGuidelineDto(logoId: number) {
   } as CiGuidelineDto;
 }
 
+// 로고 카테고리 태그 목록
 export async function fetchLogoTagsDto() {
   const { data } = await apiClient.get<ApiResponse<LogoTagDto[]>>("/api/logos/tags");
   if (!ok(data?.code)) throw new Error(data?.message || `API ${data?.code}`);
