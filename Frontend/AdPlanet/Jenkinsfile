@@ -14,34 +14,43 @@ pipeline {
             }
         }
 
+        stage('Debug env') {
+            steps {
+                sh '''
+                    echo "gitlabActionType=$gitlabActionType"
+                    echo "gitlabSourceBranch=$gitlabSourceBranch"
+                    echo "gitlabTargetBranch=$gitlabTargetBranch"
+                    echo "gitlabBranch=$gitlabBranch"
+                    echo "BRANCH_NAME=$BRANCH_NAME"
+                '''
+            }
+        }
+
         // ✅ CI: PR/MR 열렸을 때만 (lint/test 등)
         stage('CI - Build & Test') {
             when {
-                anyOf {
-                    changeRequest() // PR/MR 파이프라인인 경우에 실행
-                    expression { env.gitlabActionType == 'MERGE_REQUEST' } // GitLab 플러그인 이벤트일 경우
-                }
+                expression { env.gitlabActionType == 'MERGE_REQUEST' } // GitLab 플러그인 이벤트
             }
             steps {
                 dir('Frontend/AdPlanet') {
                     sh '''
-            npm ci
-            npm run build --if-present
-            npm test --if-present
-            '''
+                        npm ci
+                        npm run build --if-present
+                        npm test --if-present
+                    '''
                 }
             }
             post {
                 success { echo 'CI passed for PR/MR' }
             }
         }
+
         // ✅ CD용 이미지 빌드: main 브랜치 push(=merge 후) 에만
         stage('Build Docker image (CD)') {
-            // ⭐️ 수정: 'frontend/develop' 브랜치에 PUSH 이벤트가 발생했을 때만 실행
             when {
                 allOf {
-                    expression { env.gitlabActionType == 'PUSH' }
-                    branch 'frontend/develop'
+                    expression { env.gitlabActionType != 'MERGE_REQUEST' } // MR이면 안 돈다
+                    expression { env.gitlabBranch == 'frontend/develop' || env.gitlabTargetBranch == 'frontend/develop' }
                 }
             }
             steps {
@@ -50,34 +59,37 @@ pipeline {
                 }
             }
         }
+
         // ✅ 배포: main 브랜치 push(=merge 후) 에만
         stage('Deploy frontend') {
-            // ⭐️ 수정: 'frontend/develop' 브랜치에 PUSH 이벤트가 발생했을 때만 실행
             when {
                 allOf {
-                    expression { env.gitlabActionType == 'PUSH' }
-                    branch 'frontend/develop'
-                }
-            }
-             steps {
-                    withCredentials([file(credentialsId: 'adplanet-frontend-env-file', variable: 'ENV_FILE')]) {
-                        sh """
-                            set -eux
-
-                            # 1. 젠킨스에 있던 .env 파일을 실제 배포 경로로 복사합니다.
-                            echo "Copying .env file to ${COMPOSE_DIR}"
-                            cp ${ENV_FILE} ${COMPOSE_DIR}/.env
-
-                            # 2. 기존 배포 스크립트를 실행합니다.
-                            cd ${COMPOSE_DIR}
-                            export COMPOSE_PROJECT_NAME=${PROJECT_NAME}
-                            docker compose -p ${PROJECT_NAME} -f base.yml -f frontend.yml up -d --remove-orphans --wait web
-                        """
+                    expression { env.gitlabActionType != 'MERGE_REQUEST' }
+                    anyOf {
+                        branch 'frontend/develop'
+                        expression { env.gitlabBranch == 'frontend/develop' }
+                        expression { env.gitlabTargetBranch == 'frontend/develop' }
                     }
                 }
-            post { success { echo 'Frontend deployed successfully 🚀' } }
+            }
+            steps {
+                withCredentials([file(credentialsId: 'adplanet-frontend-env-file', variable: 'ENV_FILE')]) {
+                    sh """
+                        set -eux
+                        echo "Copying .env file to ${COMPOSE_DIR}"
+                        cp ${ENV_FILE} ${COMPOSE_DIR}/.env
+                        cd ${COMPOSE_DIR}
+                        export COMPOSE_PROJECT_NAME=${PROJECT_NAME}
+                        docker compose -p ${PROJECT_NAME} -f base.yml -f frontend.yml up -d --remove-orphans --wait web
+                    """
+                }
+            }
+            post {
+                success { echo 'Frontend deployed successfully 🚀' }
+            }
         }
     }
+
     post {
         success {
             echo 'Frontend deployed successfully'
