@@ -24,6 +24,9 @@ public class SecurityConfig {
             // CSRF 비활성화
             .csrf(AbstractHttpConfigurer::disable)
 
+            // CORS 활성화
+            .cors(cors -> {})
+
             // 세션 사용 안함
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -33,6 +36,8 @@ public class SecurityConfig {
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                     .requestMatchers("/api/test/**").permitAll()
+                    // CORS Preflight 요청 허용
+                    .requestMatchers("OPTIONS", "/**").permitAll()
                     .anyRequest().authenticated()
             )
 
