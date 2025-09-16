@@ -24,28 +24,7 @@ pipeline {
             }
         }
         
-        stage('CI - Build & Test') {
-            steps {
-                script {
-                    updateGitlabCommitStatus name: 'ci-build-test', state: 'pending'
-                    try {
-                        dir('Frontend/AdPlanet') {
-                            sh '''
-                                npm ci
-                                npm run build --if-present
-                                npm test --if-present
-                            '''
-                        }
-                        updateGitlabCommitStatus name: 'ci-build-test', state: 'success'
-                    } catch (Exception e) {
-                        updateGitlabCommitStatus name: 'ci-build-test', state: 'failed'
-                        throw e
-                    }
-                }
-            }
-        }
-        
-        stage('Build Docker image (CD)') {
+        stage('Build Docker image') {
             when {
                 not { changeRequest() }
             }
@@ -57,7 +36,6 @@ pipeline {
                             dir('Frontend/AdPlanet') {
                                 sh '''
                                     set -eu
-                                    # .env 파일 로드
                                     set -a
                                     . "${ENV_FILE}"
                                     set +a
