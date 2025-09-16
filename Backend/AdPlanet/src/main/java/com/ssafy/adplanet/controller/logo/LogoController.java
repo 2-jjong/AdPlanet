@@ -33,10 +33,7 @@ public class LogoController {
     private final LogoService logoService;
 
     @PostMapping
-    @Operation(
-            summary = "로고 생성",
-            description = "프롬프트를 기반으로 로고를 생성합니다."
-    )
+    @Operation(summary = "로고 생성", description = "프롬프트를 기반으로 로고를 생성합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청")
@@ -45,21 +42,17 @@ public class LogoController {
             @Parameter(description = "로고 생성 요청 바디", required = true)
             @RequestBody CreateLogoRequest req
     ) {
-//        try {
-//            LogoDto dto = logoService.create(1L, req);
-//            return ResponseEntity.ok(ApiResponse.ok(dto));
-//        } catch (IllegalArgumentException e) {
-//            return ResponseEntity.badRequest().body(ApiResponse.error("LG4001", e.getMessage()));
-//        }
-        LogoDto dto = new LogoDto(1L, "image/logo_");
-        // 인위적으로 7초 기다렸다가 응답
         try {
-            TimeUnit.SECONDS.sleep(7);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            Long userId = 1L;
+            LogoDto dto = logoService.create(userId, req);
+            return ResponseEntity.ok(ResponseDto.ok(dto));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ResponseDto.error("LG4001", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ResponseDto.error("LG5001", "서버 오류"));
         }
-        return ResponseEntity.ok(ResponseDto.ok(dto));
     }
+
 
     @GetMapping
     @Operation(
