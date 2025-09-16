@@ -224,15 +224,15 @@ const WatermarkDetectionPage: React.FC = () => {
           {/* 우측 드롭존 */}
           <div
             {...dropZoneProps}
-            className="relative justify-self-end rounded-3xl border-2 border-dotted border-primary p-8 lg:p-10 w-full lg:w-[520px] h-[300px] flex flex-col items-center justify-center text-center bg-transparent"
+            className="relative justify-self-end rounded-3xl border-2 border-dotted border-primary p-8 lg:p-10 w-full lg:w-[520px] h-[520px] flex flex-col items-center justify-center text-center bg-transparent"
             onClick={() => document.getElementById('wm-image-input')?.click()}
           >
             {previewUrl ? (
               <>
-                <div className="w-full h-[200px] flex items-center justify-center overflow-hidden rounded-lg bg-white/5 border border-white/10 mb-4">
+                <div className="w-full h-[340px] flex items-center justify-center overflow-hidden rounded-lg bg-white/5 border border-white/10 mb-3">
                   <img src={previewUrl} alt="preview" className="max-h-full max-w-full object-contain" />
                 </div>
-                <p className="text-gray-300 text-sm mb-4">첨부된 이미지를 확인하세요. 클릭하면 다른 파일로 교체할 수 있어요.</p>
+                <p className="text-gray-300 text-xs mb-3">첨부된 이미지를 확인하세요. 클릭하면 다른 파일로 교체할 수 있어요.</p>
               </>
             ) : (
               <>
