@@ -23,14 +23,10 @@ public class GmsClient {
     public PalettePayload generatePaletteByImage(String brandName, String slogan, String imageUrl) {
         try {
             // 1) 멀티모달(이미지+텍스트) 요청 바디 구성
-            ObjectNode body = buildRequestBody(brandName, slogan, imageUrl, /*withImage*/ true);
+            ObjectNode body = buildRequestBody(brandName, slogan, imageUrl, true);
 
             // 2) 전송 & 파싱 시도 (이미지 포함)
             String json = sendAndParseOnce(body, "v0:image");
-            if (json == null) {
-                ObjectNode textOnly = buildRequestBody(brandName, slogan, imageUrl, /*withImage*/ false);
-                json = sendAndParseOnce(textOnly, "v0:textOnly");
-            }
             if (json == null) throw new IllegalStateException("GMS 응답 파싱 실패");
 
             // 3) DTO 매핑 + 색상 정규화(# 대문자)
@@ -95,7 +91,6 @@ public class GmsClient {
         var http = HttpClient.newBuilder().connectTimeout(timeout).build();
         var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
-        log.info("[GMS/responses:{}] status={} len={}", tag, resp.statusCode(), resp.body() == null ? 0 : resp.body().length());
         if (resp.statusCode() / 100 != 2) {
             log.warn("[GMS/responses:{}] body={}", tag, resp.body());
             return null;
@@ -103,11 +98,10 @@ public class GmsClient {
 
         JsonNode root = om.readTree(resp.body());
 
-        // a) output_text (가장 단순)
         String out = root.path("output_text").asText(null);
         if (out != null && !out.isBlank()) return out;
 
-        // b) output[].content[] 스캔: text / json / parsed 모두 대응
+        // b) output[].content[] 스캔: text / json / parsed 모두 대응s
         JsonNode output = root.path("output");
         if (output.isArray()) {
             for (JsonNode msg : output) {

@@ -4,8 +4,11 @@ import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.ci.CiGuidelineResponse;
 import com.ssafy.adplanet.dto.logo.*;
 import com.ssafy.adplanet.enums.LogoListOrder;
+import com.ssafy.adplanet.enums.LogoStyle;
 import com.ssafy.adplanet.service.ci.CiGuidelineServiceImpl;
 import com.ssafy.adplanet.service.logo.LogoService;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
@@ -42,13 +45,21 @@ public class LogoController {
             @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
     public ResponseEntity<ResponseDto<LogoDto>> createLogo(
+            @Parameter(
+                    in = ParameterIn.QUERY,
+                    name = "sytle",
+                    description = "로고 스타일 (SIMPLE | MONO). 미지정 시 SIMPLE",
+                    schema = @Schema(implementation = LogoStyle.class, allowableValues = {"SIMPLE","MONO"})
+            )
+            @RequestParam(name = "sytle", required = false, defaultValue = "SIMPLE") LogoStyle style,
             @Parameter(description = "로고 생성 요청 바디", required = true)
             @RequestBody CreateLogoRequest req,
+
             Authentication auth
     ) {
         try {
             Long userId = (Long) auth.getPrincipal();
-            LogoDto dto = logoService.create(userId, req);
+            LogoDto dto = logoService.create(userId, req, style);
             return ResponseEntity.ok(ResponseDto.ok(dto));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ResponseDto.error("LG4001", e.getMessage()));

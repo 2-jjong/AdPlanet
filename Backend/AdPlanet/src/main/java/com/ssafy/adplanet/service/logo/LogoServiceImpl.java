@@ -37,11 +37,10 @@ public class LogoServiceImpl implements LogoService {
 
     @Override
     @Transactional
-    public LogoDto create(Long userId, CreateLogoRequest req) {
+    public LogoDto create(Long userId, CreateLogoRequest req, LogoStyle style) {
         if (userId == null) throw new IllegalArgumentException("userId는 필수입니다.");
         if (req.title() == null || req.title().isBlank()) throw new IllegalArgumentException("title은 필수입니다.");
         if (req.prompt() == null || req.prompt().isBlank()) throw new IllegalArgumentException("prompt는 필수입니다.");
-        if (req.style() == null) throw new IllegalArgumentException("style은 필수입니다.");
 
         String slogan = (req.content() == null) ? "" : req.content().trim();
 
@@ -50,7 +49,7 @@ public class LogoServiceImpl implements LogoService {
                 .name(req.title())
                 .slogan(slogan)
                 .prompt(req.prompt())
-                .style(req.style())
+                .style(style)
                 .imgUrl("s3:pending")
                 .build();
         logoRepository.saveAndFlush(logo);
