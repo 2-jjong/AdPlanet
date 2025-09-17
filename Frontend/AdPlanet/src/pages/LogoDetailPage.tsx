@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import { LogoCard } from "../components/LogoCard";
 import CiGuideline from "../components/CiGuideline";
+import CiGuidelineUnavailable from "../components/CiGuideline_unavailable";
 import { RoundButton } from "../components/RoundButton";
 
 import { getLogoDetail, getCiGuideline } from "../services/logoService";
@@ -12,6 +13,10 @@ import type { LogoDetail as DetailDomain, CiGuideline as CiDomain } from "../typ
 'use client';
 import { FullpageContainer, FullpageSection } from '@shinyongjun/react-fullpage';
 import '@shinyongjun/react-fullpage/css'
+
+// CI 가이드라인이 없을 때의 대체 컴포넌트 내 버튼 라우팅
+import { useNavigate } from "react-router-dom";
+import { PATHS } from "../constants/paths";
 
 // ──────────────────────────────────────────────────────────────────────
 // CiGuideline 컴포넌트가 기대하던 더미 타입(필수 필드) 맞춰주는 어댑터
@@ -56,6 +61,21 @@ export default function LogoDetailPage() {
 
   // Fullpage 관련 상태
   const [activeIndex, setActiveIndex] = useState<number>(0);
+  const hasCi = useMemo(() => {
+    if (!ci) return false;
+    const hasRules = (ci.logoGuideLines?.length ?? 0) > 0;
+    const p = ci.palette;
+    const hasPalette =
+      !!p?.primary?.hex || !!p?.secondary?.hex || !!p?.neutral?.hex;
+    return hasRules || hasPalette;
+  }, [ci]);
+
+  // CI 가이드라인이 없는 경우 생성하기 버튼
+  const navigate = useNavigate();
+
+  const handleCreateGuideline = () => {
+    navigate(PATHS.POSTER);
+  };
 
   // 데이터 로드
   useEffect(() => {
@@ -186,9 +206,13 @@ return (
             <RoundButton text="편집" />
           </div>
 
-          {/* CiGuideline 내부에서 좌/우 컬럼까지 렌더 */}
-          <CiGuideline data={ciForComponent} />
-
+          {/* 데이터 유무에 따른 분기 */}
+          {hasCi ? (
+            <CiGuideline data={ciForComponent} />
+          ) : (
+            <CiGuidelineUnavailable onCreate={handleCreateGuideline} />
+          )}
+          <CiGuidelineUnavailable />
           <div className="mt-6 flex justify-end">
             <RoundButton text="Export" className="bg-primary"/>
           </div>
