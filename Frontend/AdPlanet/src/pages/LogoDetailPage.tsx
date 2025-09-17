@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import { LogoCard } from "../components/LogoCard";
 import CiGuideline from "../components/CiGuideline";
+import { RoundButton } from "../components/RoundButton";
 
 import { getLogoDetail, getCiGuideline } from "../services/logoService";
 import type { LogoDetail as DetailDomain, CiGuideline as CiDomain } from "../types/logo";
@@ -135,16 +136,16 @@ return (
 
       {/* SECTION 1 — 로고 상세 */}
       <FullpageSection className="!p-0 !items-start !justify-start">
-        <div className="mx-auto w-full max-w-7xl px-6 py-8">
+        <div className="font-jamsil mx-auto w-full max-w-7xl px-6 py-8">
           {/* 헤더 */}
           <header className="mb-8 flex items-center justify-between">
             <h1 className="text-3xl font-extrabold tracking-tight">
               <span className="text-[#87DEDA]">{detail.name}</span>
               <span className="ml-1">의 로고</span>
             </h1>
-            <Link to="/archive/logo" className="rounded-xl px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700">
+            {/* <Link to="/archive/logo" className="rounded-xl px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700">
               뒤로
-            </Link>
+            </Link> */}
           </header>
 
           {/* 본문 2열 */}
@@ -179,24 +180,17 @@ return (
 
       {/* SECTION 2 — CI 가이드라인 */}
       <FullpageSection className="!p-0 !items-start !justify-start">
-        <div className="mx-auto w-full max-w-7xl px-6 py-8">
+        <div className="font-jamsil mx-auto w-full max-w-7xl px-6 py-8">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-3xl font-extrabold tracking-tight">CI 가이드라인</h2>
-            <button
-              type="button"
-              className="rounded-full bg-[#87DEDA] text-slate-900 px-3 py-2 text-sm font-semibold hover:brightness-105"
-            >
-              편집
-            </button>
+            <RoundButton text="편집" />
           </div>
 
           {/* CiGuideline 내부에서 좌/우 컬럼까지 렌더 */}
           <CiGuideline data={ciForComponent} />
 
           <div className="mt-6 flex justify-end">
-            <button className="rounded-full bg-[#87DEDA] text-slate-900 px-6 py-2 font-semibold hover:brightness-105">
-              Export
-            </button>
+            <RoundButton text="Export" className="bg-primary"/>
           </div>
         </div>
       </FullpageSection>

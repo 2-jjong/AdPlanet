@@ -62,7 +62,7 @@ const ColorSpecCard: React.FC<{ title: string; color?: ColorSpec }> = ({ title, 
   );
 };
 
-/** 피그마 캡처 레이아웃을 한 컴포넌트에서 완성 */
+// 메인 컴포넌트
 export default function CiGuideline({ data }: Props) {
   const p = data.palette.primary?.[0];
   const s = data.palette.secondary?.[0];
