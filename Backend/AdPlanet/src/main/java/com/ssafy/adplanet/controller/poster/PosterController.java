@@ -2,6 +2,7 @@ package com.ssafy.adplanet.controller.poster;
 
 import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
+import com.ssafy.adplanet.dto.poster.request.PosterTagRequest;
 import com.ssafy.adplanet.dto.poster.response.*;
 import com.ssafy.adplanet.enums.JobStatus;
 import com.ssafy.adplanet.enums.PosterDownloadFormat;
@@ -227,7 +228,6 @@ public class PosterController {
         for (long i = 1; i <= 15; i++) {
             PosterResponse poster = new PosterResponse(
                     i,
-                    groupId,
                     "https://dummyimage.com/600x400/000/fff&text=Poster+" + i,
                     "시들시들한, 연두색 배추 이미지"
             );
@@ -266,5 +266,18 @@ public class PosterController {
         }
 
         return ResponseEntity.ok(ResponseDto.ok(response));
+    }
+
+    @PostMapping("/tags")
+    @Operation(summary = "포스터 태그 지정", description = "포스터 그룹에 대한 태그를 지정합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<Void>> createPosterTag(
+            @Parameter(description = "포스터 태그 지정", required = true)
+            @RequestBody PosterTagRequest request
+    ) {
+        return ResponseEntity.ok(ResponseDto.ok());
     }
 }

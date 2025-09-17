@@ -24,6 +24,10 @@ public record PosterResponse (
         this(posterId, null, imgUrl, null);
     }
 
+    public PosterResponse(Long posterId, String imgUrl, String prompt) {
+        this(posterId, null, imgUrl, prompt);
+    }
+
     public PosterResponse(Long posterId, Long groupId, String imgUrl) {
         this(posterId, groupId, imgUrl, null);
     }

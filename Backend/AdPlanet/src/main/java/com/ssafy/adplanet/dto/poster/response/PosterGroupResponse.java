@@ -27,7 +27,6 @@ public record PosterGroupResponse(
     @Schema(description = "내용", example = "포기는 배추 셀 때나 하는 말")
     String content,
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
     @Schema(description = "생성 일시", example = "2025-09-13T10:00:00Z")
     LocalDateTime createdAt,
 
@@ -35,14 +34,6 @@ public record PosterGroupResponse(
     @Schema(description = "생성한 포스터 목록")
     List<PosterResponse> history
 ){
-    public PosterGroupResponse(String imgUrl, String prompt, List<PosterResponse> history) {
-        this(null, imgUrl, prompt, null, null, null, history);
-    }
-
-    public PosterGroupResponse(Long posterGroupId, String imgUrl, LocalDateTime createdAt) {
-        this(posterGroupId, imgUrl, null, null, null, createdAt, null);
-    }
-
     public PosterGroupResponse(Long posterGroupId, String imgUrl, String title, String content, LocalDateTime createdAt) {
         this(posterGroupId, imgUrl, null, title, content, createdAt, null);
     }
