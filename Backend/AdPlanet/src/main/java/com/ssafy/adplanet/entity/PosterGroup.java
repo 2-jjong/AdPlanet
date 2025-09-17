@@ -16,9 +16,11 @@ public class PosterGroup {
     @Column(name = "id")
     private Long id;
 
-    private Long userId;
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @OneToOne
     @JoinColumn(name = "poster_id")
-    private Poster posterId;
+    private Poster poster;
 }
