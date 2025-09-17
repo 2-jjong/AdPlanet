@@ -1,169 +1,125 @@
-// LogoDetailPage.tsx에서 CiGuideline 컴포넌트를 불러올 때, props로 data를 전달하도록
-export type ColorSpec = {
-  name: string;
-  hex: string;
-  rgb?: string;
-  cmyk?: string;
-  note?: string;
-};
+import React from "react";
 
+/** LogoDetailPage에서 어댑트해서 넘겨주는 타입과 맞춤 */
+export type ColorSpec = { name: string; hex: string; rgb?: string; cmyk?: string; note?: string };
 export type CiGuidelineData = {
   basicRules: string[];
   minSize: { widthMm: number; dpiPx: number };
   marginRules: string[];
   backgroundRules: string[];
-  palette: {
-    primary: ColorSpec[];
-    secondary: ColorSpec[];
-    neutral: ColorSpec[];
-  };
+  palette: { primary: ColorSpec[]; secondary: ColorSpec[]; neutral: ColorSpec[] };
 };
 
-// ✅ 기본 더미 데이터 (필요시 여기만 바꿔서 빠르게 프토토타입 가능)
-const DEFAULT_CI: CiGuidelineData = {
-  basicRules: [
-    "기본 로고는 워드마크와 심볼을 함께 사용합니다.",
-    "축소/확대 시 가독성 유지에 유의합니다."
-  ],
-  minSize: { widthMm: 20, dpiPx: 80 },
-  marginRules: ["로고 주변에는 로고 높이의 1/2 이상 여백을 확보합니다."],
-  backgroundRules: [
-    "밝은 배경 또는 중립 컬러 배경에서 사용을 권장합니다.",
-    "사진/컬러 배경 위에서는 흰 단색 로고 사용을 권장합니다."
-  ],
-  palette: {
-    primary: [{ name: "Primary Green", hex: "#30BF86", rgb: "48,191,134" }],
-    secondary: [{ name: "Secondary Blue", hex: "#3A84C8", rgb: "58,132,200" }],
-    neutral: [
-      { name: "Black", hex: "#000000" },
-      { name: "White", hex: "#FFFFFF" },
-      { name: "Gray", hex: "#CCCCCC" }
-    ]
-  }
-};
+type Props = { data: CiGuidelineData };
 
-type CiGuidelineProps = {
-  data?: CiGuidelineData;     // 없으면 DEFAULT_CI 사용
-  title?: string;              // 섹션 제목 커스텀
-  className?: string;          // 외부에서 래퍼 스타일 추가
-};
+const Box: React.FC<{ title: string; children?: React.ReactNode }> = ({ title, children }) => (
+  <div className="rounded-xl border border-slate-700/80 bg-slate-800/40 p-4">
+    <h4 className="text-[#87DEDA] font-semibold mb-2">{title}</h4>
+    {children}
+  </div>
+);
 
-function RuleList({ title, items }: { title: string; items?: string[] }) {
-  if (!items || items.length === 0) return null;
-  return (
-    <div className="rounded-xl bg-slate-950/40 p-4 border border-slate-800">
-      <h3 className="font-semibold mb-2">{title}</h3>
-      <ul className="list-disc list-inside text-sm text-slate-300 space-y-1">
-        {items.map((r, i) => (
-          <li key={`${title}-${i}`}>{r}</li>
-        ))}
-      </ul>
-    </div>
-  );
+const Bullets: React.FC<{ items?: string[] }> = ({ items }) => (
+  <ul className="space-y-1">
+    {(items ?? []).map((s, i) => (
+      <li key={i} className="text-slate-200 leading-relaxed">
+        • {s}
+      </li>
+    ))}
+  </ul>
+);
+
+const Swatch: React.FC<{ hex: string; label?: string }> = ({ hex, label }) => (
+  <div className="flex-1">
+    <div className="h-16 rounded-md border border-slate-700/80" style={{ background: hex }} />
+    <div className="mt-2 text-xs tracking-wider opacity-80">{label ?? hex.replace(/^#/, "").toUpperCase()}</div>
+  </div>
+);
+
+function hexToRgb(hex?: string): string | undefined {
+  if (!hex) return;
+  const m = hex.replace("#", "");
+  if (m.length !== 6) return;
+  const r = parseInt(m.slice(0, 2), 16);
+  const g = parseInt(m.slice(2, 4), 16);
+  const b = parseInt(m.slice(4, 6), 16);
+  return `${r}, ${g}, ${b}`;
 }
 
-function Swatch({ c }: { c: ColorSpec }) {
-  const onCopy = async (text: string) => {
-    try {
-      await navigator.clipboard?.writeText(text);
-      // Optional: 토스트 시스템 있다면 여기서 호출
-    } catch {
-      // fallback: 아무것도 안 함
-    }
-  };
-
+const ColorSpecCard: React.FC<{ title: string; color?: ColorSpec }> = ({ title, color }) => {
+  if (!color) return null;
+  const rgb = color.rgb ?? hexToRgb(color.hex);
   return (
-    <div className="flex gap-3 items-center p-3 rounded-xl bg-slate-900/50 border border-slate-800">
-      <div
-        className="w-10 h-10 rounded-md border border-slate-700 shrink-0"
-        style={{ background: c.hex }}
-        title={c.hex}
-      />
-      <div className="text-sm min-w-0 flex-1">
-        <div className="font-medium truncate">{c.name}</div>
-        <div className="text-slate-400 truncate">
-          Hex {c.hex}
-          {c.rgb ? ` · RGB ${c.rgb}` : ""}
-          {c.cmyk ? ` · CMYK ${c.cmyk}` : ""}
-        </div>
-        {c.note && <div className="text-slate-500">{c.note}</div>}
-      </div>
-      <button
-        type="button"
-        onClick={() => onCopy(c.hex)}
-        className="text-xs px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700"
-        aria-label={`${c.name} 색상 코드 복사`}
-        title="Hex 복사"
-      >
-        Copy
-      </button>
-    </div>
-  );
-}
-
-function PaletteColumn({
-  label,
-  colors
-}: {
-  label: string;
-  colors?: ColorSpec[];
-}) {
-  if (!colors || colors.length === 0) return null;
-  return (
-    <div>
-      <div className="text-sm text-slate-400 mb-2">{label}</div>
-      <div className="space-y-2">
-        {colors.map((c, i) => (
-          <Swatch key={`${label}-${i}-${c.hex}`} c={c} />
-        ))}
+    <div className="rounded-xl border border-slate-700/80 bg-slate-800/40 p-4 h-full">
+      <h5 className="font-semibold mb-2">{title}</h5>
+      <div className="text-sm space-y-1">
+        <div><span className="opacity-80">Hex</span><br/>• {color.hex}</div>
+        {rgb && <div><span className="opacity-80">RGB</span><br/>• ({rgb})</div>}
+        {color.cmyk && <div><span className="opacity-80">CMYK</span><br/>• {color.cmyk}</div>}
+        {color.note && <div className="mt-2"><span className="opacity-80">주 사용처</span><br/>• {color.note}</div>}
       </div>
     </div>
   );
-}
+};
 
-export default function CiGuideline({
-  data,
-  title = "CI 가이드라인",
-  className = ""
-}: CiGuidelineProps) {
-  const d = data ?? DEFAULT_CI;
+/** 피그마 캡처 레이아웃을 한 컴포넌트에서 완성 */
+export default function CiGuideline({ data }: Props) {
+  const p = data.palette.primary?.[0];
+  const s = data.palette.secondary?.[0];
+  const n = data.palette.neutral?.[0];
 
   return (
-    <section
-      className={
-        "rounded-2xl bg-slate-900/60 border border-slate-800 p-5 " + className
-      }
-    >
-      <h2 className="text-lg font-semibold mb-4">{title}</h2>
+    <div className="grid grid-cols-12 gap-6">
+      {/* 좌측: 로고 규정 */}
+      <div className="col-span-12 xl:col-span-7">
+        <div className="rounded-2xl border border-slate-700/80 bg-slate-900/40 p-4 md:p-5">
+          <h3 className="text-xl font-bold mb-4">로고 규정</h3>
 
-      {/* 규정 섹션 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <RuleList title="기본 로고" items={d.basicRules} />
+          {/* 2열 카드 배열 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 왼쪽 세트 */}
+            <Box title="기본 로고">
+              <Bullets items={data.basicRules} />
+            </Box>
 
-        {/* 최소 사이즈 */}
-        <div className="rounded-xl bg-slate-950/40 p-4 border border-slate-800">
-          <h3 className="font-semibold mb-2">최소 사이즈</h3>
-          <p className="text-sm text-slate-300">
-            인쇄물: 최소 {d.minSize?.widthMm ?? "-"}mm
-          </p>
-          <p className="text-sm text-slate-300">
-            디지털: 최소 {d.minSize?.dpiPx ?? "-"}px
-          </p>
-        </div>
+            <Box title="여백 규정">
+              <Bullets items={data.marginRules} />
+            </Box>
 
-        <RuleList title="여백 규정" items={d.marginRules} />
-        <RuleList title="배경 규정" items={d.backgroundRules} />
-      </div>
+            <Box title="최소 사이즈">
+              <ul className="space-y-1">
+                <li>• 인쇄용: 가로 {Math.max(0, data.minSize.widthMm)}mm 이상</li>
+                <li>• 디지털용: 가로 {Math.max(0, data.minSize.dpiPx)}px 이상</li>
+              </ul>
+            </Box>
 
-      {/* 색상 규정 */}
-      <div className="space-y-4">
-        <h3 className="font-semibold">색상 규정</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <PaletteColumn label="Primary" colors={d.palette?.primary} />
-          <PaletteColumn label="Secondary" colors={d.palette?.secondary} />
-          <PaletteColumn label="Neutral" colors={d.palette?.neutral} />
+            <Box title="배경 규정">
+              <Bullets items={data.backgroundRules} />
+            </Box>
+          </div>
         </div>
       </div>
-    </section>
+
+      {/* 우측: 색상 규정 */}
+      <div className="col-span-12 xl:col-span-5">
+        <div className="rounded-2xl border border-slate-700/80 bg-slate-900/40 p-4 md:p-5 h-full">
+          <h3 className="text-xl font-bold mb-4">색상 규정</h3>
+
+          {/* 스와치 줄 */}
+          <div className="flex items-center gap-4 mb-5">
+            {p && <Swatch hex={p.hex} label={p.hex.replace("#", "").toUpperCase()} />}
+            {s && <Swatch hex={s.hex} label={s.hex.replace("#", "").toUpperCase()} />}
+            {n && <Swatch hex={n.hex} label={n.hex.replace("#", "").toUpperCase()} />}
+          </div>
+
+          {/* 3컬럼 스펙 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <ColorSpecCard title="Primary"   color={p} />
+            <ColorSpecCard title="Secondary" color={s} />
+            <ColorSpecCard title="Neutral"   color={n} />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

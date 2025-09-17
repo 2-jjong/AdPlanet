@@ -11,8 +11,9 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "clsx": "^2.1.1",
+    "@shinyongjun/react-fullpage": "^1.10.1",
     "axios": "^1.12.2",
+    "clsx": "^2.1.1",
     "install": "^0.13.0",
     "npm": "^11.6.0",
     "react": "^19.1.1",

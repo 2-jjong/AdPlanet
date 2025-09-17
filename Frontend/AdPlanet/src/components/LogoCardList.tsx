@@ -62,6 +62,10 @@ export default function LogoCardList() {
     return () => { alive = false; };
   }, [order, tagId]);
 
+  // ----------------------------------------------------------
+  // 카드 스택 및 전환
+  // ----------------------------------------------------------
+
   // 스택/전환 상태
   const [active, setActive] = useState(0);
   const [ghost, setGhost] = useState<LogoCardType | null>(null);
@@ -86,6 +90,7 @@ export default function LogoCardList() {
     return out;
   }, [active, items]);
 
+  // 슬라이드 전환 시작 핸들러
   const handleSlideChangeStart = (newIndex: number) => {
     const leaving = items[active];
     if (leaving) {
@@ -96,6 +101,7 @@ export default function LogoCardList() {
     setActive(newIndex);
   };
 
+  // 고스트 애니메이션 종료 핸들러
   const onGhostEnd = () => {
     if (ghostLeaving) {
       setGhost(null);
@@ -103,6 +109,7 @@ export default function LogoCardList() {
     }
   };
 
+  // 애니메이션 스타일 
   const ghostStyle: React.CSSProperties = {
     position: "absolute",
     left: "50%",
@@ -115,6 +122,7 @@ export default function LogoCardList() {
     pointerEvents: "none",
   };
 
+  // 각 레이어 스타일 (0이 최상단)
   const layerStyle = (layer: number): React.CSSProperties => ({
     position: "absolute",
     left: "50%",
@@ -126,6 +134,7 @@ export default function LogoCardList() {
     transition: "transform 280ms ease, opacity 280ms ease",
     pointerEvents: "none",
   });
+  // ----------------------------------------------------------
 
   // 상태 오버레이
   const Overlay = () => {
@@ -155,20 +164,8 @@ export default function LogoCardList() {
     navigate(`/archive/logo/${it.id}`);
   };
 
-  // 🔧 필터 바: URLSearchParams는 새 인스턴스로 갱신하는 게 안전
-  const setOrder = (v: LogoListOrder) => {
-    const next = new URLSearchParams(sp);
-    next.set("order", v);
-    next.set("tagId", String(tagId)); // 유지
-    setSp(next, { replace: true });
-  };
-  const setTag = (v: number) => {
-    const next = new URLSearchParams(sp);
-    next.set("order", order);         // 유지
-    next.set("tagId", String(v));
-    setSp(next, { replace: true });
-  };
 
+  // 렌더링 ----------------------------------------
   return (
     <div className="space-y-4">
       <div className="relative overflow-visible" style={{ width: WRAP_W, height: WRAP_H }}>

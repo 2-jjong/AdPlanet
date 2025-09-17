@@ -5,6 +5,8 @@ import type { ApiResponse } from "../../types/api";
 export interface LogoListItemDto {
   logoId: number; name: string; slogan: string; imgUrl: string;
 }
+
+// 목록 조회 쿼리 (최신순, 오래된순, 태그ID)
 export interface LogoListQueryDto { order?: "LATEST" | "OLDEST"; tagId?: number; }
 
 // 상세
@@ -14,21 +16,25 @@ export interface LogoDetailDto {
 
 // CI 가이드라인
 export interface CiGuidelineDto {
-  logoGuide?: string;      // markdown 텍스트
-  primaryColor?: string;   // "3D9FD8" (샾 없음)
-  secondaryColor?: string; // "46A9DB"
-  neutralColor?: string;   // "87DEDA"
-  primaryGuide?: string;   // 상세 텍스트
+  logoGuide?: string;      
+  primaryColor?: string;   
+  secondaryColor?: string; 
+  neutralColor?: string;   
+  primaryGuide?: string;   
   secondaryGuide?: string;
   neutralGuide?: string;
 }
 
 // 태그 목록
-export interface LogoTagDto { tagId: number; tagName: string; }
+export interface LogoTagDto {
+  tagId: number; 
+  tagName: string;
+}
 
 const ok = (code?: string) => code === "S0000";
 const ensureHex = (s?: string) => (s ? (s.startsWith("#") ? s : `#${s}`) : undefined);
 
+// 절대 URL로 변환 (이미 절대면 그대로, 빈값이면 빈값, 상대면 baseURL 기준으로 절대)
 export const toAbsolute = (p: string) => {
   if (!p || /^https?:\/\//i.test(p)) return p;
   const base = (apiClient as any)?.defaults?.baseURL || "";

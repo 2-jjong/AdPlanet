@@ -13,7 +13,7 @@ const MyPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background items-center justify-center">
       {/* 헤더 */}
-      <Navigation />
+      <Navigation />      
 
       {/* 메인 컨텐츠 */}
       <main className="font-jamsil relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] lg:px-12 text-center">

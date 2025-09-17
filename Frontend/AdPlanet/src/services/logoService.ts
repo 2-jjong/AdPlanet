@@ -29,8 +29,6 @@ export async function getLogoList(params: LogoListQuery): Promise<LogoCard[]> {
   return list.map(toLogoCard);
 }
 
-
-
 // 상세 매핑
 export async function getLogoDetail(logoId: number): Promise<LogoDetail> {
   const d = await fetchLogoDetailDto(logoId);

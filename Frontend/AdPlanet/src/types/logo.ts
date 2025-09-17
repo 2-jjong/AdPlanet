@@ -11,7 +11,7 @@ export interface LogoTag {
 }
 
 export interface CiGuideline {
-  logoGuideLines?: string[]; // markdown bullet를 라인 배열로 변환한 값
+  logoGuideLines?: string[]; 
   palette: {
     primary?: { name: string; hex: string; guide?: string };
     secondary?: { name: string; hex: string; guide?: string };
@@ -21,8 +21,8 @@ export interface CiGuideline {
 
 export interface LogoDetail extends LogoCard {
   prompt?: string;
-  tags?: LogoTag[];       // 필요 시 상세에서 사용
-  ci?: CiGuideline;       // 필요 시 상세에서 사용
+  tags?: LogoTag[];       
+  ci?: CiGuideline;       
 }
 
 export type LogoListOrder = "LATEST" | "OLDEST";

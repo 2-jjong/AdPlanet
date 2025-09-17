@@ -7,6 +7,11 @@ import CiGuideline from "../components/CiGuideline";
 import { getLogoDetail, getCiGuideline } from "../services/logoService";
 import type { LogoDetail as DetailDomain, CiGuideline as CiDomain } from "../types/logo";
 
+// React Fullpage 라이브러리
+'use client';
+import { FullpageContainer, FullpageSection } from '@shinyongjun/react-fullpage';
+import '@shinyongjun/react-fullpage/css'
+
 // ──────────────────────────────────────────────────────────────────────
 // CiGuideline 컴포넌트가 기대하던 더미 타입(필수 필드) 맞춰주는 어댑터
 type ColorSpec = { name: string; hex: string; rgb?: string; cmyk?: string; note?: string };
@@ -47,6 +52,9 @@ export default function LogoDetailPage() {
   const [ci, setCi] = useState<CiDomain | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Fullpage 관련 상태
+  const [activeIndex, setActiveIndex] = useState<number>(0);
 
   // 데이터 로드
   useEffect(() => {
@@ -118,44 +126,83 @@ export default function LogoDetailPage() {
 
   const ciForComponent = adaptCiGuideline(ci);
 
-  return (
-    <div className="min-h-screen bg-[#12141f] text-slate-200">
-      <Navigation />
-      <main className="px-6 pt-6 pb-24 max-w-7xl mx-auto">
-        <header className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold">{detail.name}의 로고</h1>
-          <Link to="/archive/logo" className="rounded-xl px-3 py-2 bg-slate-800 hover:bg-slate-700">뒤로</Link>
-        </header>
+return (
+  <div className="min-h-screen bg-[#12141f] text-slate-200">
+    <Navigation />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* 좌측: 썸네일 + 슬로건/프롬프트 */}
-          <section className="space-y-6">
-            <LogoCard imgUrl={detail.imageUrl} title={detail.name} />
-            {(detail.slogan || detail.prompt) && (
-              <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-5">
-                {detail.slogan && (
-                  <>
-                    <h2 className="text-lg font-semibold mb-2">슬로건</h2>
-                    <p>{detail.slogan}</p>
-                    <div className="my-4 h-px bg-slate-800" />
-                  </>
-                )}
-                {detail.prompt && (
-                  <>
-                    <h2 className="text-lg font-semibold mb-2">프롬프트</h2>
-                    <p className="whitespace-pre-wrap">{detail.prompt}</p>
-                  </>
-                )}
+    {/* Fullpage는 뷰포트 전체를 쓰므로, 섹션 안에서 컨테이너를 별도로 둔다 */}
+    <FullpageContainer activeIndex={activeIndex} setActiveIndex={setActiveIndex}>
+
+      {/* SECTION 1 — 로고 상세 */}
+      <FullpageSection className="!p-0 !items-start !justify-start">
+        <div className="mx-auto w-full max-w-7xl px-6 py-8">
+          {/* 헤더 */}
+          <header className="mb-8 flex items-center justify-between">
+            <h1 className="text-3xl font-extrabold tracking-tight">
+              <span className="text-[#87DEDA]">{detail.name}</span>
+              <span className="ml-1">의 로고</span>
+            </h1>
+            <Link to="/archive/logo" className="rounded-xl px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700">
+              뒤로
+            </Link>
+          </header>
+
+          {/* 본문 2열 */}
+          <div className="grid grid-cols-12 gap-10 items-start">
+            {/* 좌: 로고 큰 카드 */}
+            <section className="col-span-12 lg:col-span-6">
+              <div className="rounded-[36px] bg-slate-900/40 border border-slate-800 p-6">
+                <div className="aspect-square w-full overflow-hidden rounded-[28px] bg-slate-950">
+                  <LogoCard imgUrl={detail.imageUrl} title={detail.name} isActive />
+                </div>
               </div>
-            )}
-          </section>
+            </section>
 
-          {/* 우측: CI 가이드라인 */}
-          <section>
-            <CiGuideline data={ciForComponent} />
-          </section>
+            {/* 우: 슬로건 / 프롬프트 */}
+            <section className="col-span-12 lg:col-span-6 space-y-8">
+              {detail.slogan && (
+                <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
+                  <h2 className="text-xl font-bold text-[#87DEDA]">슬로건(선택사항)</h2>
+                  <p className="mt-3 text-lg leading-relaxed">{detail.slogan}</p>
+                </div>
+              )}
+              {detail.prompt && (
+                <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
+                  <h2 className="text-xl font-bold text-[#87DEDA]">프롬프트</h2>
+                  <p className="mt-3 whitespace-pre-wrap leading-relaxed">{detail.prompt}</p>
+                </div>
+              )}
+            </section>
+          </div>
         </div>
-      </main>
-    </div>
-  );
+      </FullpageSection>
+
+      {/* SECTION 2 — CI 가이드라인 */}
+      <FullpageSection className="!p-0 !items-start !justify-start">
+        <div className="mx-auto w-full max-w-7xl px-6 py-8">
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="text-3xl font-extrabold tracking-tight">CI 가이드라인</h2>
+            <button
+              type="button"
+              className="rounded-full bg-[#87DEDA] text-slate-900 px-3 py-2 text-sm font-semibold hover:brightness-105"
+            >
+              편집
+            </button>
+          </div>
+
+          {/* CiGuideline 내부에서 좌/우 컬럼까지 렌더 */}
+          <CiGuideline data={ciForComponent} />
+
+          <div className="mt-6 flex justify-end">
+            <button className="rounded-full bg-[#87DEDA] text-slate-900 px-6 py-2 font-semibold hover:brightness-105">
+              Export
+            </button>
+          </div>
+        </div>
+      </FullpageSection>
+
+    </FullpageContainer>
+  </div>
+);
+
 }
