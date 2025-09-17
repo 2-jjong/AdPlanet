@@ -38,6 +38,15 @@ public class SSHTunnelConfigJSch {
     @Value("${db.port}")
     private int localPort;
 
+    @Value("${redis.host}")
+    private String redisHost;
+
+    @Value("${redis.port}")
+    private int redisPort;
+
+    @Value("${redis.local-port}")
+    private int redisLocalPort;
+
     private Session session;
 
     @Bean
@@ -93,9 +102,13 @@ public class SSHTunnelConfigJSch {
             if (session.isConnected()) {
                 log.info("SSH 세션 연결 성공");
                 
-                int assignedPort = session.setPortForwardingL(localPort, rdsHost, rdsPort);
-                
-                log.info("SSH 터널 설정 완료");
+                int assignedDbPort = session.setPortForwardingL(localPort, rdsHost, rdsPort);
+                log.info("DB SSH 터널 설정 완료: 로컬 포트 {} -> {}:{}", localPort, rdsHost, rdsPort);
+
+                int assignedRedisPort = session.setPortForwardingL(redisLocalPort, redisHost, redisPort);
+                log.info("Redis SSH 터널 설정 완료: 로컬 포트 {} -> {}:{}", redisLocalPort, redisHost, redisPort);
+
+                log.info("모든 SSH 터널 설정 완료");
             } else {
                 throw new RuntimeException("SSH 세션 연결 실패");
             }
