@@ -1,3 +1,4 @@
+// com/ssafy/adplanet/service/ci/CiGuidelineServiceImpl.java
 package com.ssafy.adplanet.service.ci;
 
 import com.ssafy.adplanet.dto.ci.CiGuidelineDefaults;
@@ -6,14 +7,12 @@ import com.ssafy.adplanet.dto.ci.CiGuidelineResponse;
 import com.ssafy.adplanet.entity.CiGuideline;
 import com.ssafy.adplanet.entity.Logo;
 import com.ssafy.adplanet.external.GmsClient;
-import com.ssafy.adplanet.repository.LogoRepository;
 import com.ssafy.adplanet.repository.CiGuidelineRepository;
+import com.ssafy.adplanet.repository.LogoRepository;
+import com.ssafy.adplanet.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -25,9 +24,8 @@ public class CiGuidelineServiceImpl implements CiGuidelineService {
 
     private final CiGuidelineRepository ciRepo;
     private final LogoRepository logoRepo;
-    private final S3Presigner presigner;
+    private final S3Service s3Service;
     private final GmsClient gms;
-
 
     @Transactional
     public CiGuidelineResponse createWithImageAi(Long logoId) {
@@ -37,16 +35,15 @@ public class CiGuidelineServiceImpl implements CiGuidelineService {
             throw new IllegalStateException("이미 CI 가이드라인이 존재합니다.");
         }
 
-        // 1) 로고 이미지 S3 프리사인 URL
-        var s3 = parseS3(logo.getImgUrl()); // s3://bucket/key
-        String imageUrl = presignGetUrl(s3.bucket, s3.key, Duration.ofMinutes(10));
+        // 1) 로고 이미지 프리사인 URL 발급 (s3://bucket/key → HTTP URL)
+        String imageUrl = s3Service.presignFromUri(logo.getImgUrl(), Duration.ofMinutes(10));
 
         // 2) GMS 호출(팔레트만)
         GmsClient.PalettePayload p;
         try {
             p = gms.generatePaletteByImage(logo.getName(), logo.getSlogan(), imageUrl);
         } catch (Exception e) {
-            // 실패 시 컬러도 기본값으로 폴백
+            // 실패 시 기본값 폴백
             p = new GmsClient.PalettePayload();
             p.setPrimaryColor(CiGuidelineDefaults.PRIMARY_COLOR);
             p.setSecondaryColor(CiGuidelineDefaults.SECONDARY_COLOR);
@@ -56,7 +53,7 @@ public class CiGuidelineServiceImpl implements CiGuidelineService {
             p.setNeutralGuide(CiGuidelineDefaults.NEUTRAL_GUIDE);
         }
 
-        // 3) 엔티티 생성(로고 사용 규정 5개는 항상 기본값)
+        // 3) 엔티티 생성(로고 사용 규정 5개는 기본값)
         CiGuideline entity = CiGuideline.builder()
                 .logo(logo)
                 .basicLogoRule(CiGuidelineDefaults.BASIC_LOGO)
@@ -78,20 +75,8 @@ public class CiGuidelineServiceImpl implements CiGuidelineService {
     @Override
     @Transactional(readOnly = true)
     public Optional<CiGuidelineResponse> getByLogoId(Long logoId) {
-        if (logoId == null || logoId <= 0) {
-            throw new IllegalArgumentException("logoId가 유효하지 않습니다.");
-        }
-        return ciRepo.findByLogoId(logoId)
-                .map(CiGuidelineMapper::toResponse);
-    }
-
-    private String presignGetUrl(String bucket, String key, Duration ttl) {
-        var get = GetObjectRequest.builder().bucket(bucket).key(key).build();
-        var ps = GetObjectPresignRequest.builder()
-                .getObjectRequest(get)
-                .signatureDuration(ttl)
-                .build();
-        return presigner.presignGetObject(ps).url().toString();
+        if (logoId == null || logoId <= 0) throw new IllegalArgumentException("logoId가 유효하지 않습니다.");
+        return ciRepo.findByLogoId(logoId).map(CiGuidelineMapper::toResponse);
     }
 
     private static String fixHex(String hex) {
@@ -100,14 +85,4 @@ public class CiGuidelineServiceImpl implements CiGuidelineService {
         if (!h.startsWith("#")) h = "#" + h;
         return h;
     }
-
-    private S3Uri parseS3(String uri) {
-        if (uri == null || !uri.startsWith("s3://")) throw new IllegalArgumentException("invalid s3 uri: " + uri);
-        String no = uri.substring("s3://".length());
-        int slash = no.indexOf('/');
-        if (slash <= 0) throw new IllegalArgumentException("invalid s3 uri: " + uri);
-        return new S3Uri(no.substring(0, slash), no.substring(slash + 1));
-    }
-
-    private record S3Uri(String bucket, String key) {}
 }

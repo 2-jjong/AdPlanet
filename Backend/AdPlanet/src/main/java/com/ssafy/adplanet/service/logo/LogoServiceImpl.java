@@ -5,22 +5,15 @@ import com.ssafy.adplanet.dto.logo.LogoDto;
 import com.ssafy.adplanet.entity.Logo;
 import com.ssafy.adplanet.enums.LogoStyle;
 import com.ssafy.adplanet.repository.LogoRepository;
+import com.ssafy.adplanet.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.time.Duration;
 
 @Service
 @Transactional(readOnly = true)
@@ -28,12 +21,7 @@ import java.time.Duration;
 public class LogoServiceImpl implements LogoService {
 
     private final LogoRepository logoRepository;
-    private final S3Client s3;
-    private final S3Presigner presigner;
-
-    @Value("${adplanet.s3.bucket}") private String bucket;
-    @Value("${adplanet.s3.prefix:}") private String prefix;
-    @Value("${adplanet.s3.presign-minutes:60}") private int presignMinutes;
+    private final S3Service s3Service;
 
     @Override
     @Transactional
@@ -44,6 +32,7 @@ public class LogoServiceImpl implements LogoService {
 
         String slogan = (req.content() == null) ? "" : req.content().trim();
 
+        // 1) DB 선저장 (키 생성용 ID 필요)
         Logo logo = Logo.builder()
                 .userId(userId)
                 .name(req.title())
@@ -54,39 +43,20 @@ public class LogoServiceImpl implements LogoService {
                 .build();
         logoRepository.saveAndFlush(logo);
 
+        // 2) 이미지 생성 (실제론 생성형 AI 결과물 사용)
         byte[] imageBytes = generateDummyPng(req.title(), slogan);
 
-        // 3) S3 업로드
-        String key = ensureSlash(prefix) + "logo_" + logo.getId() + ".png";
-        s3.putObject(
-                PutObjectRequest.builder()
-                        .bucket(bucket)
-                        .key(key)
-                        .contentType("image/png")
-                        .build(),
-                RequestBody.fromBytes(imageBytes)
-        );
+        // 3) 업로드 + URI 저장
+        String key = s3Service.buildKey("logo_" + logo.getId() + ".png");
+        s3Service.upload(key, imageBytes, "image/png");
+        logo.changeImgUrl(s3Service.toS3Uri(key));
 
-        // 4) DB에 S3 URI 저장
-        logo.changeImgUrl("s3://" + bucket + "/" + key);
-
-        // 5) 프리사인 발급
-        var getReq = GetObjectRequest.builder().bucket(bucket).key(key).build();
-        var presigned = presigner.presignGetObject(
-                GetObjectPresignRequest.builder()
-                        .signatureDuration(Duration.ofMinutes(presignMinutes))
-                        .getObjectRequest(getReq)
-                        .build()
-        );
-        return new LogoDto(logo.getId(), presigned.url().toString());
+        // 4) 프리사인 URL 발급 후 응답
+        String presignedUrl = s3Service.presignGet(key);
+        return new LogoDto(logo.getId(), presignedUrl);
     }
 
-    // helpers
-    private static String ensureSlash(String p) {
-        if (p == null || p.isBlank()) return "";
-        return p.endsWith("/") ? p : p + "/";
-    }
-
+    // --- helpers (기존 더미 생성 코드 유지) ---
     private static byte[] generateDummyPng(String title, String slogan) {
         try {
             int W = 512, H = 512;
@@ -114,7 +84,7 @@ public class LogoServiceImpl implements LogoService {
     }
 
     private static void drawCentered(Graphics2D g, String text, int cx, int cy) {
-        if (text == null || text.isBlank()) return; // 빈 문자열이면 스킵
+        if (text == null || text.isBlank()) return;
         var fm = g.getFontMetrics();
         int x = cx - fm.stringWidth(text)/2;
         int y = cy - fm.getHeight()/2 + fm.getAscent();
