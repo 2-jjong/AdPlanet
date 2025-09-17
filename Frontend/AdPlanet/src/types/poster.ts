@@ -24,17 +24,49 @@ export interface SkeletonPose {
   }>;
 }
 
+export interface TextOverlay {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  color: string;
+  fontWeight: 'normal' | 'bold';
+  fontFamily: string;
+}
+
 export interface PosterGenerationState {
-  step: 'upload' | 'generate' | 'edit' | 'complete';
+  step: 'upload' | 'generate' | 'edit' | 'text-edit' | 'complete';
   uploadedImages: UploadedImage[];
   generatedPoster: string | null;
   currentPose: SkeletonPose | null;
   prompt: string;
   isGenerating: boolean;
+  textOverlays: TextOverlay[];
+  title: string;
+  content: string;
 }
 
 export interface PosterConfig {
   style: 'clean' | 'punk' | 'cartoon' | 'monochrome';
   composition: string;
   atmosphere: string;
+}
+
+export interface GenerationRecord {
+  id: string;
+  timestamp: Date;
+  thumbnail: string;
+  prompt: string;
+  step: 'upload' | 'generate' | 'edit' | 'text-edit';
+  status: 'generating' | 'completed' | 'failed';
+}
+
+export interface ChatRoom {
+  id: string;
+  title: string;
+  lastUpdated: Date;
+  thumbnail?: string;
+  messageCount: number;
+  isActive: boolean;
 }

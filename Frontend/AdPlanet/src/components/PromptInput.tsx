@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 interface PromptInputProps {
   value: string;
@@ -15,7 +15,6 @@ const PromptInput: React.FC<PromptInputProps> = ({
   isGenerating,
   maxLength = 500
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,12 +38,8 @@ const PromptInput: React.FC<PromptInputProps> = ({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder="원하는 포스터의 구도, 스타일, 분위기를 자세히 설명해주세요."
-            className={`w-full bg-transparent border border-primary rounded-md px-3 py-2 text-text-color placeholder-text-color/60 resize-none transition-all ${
-              isExpanded ? 'h-32' : 'h-20'
-            } focus:border-primary focus:outline-none`}
+            className="w-full h-20 bg-transparent border border-primary rounded-md px-3 py-2 text-text-color placeholder-text-color/60 resize-none focus:border-primary focus:outline-none"
             maxLength={maxLength}
-            onFocus={() => setIsExpanded(true)}
-            onBlur={() => setIsExpanded(false)}
           />
         </div>
         
