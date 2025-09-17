@@ -111,28 +111,6 @@ public class PosterController {
         return ResponseEntity.ok(ResponseDto.ok(poster));
     }
 
-    @PostMapping(value = "/{posterId}/inpaint", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
-    @Operation(summary = "포스터 수정", description = "마스크 이미지와 프롬프트로 포스터 수정을 요청합니다.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "요청 성공"),
-            @ApiResponse(responseCode = "500", description = "서버 에러")
-    })
-    public ResponseEntity<ResponseDto<ImageProcessingJob>> inpaintPoster(
-            @Parameter(description = "포스터 id", required = true)
-            @PathVariable("posterId") Long posterId,
-            @Parameter(description = "프롬프트", required = true)
-            @RequestPart("prompt") String prompt,
-            @Parameter(description = "마스크 이미지", required = true)
-            @RequestPart("maskImage") MultipartFile maskImage
-    ) {
-        ImageProcessingJob response = new ImageProcessingJob(
-                UUID.randomUUID().toString(),
-                JobStatus.QUEUED,
-                LocalDateTime.now()
-        );
-        return ResponseEntity.ok(ResponseDto.ok(response));
-    }
-
     @GetMapping("/{posterId}/copy")
     @Operation(summary = "포스터 문구 생성", description = "포스터 문구를 자동 생성합니다.")
     @ApiResponses(value = {
