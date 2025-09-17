@@ -12,9 +12,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -94,24 +94,44 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "유효하지 않은 리프레시 토큰")
     })
     public ResponseEntity<ResponseDto<Void>> reissue(HttpServletRequest request) {
-        
-        // 더미 토큰 생성
-        String newAccessToken = "Bearer new-dummy-access-token-12345";
-        String newRefreshToken = "new-dummy-refresh-token-67890";
-        
-        // 새 리프레시 토큰을 쿠키에 설정
-        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", newRefreshToken)
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(7 * 24 * 60 * 60) // 7일
-                .build();
+        try {
+            // 쿠키에서 RefreshToken 추출
+            String refreshToken = null;
+            if (request.getCookies() != null) {
+                for (var cookie : request.getCookies()) {
+                    if ("refresh_token".equals(cookie.getName())) {
+                        refreshToken = cookie.getValue();
+                        break;
+                    }
+                }
+            }
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.AUTHORIZATION, newAccessToken)
-                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(ResponseDto.ok(null));
+            if (refreshToken == null) {
+                return ResponseEntity.status(401)
+                        .body(ResponseDto.error("A4011", "RefreshToken이 없습니다"));
+            }
+
+            // 토큰 갱신
+            LoginTokens tokens = authService.reissueTokens(refreshToken);
+
+            // 새 리프레시 토큰을 쿠키에 설정
+            ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", tokens.refreshToken())
+                    .httpOnly(true)
+                    .secure(true)
+                    .sameSite("Strict")
+                    .path("/")
+                    .maxAge(7 * 24 * 60 * 60) // 7일
+                    .build();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.accessToken())
+                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                    .body(ResponseDto.ok(null));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(401)
+                    .body(ResponseDto.error("A4012", "토큰 갱신 실패: " + e.getMessage()));
+        }
     }
 
     @PostMapping("/logout")
@@ -123,20 +143,30 @@ public class AuthController {
             @ApiResponse(responseCode = "200", description = "로그아웃 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
-    public ResponseEntity<ResponseDto<Void>> logout() {
-        
-        // 리프레시 토큰 쿠키 삭제
-        ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(0) // 즉시 만료
-                .build();
+    public ResponseEntity<ResponseDto<Void>> logout(Authentication auth) {
+        try {
+            // Authentication에서 userId 추출
+            if (auth != null && auth.getPrincipal() != null) {
+                Long userId = (Long) auth.getPrincipal();
+                authService.logout(userId);
+            }
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
-                .body(ResponseDto.ok(null));
+            // 리프레시 토큰 쿠키 삭제
+            ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
+                    .httpOnly(true)
+                    .secure(true)
+                    .sameSite("Strict")
+                    .path("/")
+                    .maxAge(0) // 즉시 만료
+                    .build();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                    .body(ResponseDto.ok(null));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ResponseDto.error("A4013", "로그아웃 실패"));
+        }
     }
-
 }
