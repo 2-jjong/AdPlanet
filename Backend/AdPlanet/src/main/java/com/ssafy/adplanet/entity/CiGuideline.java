@@ -30,21 +30,9 @@ public class CiGuideline {
     @JoinColumn(name = "logo_id", nullable = false, foreignKey = @ForeignKey(name = "fk_ci_logo"))
     private Logo logo;
 
-    // --- 로고 사용 규정 ---
-    @Lob @Column(name = "basic_logo_rule", nullable = false, columnDefinition = "TEXT")
-    private String basicLogoRule;             // 기본 로고
-
-    @Lob @Column(name = "min_size_rule", nullable = false, columnDefinition = "TEXT")
-    private String minSizeRule;               // 최소 사이즈
-
-    @Lob @Column(name = "margin_rule", nullable = false, columnDefinition = "TEXT")
-    private String marginRule;                // 여백 규정
-
-    @Lob @Column(name = "background_rule", nullable = false, columnDefinition = "TEXT")
-    private String backgroundRule;            // 배경 규정
-
-    @Lob @Column(name = "prohibition_rule", nullable = false, columnDefinition = "TEXT")
-    private String prohibitionRule;           // 로고 변형 금지
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "template_id", nullable = false, foreignKey = @ForeignKey(name = "fk_ci_template"))
+    private CiGuidelineTemplate template;
 
     @Column(name = "primary_color", length = 7, nullable = false)
     private String primaryColor;              // #RRGGBB
