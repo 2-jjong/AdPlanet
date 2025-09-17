@@ -9,6 +9,10 @@ public record PosterResponse (
     @Schema(description = "포스터 id", example = "1")
     Long posterId,
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(description = "포스터 그룹 id", example = "1")
+    Long groupId,
+
     @Schema(description = "이미지 url", example = "https://...")
     String imgUrl,
 
@@ -17,6 +21,10 @@ public record PosterResponse (
     String prompt
 ){
     public PosterResponse(Long posterId, String imgUrl) {
-        this(posterId, imgUrl, null);
+        this(posterId, null, imgUrl, null);
+    }
+
+    public PosterResponse(Long posterId, Long groupId, String imgUrl) {
+        this(posterId, groupId, imgUrl, null);
     }
 }

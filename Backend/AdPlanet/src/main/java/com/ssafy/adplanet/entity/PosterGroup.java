@@ -3,6 +3,8 @@ package com.ssafy.adplanet.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @Setter
@@ -23,4 +25,13 @@ public class PosterGroup {
     @OneToOne
     @JoinColumn(name = "poster_id")
     private Poster poster;
+
+    @Column(name = "title")
+    private String title;
+
+    @Column(name = "content")
+    private String content;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 }
