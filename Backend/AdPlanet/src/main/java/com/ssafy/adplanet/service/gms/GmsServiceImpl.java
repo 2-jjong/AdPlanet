@@ -1,4 +1,4 @@
-package com.ssafy.adplanet.external;
+package com.ssafy.adplanet.service.gms;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -6,30 +6,33 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 import java.net.URI;
-import java.net.http.*;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 
 @Slf4j
+@Service
 @RequiredArgsConstructor
-public class GmsClient {
+public class GmsServiceImpl implements GmsService {
 
-    private final String responsesUrl;
-    private final String apiKey;
-    private final Duration timeout;
-    private final ObjectMapper om = new ObjectMapper();
+    @Value("${adplanet.gms.responses-url}") private String responsesUrl;
+    @Value("${adplanet.gms.api-key}")       private String apiKey;
+    @Value("${adplanet.gms.timeout:10s}")   private Duration timeout;
 
+    private final ObjectMapper om;
+
+    @Override
     public PalettePayload generatePaletteByImage(String brandName, String slogan, String imageUrl) {
         try {
-            // 1) 멀티모달(이미지+텍스트) 요청 바디 구성
             ObjectNode body = buildRequestBody(brandName, slogan, imageUrl, true);
-
-            // 2) 전송 & 파싱 시도 (이미지 포함)
             String json = sendAndParseOnce(body, "v0:image");
             if (json == null) throw new IllegalStateException("GMS 응답 파싱 실패");
 
-            // 3) DTO 매핑 + 색상 정규화(# 대문자)
             PalettePayload p = om.readValue(stripCodeFence(json), PalettePayload.class);
             normalize(p);
             return p;
@@ -92,7 +95,7 @@ public class GmsClient {
         var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
 
         if (resp.statusCode() / 100 != 2) {
-            log.warn("[GMS/responses:{}] body={}", tag, resp.body());
+            log.warn("[GMS/responses:{}] status={} body={}", tag, resp.statusCode(), resp.body());
             return null;
         }
 
@@ -101,7 +104,6 @@ public class GmsClient {
         String out = root.path("output_text").asText(null);
         if (out != null && !out.isBlank()) return out;
 
-        // b) output[].content[] 스캔: text / json / parsed 모두 대응s
         JsonNode output = root.path("output");
         if (output.isArray()) {
             for (JsonNode msg : output) {
@@ -169,15 +171,4 @@ public class GmsClient {
     }
 
     private static String n(String s) { return (s == null || s.isBlank()) ? "-" : s; }
-
-    // 결과 DTO
-    @lombok.Data
-    public static class PalettePayload {
-        private String primaryColor;
-        private String secondaryColor;
-        private String neutralColor;
-        private String primaryGuide;
-        private String secondaryGuide;
-        private String neutralGuide;
-    }
 }

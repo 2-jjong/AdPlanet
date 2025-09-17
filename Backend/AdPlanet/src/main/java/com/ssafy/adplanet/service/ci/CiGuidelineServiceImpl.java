@@ -5,11 +5,11 @@ import com.ssafy.adplanet.dto.ci.CiGuidelineResponse;
 import com.ssafy.adplanet.entity.CiGuideline;
 import com.ssafy.adplanet.entity.CiGuidelineTemplate;
 import com.ssafy.adplanet.entity.Logo;
-import com.ssafy.adplanet.external.GmsClient;
 import com.ssafy.adplanet.mapper.CiGuidelineMapper;
 import com.ssafy.adplanet.repository.CiGuidelineRepository;
 import com.ssafy.adplanet.repository.CiGuidelineTemplateRepository;
 import com.ssafy.adplanet.repository.LogoRepository;
+import com.ssafy.adplanet.service.gms.GmsService;
 import com.ssafy.adplanet.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,7 +27,7 @@ public class CiGuidelineServiceImpl implements CiGuidelineService {
     private final CiGuidelineTemplateRepository tplRepo; // ✅ 추가
     private final LogoRepository logoRepo;
     private final S3Service s3Service;
-    private final GmsClient gms;
+    private final GmsService gms;
 
     @Transactional
     public CiGuidelineResponse createWithImageAi(Long logoId) {
@@ -41,11 +41,11 @@ public class CiGuidelineServiceImpl implements CiGuidelineService {
         String imageUrl = s3Service.presignFromUri(logo.getImgUrl(), Duration.ofMinutes(10));
 
         // 2) GMS 호출(팔레트)
-        GmsClient.PalettePayload p;
+        GmsService.PalettePayload p;
         try {
             p = gms.generatePaletteByImage(logo.getName(), logo.getSlogan(), imageUrl);
         } catch (Exception e) {
-            p = new GmsClient.PalettePayload();
+            p = new GmsService.PalettePayload();
             p.setPrimaryColor(CiGuidelineDefaults.PRIMARY_COLOR);
             p.setSecondaryColor(CiGuidelineDefaults.SECONDARY_COLOR);
             p.setNeutralColor(CiGuidelineDefaults.NEUTRAL_COLOR);
