@@ -27,23 +27,6 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @GetMapping("/oauth/ssafy")
-    @Operation(
-            summary = "SSAFY OAuth 로그인 요청",
-            description = "SSAFY OAuth 로그인을 위한 로그인 URL을 반환합니다."
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청")
-    })
-    public ResponseEntity<ResponseDto<SSAFYLoginResponseDto>> getSsafyLogin() {
-        SSAFYLoginResponseDto data = new SSAFYLoginResponseDto(
-                "GET",
-                "loginUrl"
-        );
-        return ResponseEntity.ok(ResponseDto.ok(data));
-    }
-
     @PostMapping("/login")
     @Operation(
             summary = "OAuth 로그인",
