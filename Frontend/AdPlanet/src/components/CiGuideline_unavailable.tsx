@@ -7,10 +7,11 @@ import type { CiGuideline } from "../types/logo";
 type Props = {
   data?: CiGuideline;
   onCreate?: () => void;
+  creating?: boolean;
   className?: string;
 };
 
-export default function CiGuidelineUnavailable({ onCreate, className }: Props) {
+export default function CiGuidelineUnavailable({ onCreate, className, creating }: Props) {
   return (
     <div
       className={[
@@ -37,9 +38,9 @@ export default function CiGuidelineUnavailable({ onCreate, className }: Props) {
       </p>
 
       <RoundButton
-        text="생성하기"
+        text={creating ? "생성 중…" : "생성하기"}
         size="md"
-        variant="primary"
+        variant="fill"
         onClick={onCreate}          // ← 여기서 부모의 navigate 핸들러 실행
         className="mt-8"
       />

@@ -6,7 +6,7 @@ import CiGuideline from "../components/CiGuideline";
 import CiGuidelineUnavailable from "../components/CiGuideline_unavailable";
 import { RoundButton } from "../components/RoundButton";
 
-import { getLogoDetail, getCiGuideline } from "../services/logoService";
+import { getLogoDetail, getCiGuideline, createCiGuideline } from "../services/logoService";
 import type { LogoDetail as DetailDomain, CiGuideline as CiDomain } from "../types/logo";
 
 // React Fullpage 라이브러리
@@ -14,9 +14,6 @@ import type { LogoDetail as DetailDomain, CiGuideline as CiDomain } from "../typ
 import { FullpageContainer, FullpageSection } from '@shinyongjun/react-fullpage';
 import '@shinyongjun/react-fullpage/css'
 
-// CI 가이드라인이 없을 때의 대체 컴포넌트 내 버튼 라우팅
-import { useNavigate } from "react-router-dom";
-import { PATHS } from "../constants/paths";
 
 // ──────────────────────────────────────────────────────────────────────
 // CiGuideline 컴포넌트가 기대하던 더미 타입(필수 필드) 맞춰주는 어댑터
@@ -59,6 +56,10 @@ export default function LogoDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // CI 생성 상태
+  const [creatingCi, setCreatingCi] = useState(false);     
+  const [ciCreateError, setCiCreateError] = useState<string | null>(null); 
+
   // Fullpage 관련 상태
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const hasCi = useMemo(() => {
@@ -70,11 +71,21 @@ export default function LogoDetailPage() {
     return hasRules || hasPalette;
   }, [ci]);
 
-  // CI 가이드라인이 없는 경우 생성하기 버튼
-  const navigate = useNavigate();
-
-  const handleCreateGuideline = () => {
-    navigate(PATHS.POSTER);
+  // CI 가이드라인이 없는 경우 생성하기
+  const handleCreateGuideline = async () => {
+    if (!Number.isFinite(logoId)) return;
+    try {
+      setCiCreateError(null);
+      setCreatingCi(true);
+      await createCiGuideline(logoId);           // 생성 API 호출
+      const fresh = await getCiGuideline(logoId); // 최신 가이드라인 재조회
+      setCi(fresh);
+      setActiveIndex(1);                         // 섹션2가 보이도록 (0-based)
+    } catch (e: any) {
+      setCiCreateError(e?.message ?? "CI 가이드라인 생성에 실패했습니다.");
+    } finally {
+      setCreatingCi(false);
+    }
   };
 
   // 데이터 로드
@@ -148,14 +159,14 @@ export default function LogoDetailPage() {
   const ciForComponent = adaptCiGuideline(ci);
 
 return (
-  <div className="min-h-screen bg-[#12141f] text-slate-200">
+  <div className="min-h-screen bg-background text-slate-200">
     <Navigation />
 
     {/* Fullpage는 뷰포트 전체를 쓰므로, 섹션 안에서 컨테이너를 별도로 둔다 */}
     <FullpageContainer activeIndex={activeIndex} setActiveIndex={setActiveIndex}>
 
       {/* SECTION 1 — 로고 상세 */}
-      <FullpageSection className="!p-0 !items-start !justify-start">
+      <FullpageSection>
         <div className="font-jamsil mx-auto w-full max-w-7xl px-6 py-8">
           {/* 헤더 */}
           <header className="mb-8 flex items-center justify-between">
@@ -199,22 +210,30 @@ return (
       </FullpageSection>
 
       {/* SECTION 2 — CI 가이드라인 */}
-      <FullpageSection className="!p-0 !items-start !justify-start">
+      <FullpageSection>
         <div className="font-jamsil mx-auto w-full max-w-7xl px-6 py-8">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-3xl font-extrabold tracking-tight">CI 가이드라인</h2>
-            <RoundButton text="편집" />
-          </div>
+            <RoundButton text="편집" variant="outline" />
+           </div>
+
+          {/* 생성 실패 배너 */}
+          {ciCreateError && (
+            <div className="mb-4 rounded-xl border border-red-800 bg-red-900/30 px-4 py-3 text-red-200 text-sm">
+              {ciCreateError}
+            </div>
+          )}
 
           {/* 데이터 유무에 따른 분기 */}
           {hasCi ? (
             <CiGuideline data={ciForComponent} />
           ) : (
-            <CiGuidelineUnavailable onCreate={handleCreateGuideline} />
+            <CiGuidelineUnavailable
+              creating={creatingCi} // 생성 중 상태 전달
+              onCreate={handleCreateGuideline} />
           )}
-          <CiGuidelineUnavailable />
           <div className="mt-6 flex justify-end">
-            <RoundButton text="Export" className="bg-primary"/>
+            <RoundButton text="Export" variant="outline"/>
           </div>
         </div>
       </FullpageSection>

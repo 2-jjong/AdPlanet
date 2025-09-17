@@ -3,6 +3,7 @@ import {
   fetchLogoListDto, fetchLogoDetailDto, fetchCiGuidelineDto, fetchLogoTagsDto,
   type LogoListItemDto, toAbsolute,
 } from "./dto/logo.dto";
+import api from "./apiClient"; 
 
 
 // 목록 매핑
@@ -19,13 +20,13 @@ export interface LogoListQueryDto {
 }
 
 export async function getLogoList(params: LogoListQuery): Promise<LogoCard[]> {
-  console.debug("[logoService] getLogoList", params); // ← 서비스 진입
+  console.debug("[logoService] getLogoList", params); // 서비스 진입
   const dtoParams: LogoListQueryDto = {
     order: params.order,
     tagId: params.tagId
 };
   const list = await fetchLogoListDto(dtoParams);
-  console.debug("[logoService] dto items", list.length); // ← DTO 결과
+  console.debug("[logoService] dto items", list.length); // DTO 결과
   return list.map(toLogoCard);
 }
 
@@ -61,6 +62,14 @@ export async function getCiGuideline(logoId: number): Promise<CiGuideline> {
     },
   };
 }
+
+// CI 가이드라인 생성
+export async function createCiGuideline(logoId: number) {
+  await api.post(`/api/logos/${logoId}/ci-guideline`);
+}
+
+
+
 
 // 태그 목록
 export async function getAllLogoTags(): Promise<LogoTag[]> {
