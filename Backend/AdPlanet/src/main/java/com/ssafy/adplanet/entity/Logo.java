@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -53,7 +54,7 @@ public class Logo {
     )
     private Set<Tag> tags = new HashSet<>();
 
-    public void setTags(java.util.Collection<Tag> newTags) {
+    public void setTags(Collection<Tag> newTags) {
         this.tags.clear();
         this.tags.addAll(newTags);
     }

@@ -173,7 +173,7 @@ public class LogoController {
             @RequestBody AssignLogoTagsRequest req
             ) {
         try {
-            var result = tagService.setTags(logoId, req.tagIds());
+            var result = tagService.setLogoTags(logoId, req.tagIds());
             return ResponseEntity.ok(new ResponseDto<>("S0000", null, null));
         } catch (NoSuchElementException e) {
             return ResponseEntity.badRequest().body(ResponseDto.error("LG4041", e.getMessage()));
