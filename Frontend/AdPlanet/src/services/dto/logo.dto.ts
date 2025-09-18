@@ -22,7 +22,6 @@ export interface LogoTagDto {
 }
 
 const ok = (code?: string) => code === "S0000";
-const ensureHex = (s?: string) => (s ? (s.startsWith("#") ? s : `#${s}`) : undefined);
 
 // 절대 URL로 변환 (이미 절대면 그대로, 빈값이면 빈값, 상대면 baseURL 기준으로 절대)
 export const toAbsolute = (p: string) => {

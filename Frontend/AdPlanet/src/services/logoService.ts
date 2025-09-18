@@ -59,7 +59,7 @@ export async function getCiGuideline(logoId: number): Promise<CiGuideline> {
   const toHex = (h?: string) => (h ? (h.startsWith("#") ? h : `#${h}`) : undefined);
 
   const mapped: CiGuideline = {
-    // ✅ 규정 문단들을 배열로 쪼개서 매핑
+    // 규정 문단들을 배열로 쪼개서 매핑
     logoGuideLines:   splitLines(d.basicLogo),
     marginRules:      splitLines(d.marginRule),
     backgroundRules:  splitLines(d.backgroundRule),
@@ -86,8 +86,6 @@ export async function getCiGuideline(logoId: number): Promise<CiGuideline> {
 export async function createCiGuideline(logoId: number): Promise<void> {
   await createCiGuidelineDto(logoId);
 }
-
-
 
 
 // 태그 목록
