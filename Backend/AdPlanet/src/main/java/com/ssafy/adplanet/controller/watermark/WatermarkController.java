@@ -25,7 +25,7 @@ public class WatermarkController {
 
     private final WatermarkService watermarkService;
 
-    @PostMapping(value = "/insert", consumes =  MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(consumes =  MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "워터마크 삽입", description = "이미지에 LSB 방식으로 '제작자: XXX 내용: XXX' 형식의 워터마크를 삽입합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "워터마크 삽입 성공 - PNG 이미지 반환"),
@@ -64,7 +64,7 @@ public class WatermarkController {
         }
     }
 
-    @PostMapping(value = "/detect", consumes =  MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/detection", consumes =  MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "워터마크 검출", description = "이미지에서 LSB 방식으로 삽입된 워터마크를 검출하여 제작자와 내용을 분리하여 반환합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "워터마크 검출 성공"),
