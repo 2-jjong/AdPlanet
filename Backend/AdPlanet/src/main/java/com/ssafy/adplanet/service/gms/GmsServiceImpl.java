@@ -22,7 +22,7 @@ public class GmsServiceImpl implements GmsService {
 
     @Value("${adplanet.gms.responses-url}") private String responsesUrl;
     @Value("${adplanet.gms.api-key}")       private String apiKey;
-    @Value("${adplanet.gms.timeout:10s}")   private Duration timeout;
+    @Value("${adplanet.gms.timeout:60s}")   private Duration timeout; // ⬅ 타임아웃 여유
 
     private final ObjectMapper om;
 
@@ -72,13 +72,28 @@ public class GmsServiceImpl implements GmsService {
     private void fillSchema(ObjectNode schema) {
         schema.put("type", "object");
         schema.put("additionalProperties", false);
+
         ObjectNode props = schema.putObject("properties");
         props.putObject("primaryColor").put("type", "string").put("pattern", "^#[0-9A-Fa-f]{6}$");
         props.putObject("secondaryColor").put("type", "string").put("pattern", "^#[0-9A-Fa-f]{6}$");
         props.putObject("neutralColor").put("type", "string").put("pattern", "^#[0-9A-Fa-f]{6}$");
-        props.putObject("primaryGuide").put("type", "string");
-        props.putObject("secondaryGuide").put("type", "string");
+
+        // 객체 스키마
+        ObjectNode colorGuide = om.createObjectNode();
+        colorGuide.put("type", "object").put("additionalProperties", false);
+        ObjectNode cgProps = colorGuide.putObject("properties");
+        cgProps.putObject("hex").put("type", "string").put("pattern", "^#[0-9A-Fa-f]{6}$");
+        cgProps.putObject("rgb").put("type", "string");
+        cgProps.putObject("CMYK").put("type", "string");
+        cgProps.putObject("mainUsage").put("type", "string");
+        colorGuide.putArray("required").add("hex").add("rgb").add("CMYK").add("mainUsage");
+
+        props.set("primaryGuide", colorGuide.deepCopy());
+        props.set("secondaryGuide", colorGuide.deepCopy());
+
+        // neutralGuide는 문자열 블록 유지
         props.putObject("neutralGuide").put("type", "string");
+
         schema.putArray("required")
                 .add("primaryColor").add("secondaryColor").add("neutralColor")
                 .add("primaryGuide").add("secondaryGuide").add("neutralGuide");
@@ -137,6 +152,14 @@ public class GmsServiceImpl implements GmsService {
         p.setPrimaryColor(fixHex(p.getPrimaryColor()));
         p.setSecondaryColor(fixHex(p.getSecondaryColor()));
         p.setNeutralColor(fixHex(p.getNeutralColor()));
+
+        // 가이드 객체의 hex 보정
+        if (p.getPrimaryGuide() != null) {
+            p.getPrimaryGuide().setHex(fixHex(p.getPrimaryGuide().getHex()));
+        }
+        if (p.getSecondaryGuide() != null) {
+            p.getSecondaryGuide().setHex(fixHex(p.getSecondaryGuide().getHex()));
+        }
     }
 
     private static String fixHex(String hex) {
@@ -150,17 +173,16 @@ public class GmsServiceImpl implements GmsService {
         return """
             당신은 브랜드 CI 색상 컨설턴트입니다.
             업로드된 로고 이미지를 분석해 '색상 규정'만 JSON으로 출력하세요.
+
+            - 출력은 제공한 JSON 스키마를 정확히 준수하십시오.
+              (임의 텍스트/마크다운/플레이스홀더 금지: '#HEX','RGB','CMYK','주 사용처' 등)
+
             - primaryColor / secondaryColor / neutralColor: #RRGGBB (대문자)
-            - primaryGuide / secondaryGuide 형식(마크다운 금지):
-              Hex
-              - #RRGGBB
-              RGB
-              - (R, G, B)
-              CMYK
-              - (C, M, Y, K)
-              주 사용처
-              - (예: 로고, 주요 버튼, 강조 요소) 또는 (예: 텍스트, 배경, 보조 그래픽)
-            - neutralGuide는 아래 3줄을 반드시 포함:
+
+            - primaryGuide / secondaryGuide: 객체로 반환
+              { "hex": "#RRGGBB", "rgb": "R, G, B", "CMYK": "C, M, Y, K", "mainUsage": "..." }
+
+            - neutralGuide는 문자열 3줄을 반드시 포함:
               Black: #000000
               White: #FFFFFF
               Gray: #CCCCCC
