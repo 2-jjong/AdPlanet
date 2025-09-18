@@ -1,3 +1,4 @@
+// LogoDetailPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import Navigation from "../components/Navigation";
@@ -8,15 +9,14 @@ import { RoundButton } from "../components/RoundButton";
 
 import { getLogoDetail, getCiGuideline, createCiGuideline } from "../services/logoService";
 import type {
-  LogoDetail as DetailDomain,
-  CiGuideline as CiDomain,
+  LogoDetail as DetailDto,
+  CiGuideline as CiDto,
 } from "../services/dto/logo.dto";
 
 // React Fullpage 라이브러리
-'use client';
-import { FullpageContainer, FullpageSection } from '@shinyongjun/react-fullpage';
-import '@shinyongjun/react-fullpage/css'
-
+"use client";
+import { FullpageContainer, FullpageSection } from "@shinyongjun/react-fullpage";
+import "@shinyongjun/react-fullpage/css";
 
 // ──────────────────────────────────────────────────────────────────────
 // CiGuideline 컴포넌트가 기대하던 더미 타입(필수 필드) 맞춰주는 어댑터
@@ -29,25 +29,39 @@ type CiGuidelineData = {
   palette: { primary: ColorSpec[]; secondary: ColorSpec[]; neutral: ColorSpec[] };
 };
 
-function adaptCiGuideline(ci?: CiDomain | null): CiGuidelineData {
-  const primary = ci?.palette.primary
-    ? [{ name: ci.palette.primary.name ?? "Primary", hex: ci.palette.primary.hex!, note: ci.palette.primary.guide }]
-    : [];
-  const secondary = ci?.palette.secondary
-    ? [{ name: ci.palette.secondary.name ?? "Secondary", hex: ci.palette.secondary.hex!, note: ci.palette.secondary.guide }]
-    : [];
-  const neutral = ci?.palette.neutral
-    ? [{ name: ci.palette.neutral.name ?? "Neutral", hex: ci.palette.neutral.hex!, note: ci.palette.neutral.guide }]
-    : [];
+// dto → 컴포넌트용으로 최소 파싱
+const splitLines = (s?: string) =>
+  s ? s.split(/\r?\n/).map(t => t.trim()).filter(Boolean) : [];
+
+const pickNum = (s: string | undefined, re: RegExp) => {
+  const m = s?.match(re);
+  return m ? Number(m[1]) : 0;
+};
+
+const toHex = (h?: string) => {
+  if (!h) return undefined;
+  const m = h.match(/#[0-9a-f]{6}/i)?.[0];
+  if (m) return m;
+  // "#RRGGBB"가 아니면 그대로 둘 수도 있지만, 안전하게 "#" 붙이기 시도
+  return h.startsWith("#") ? h : `#${h}`;
+};
+
+function adaptCiGuideline(ci?: CiDto | null): CiGuidelineData {
+  const pHex = toHex(ci?.primaryColor);
+  const sHex = toHex(ci?.secondaryColor);
+  const nHex = toHex(ci?.neutralColor);
+
+  const primary: ColorSpec[] = pHex ? [{ name: "Primary", hex: pHex, note: ci?.primaryGuide }] : [];
+  const secondary: ColorSpec[] = sHex ? [{ name: "Secondary", hex: sHex, note: ci?.secondaryGuide }] : [];
+  const neutral: ColorSpec[] = nHex ? [{ name: "Neutral", hex: nHex, note: ci?.neutralGuide }] : [];
 
   return {
-    basicRules: ci?.logoGuideLines ?? [],
-    marginRules: ci?.marginRules ?? [],
-    backgroundRules: ci?.backgroundRules ?? [],
-    // prohibitionRules를 보여주려면 CiGuideline.tsx 타입에 추가 가능
+    basicRules: splitLines(ci?.basicLogo),
+    marginRules: splitLines(ci?.marginRule),
+    backgroundRules: splitLines(ci?.backgroundRule),
     minSize: {
-      widthMm: ci?.minSizeMm ?? 0,
-      dpiPx: ci?.minSizePx ?? 0,
+      widthMm: pickNum(ci?.minSize, /([\d.]+)\s*mm/i),
+      dpiPx: pickNum(ci?.minSize, /([\d.]+)\s*px/i),
     },
     palette: { primary, secondary, neutral },
   };
@@ -58,8 +72,8 @@ export default function LogoDetailPage() {
   const { id } = useParams();
   const logoId = useMemo(() => Number(id), [id]);
 
-  const [detail, setDetail] = useState<DetailDomain | null>(null);
-  const [ci, setCi] = useState<CiDomain | null>(null);
+  const [detail, setDetail] = useState<DetailDto | null>(null);
+  const [ci, setCi] = useState<CiDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,11 +83,15 @@ export default function LogoDetailPage() {
 
   // Fullpage 관련 상태
   const [activeIndex, setActiveIndex] = useState<number>(0);
+
+  // ✅ DTO 기준으로 CI 유무 판정
   const hasCi = useMemo(() => {
     if (!ci) return false;
-    const hasRules = (ci.logoGuideLines?.length ?? 0) > 0;
-    const p = ci.palette;
-    const hasPalette = !!p?.primary?.hex || !!p?.secondary?.hex || !!p?.neutral?.hex;
+    const hasRules =
+      splitLines(ci.basicLogo).length > 0 ||
+      splitLines(ci.marginRule).length > 0 ||
+      splitLines(ci.backgroundRule).length > 0;
+    const hasPalette = !!toHex(ci.primaryColor) || !!toHex(ci.secondaryColor) || !!toHex(ci.neutralColor);
     return hasRules || hasPalette;
   }, [ci]);
 
@@ -84,8 +102,8 @@ export default function LogoDetailPage() {
       setCiCreateError(null);
       setCreatingCi(true);
 
-      await createCiGuideline(logoId); // 바디 없이 POST
-      const fresh = await getCiGuideline(logoId); // 재조회
+      await createCiGuideline(logoId);      // 바디 없이 POST
+      const fresh = await getCiGuideline(logoId); // 재조회 (DTO 반환)
       setCi(fresh);
       setActiveIndex(1);
     } catch (e: any) {
@@ -190,7 +208,8 @@ export default function LogoDetailPage() {
               <section className="col-span-12 lg:col-span-6">
                 <div className="rounded-[36px] bg-slate-900/40 border border-slate-800 p-6">
                   <div className="aspect-square w-full overflow-hidden rounded-[28px] bg-slate-950">
-                    <LogoCard imgUrl={detail.imageUrl} title={detail.name} isActive />
+                    {/* ✅ DTO 필드명 사용: imgUrl */}
+                    <LogoCard imgUrl={detail.imgUrl} title={detail.name} isActive />
                   </div>
                 </div>
               </section>
