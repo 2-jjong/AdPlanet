@@ -13,7 +13,7 @@ const HomePage: React.FC = () => {
         {[...Array(100)].map((_, i) => (
           <div
             key={i}
-            className="absolute bg-white rounded-full animate-twinkle"
+            className="absolute bg-white rounded-full animate-pulse"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
@@ -46,12 +46,11 @@ const HomePage: React.FC = () => {
         {/* 오른쪽 우주 영역 */}
         <div className="flex-1 relative w-full h-80 sm:h-96 lg:h-[600px]">
           {/* 큰 파란 행성 */}
-          <div className="absolute bottom-0 right-0 w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96 rounded-full bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 opacity-80 animate-float"></div>
+          <div className="absolute bottom-0 right-0 w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96 rounded-full bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 opacity-80 animate-bounce"></div>
 
           {/* 갈색 행성 (포스터 생성) */}
           <div
-            className="absolute top-16 sm:top-20 left-4 sm:left-8 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-amber-600 to-orange-700 opacity-90 animate-float cursor-pointer hover:opacity-100 transition-opacity duration-300"
-            style={{animationDuration: '3s'}}
+            className="absolute top-16 sm:top-20 left-4 sm:left-8 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-amber-600 to-orange-700 opacity-90 animate-pulse cursor-pointer hover:opacity-100 transition-opacity duration-300"
             onClick={() => navigate(PATHS.POSTER)}
           >
             <div className="absolute -bottom-6 sm:-bottom-8 left-1/2 transform -translate-x-1/2 text-white text-xs whitespace-nowrap font-medium">
@@ -61,8 +60,7 @@ const HomePage: React.FC = () => {
 
           {/* 빨간 행성 (로고 생성) */}
           <div
-            className="absolute top-24 sm:top-32 right-12 sm:right-20 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-red-500 to-pink-600 opacity-90 animate-float cursor-pointer hover:opacity-100 transition-opacity duration-300"
-            style={{animationDuration: '4s'}}
+            className="absolute top-24 sm:top-32 right-12 sm:right-20 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-red-500 to-pink-600 opacity-90 animate-pulse cursor-pointer hover:opacity-100 transition-opacity duration-300"
             onClick={() => navigate(PATHS.LOGO)}
           >
             <div className="absolute -bottom-6 sm:-bottom-8 left-1/2 transform -translate-x-1/2 text-white text-xs whitespace-nowrap font-medium">
@@ -71,7 +69,7 @@ const HomePage: React.FC = () => {
           </div>
 
           {/* 우주비행사 로켓 */}
-          <div className="absolute top-1/2 right-1/4 animate-float" style={{animationDuration: '2s'}}>
+          <div className="absolute top-1/2 right-1/4 animate-bounce">
             <div className="relative">
               {/* 로켓 */}
               <div className="w-6 h-12 sm:w-8 sm:h-16 bg-gradient-to-b from-red-500 to-red-600 rounded-t-lg relative shadow-lg">
