@@ -40,7 +40,7 @@ pipeline {
                                     echo "DEBUG >>> VITE_SSAFY_REDIRECT_URI=$VITE_SSAFY_REDIRECT_URI"
                                     echo "DEBUG >>> VITE_SSAFY_OAUTH_URL=$VITE_SSAFY_OAUTH_URL"
                                     echo "DEBUG >>> VITE_API_BASE_URL=$VITE_API_BASE_URL"
-                                    docker build \
+                                    docker build  --no-cache \
                                         --build-arg VITE_SSAFY_CLIENT_ID="${VITE_SSAFY_CLIENT_ID}" \
                                         --build-arg VITE_SSAFY_REDIRECT_URI="${VITE_SSAFY_REDIRECT_URI}" \
                                         --build-arg VITE_SSAFY_OAUTH_URL="${VITE_SSAFY_OAUTH_URL}" \
