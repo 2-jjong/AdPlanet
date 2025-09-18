@@ -3,7 +3,7 @@ import HomePage from '../pages/HomePage';
 import LogoPage from '../pages/LogoPage';
 import LogoDetailPage from '../pages/LogoDetailPage';
 import PosterPage from '../pages/PosterPage';
-import PosterDetailPage from '../pages/PosterDetailPage';
+// import PosterDetailPage from '../pages/PosterDetailPage';
 import WatermarkDetectionPage from '../pages/WatermarkDetectionPage';
 import ArchivePage from '../pages/ArchivePage';
 import LogoCardList from "../components/LogoCardList";
@@ -41,10 +41,10 @@ const routeConfig = [
     path: "/archive/logo/:id",   
     element: <LogoDetailPage /> 
   },
-  { 
-    path: "/archive/poster/:id", 
-    element: <PosterDetailPage /> 
-  },
+  // { 
+  //   path: "/archive/poster/:id", 
+  //   element: <PosterDetailPage /> 
+  // },
 
   {
     path: PATHS.AUTH_CALLBACK,

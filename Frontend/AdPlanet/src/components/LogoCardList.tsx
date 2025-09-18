@@ -4,7 +4,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Mousewheel, Scrollbar } from "swiper/modules";
 import { LogoCard } from "./LogoCard";
 import { getLogoList } from "../services/logoService";
-import type { LogoCard as LogoCardType, LogoListOrder } from "../types/logo";
+import type { LogoCard as LogoCardType, LogoListOrder } from "../services/dto/logo.dto";
 
 function parseOrder(v: string | null): LogoListOrder {
   return v === "OLDEST" ? "OLDEST" : "LATEST"; // 기본값 LATEST
@@ -15,23 +15,19 @@ function parseTagId(v: string | null): number {
 }
 
 export default function LogoCardList() {
-  // debug : 컴포넌트 렌더 확인
-  console.debug("[LogoCardList] mount"); 
-
+  console.debug("[LogoCardList] mount");
 
   const [items, setItems] = useState<LogoCardType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState<string | null>(null);
 
-  const [sp, setSp] = useSearchParams();
+  const [sp] = useSearchParams();
 
-  // 쿼리 파싱
   const order: LogoListOrder = parseOrder(sp.get("order"));
   const tagId: number = parseTagId(sp.get("tagId"));
 
-  // 최초 및 필터 변경 시 목록 로드
   useEffect(() => {
-    console.debug("[LogoCardList] effect run"); // 이펙트 실행 확인
+    console.debug("[LogoCardList] effect run");
 
     let alive = true;
     (async () => {
@@ -39,15 +35,12 @@ export default function LogoCardList() {
         setLoading(true);
         setError(null);
 
-        // debug : 어떤 파라미터로 호출되는지 보기
         console.debug("[LogoCardList] fetch list", { order, tagId });
 
-        const data = await getLogoList({ order, tagId });
-
+        const data = await getLogoList({ order, tagId }); // ✅ 서비스가 이미 Domain 배열 반환
         if (!alive) return;
         setItems(data);
 
-        // debug : 결과 개수 확인
         console.debug("[LogoCardList] fetched items:", data.length);
       } catch (e: any) {
         if (!alive) return;
@@ -62,21 +55,15 @@ export default function LogoCardList() {
     return () => { alive = false; };
   }, [order, tagId]);
 
-  // ----------------------------------------------------------
-  // 카드 스택 및 전환
-  // ----------------------------------------------------------
-
   // 스택/전환 상태
   const [active, setActive] = useState(0);
   const [ghost, setGhost] = useState<LogoCardType | null>(null);
   const [ghostLeaving, setGhostLeaving] = useState(false);
 
-  // 데이터 바뀌면 active 보정
   useEffect(() => {
     if (active >= items.length) setActive(0);
   }, [items.length, active]);
 
-  // 스택 파라미터/치수
   const WRAP_W = 480, WRAP_H = 480, STACK_W = 400;
   const OFFSET = 28, SCALE_STEP = 0.055, OP_STEP = 0.2, LAYERS = 4;
 
@@ -90,7 +77,6 @@ export default function LogoCardList() {
     return out;
   }, [active, items]);
 
-  // 슬라이드 전환 시작 핸들러
   const handleSlideChangeStart = (newIndex: number) => {
     const leaving = items[active];
     if (leaving) {
@@ -101,7 +87,6 @@ export default function LogoCardList() {
     setActive(newIndex);
   };
 
-  // 고스트 애니메이션 종료 핸들러
   const onGhostEnd = () => {
     if (ghostLeaving) {
       setGhost(null);
@@ -109,7 +94,6 @@ export default function LogoCardList() {
     }
   };
 
-  // 애니메이션 스타일 
   const ghostStyle: React.CSSProperties = {
     position: "absolute",
     left: "50%",
@@ -122,7 +106,6 @@ export default function LogoCardList() {
     pointerEvents: "none",
   };
 
-  // 각 레이어 스타일 (0이 최상단)
   const layerStyle = (layer: number): React.CSSProperties => ({
     position: "absolute",
     left: "50%",
@@ -134,9 +117,7 @@ export default function LogoCardList() {
     transition: "transform 280ms ease, opacity 280ms ease",
     pointerEvents: "none",
   });
-  // ----------------------------------------------------------
 
-  // 상태 오버레이
   const Overlay = () => {
     if (loading) return (
       <div className="absolute inset-0 z-30 flex items-center justify-center">
@@ -156,7 +137,6 @@ export default function LogoCardList() {
     return null;
   };
 
-  // 상세로 이동
   const navigate = useNavigate();
   const goDetail = () => {
     const it = items[active];
@@ -164,14 +144,11 @@ export default function LogoCardList() {
     navigate(`/archive/logo/${it.id}`);
   };
 
-
-  // 렌더링 ----------------------------------------
   return (
     <div className="space-y-4">
       <div className="relative overflow-visible" style={{ width: WRAP_W, height: WRAP_H }}>
         <Overlay />
 
-        {/* 스택 */}
         <div className="absolute inset-0 z-20 pointer-events-none">
           {ghost && (
             <div style={ghostStyle} onTransitionEnd={onGhostEnd}>
@@ -189,7 +166,6 @@ export default function LogoCardList() {
           ))}
         </div>
 
-        {/* 클릭 타깃(최상단 카드 영역만 클릭 허용) */}
         {items.length > 0 && (
           <button
             onClick={goDetail}
@@ -208,7 +184,6 @@ export default function LogoCardList() {
           />
         )}
 
-        {/* Swiper */}
         <Swiper
           direction="vertical"
           modules={[Mousewheel, Scrollbar]}

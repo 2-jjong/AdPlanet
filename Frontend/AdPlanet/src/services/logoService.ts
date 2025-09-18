@@ -1,10 +1,24 @@
-import type { LogoCard, LogoDetail, CiGuideline, LogoTag, LogoListQuery } from "../types/logo";
+// logoservice.ts
 import {
-  fetchLogoListDto, fetchLogoDetailDto, fetchCiGuidelineDto, createCiGuidelineDto, fetchLogoTagsDto,
-  type LogoListItemDto, toAbsolute,
+  // Domain types
+  type LogoCard,
+  type LogoDetail,
+  type CiGuideline,
+  type LogoTag,
+  type LogoListQuery,
+  // DTO & 유틸
+  fetchLogoListDto,
+  fetchLogoDetailDto,
+  fetchCiGuidelineDto,
+  createCiGuidelineDto,
+  fetchLogoTagsDto,
+  type LogoListItemDto,
+  type LogoListQueryDto,
+  toAbsolute,
 } from "./dto/logo.dto";
-import {  } from "./dto/logo.dto";
 
+// API 성공 코드 헬퍼
+const ok = (code?: string) => code === "S0000";
 
 // 목록 매핑
 const toLogoCard = (d: LogoListItemDto): LogoCard => ({
@@ -14,25 +28,25 @@ const toLogoCard = (d: LogoListItemDto): LogoCard => ({
   imageUrl: toAbsolute(d.imgUrl),
 });
 
-export interface LogoListQueryDto {
-  order?: "LATEST" | "OLDEST";
-  tagId?: number;
-}
-
 export async function getLogoList(params: LogoListQuery): Promise<LogoCard[]> {
-  console.debug("[logoService] getLogoList", params); // 서비스 진입
+  console.debug("[logoService] getLogoList", params);
   const dtoParams: LogoListQueryDto = {
     order: params.order,
-    tagId: params.tagId
-};
-  const list = await fetchLogoListDto(dtoParams);
-  console.debug("[logoService] dto items", list.length); // DTO 결과
-  return list.map(toLogoCard);
+    tagId: params.tagId,
+  };
+  const res = await fetchLogoListDto(dtoParams); // ApiResponse<LogoListItemDto[]>
+  if (!ok(res.code) || !Array.isArray(res.data)) {
+    throw new Error(res.message || `API ${res.code}`);
+  }
+  console.debug("[logoService] dto items", res.data.length);
+  return res.data.map(toLogoCard);
 }
 
 // 상세 매핑
 export async function getLogoDetail(logoId: number): Promise<LogoDetail> {
-  const d = await fetchLogoDetailDto(logoId);
+  const res = await fetchLogoDetailDto(logoId); // ApiResponse<LogoDetailDto>
+  if (!ok(res.code) || !res.data) throw new Error(res.message || `API ${res.code}`);
+  const d = res.data;
   return {
     id: logoId,
     name: d.name,
@@ -52,14 +66,15 @@ const pickNum = (s: string | undefined, re: RegExp) => {
 };
 
 export async function getCiGuideline(logoId: number): Promise<CiGuideline> {
-  const d = await fetchCiGuidelineDto(logoId);
+  const res = await fetchCiGuidelineDto(logoId); // ApiResponse<CiGuidelineDto>
+  if (!ok(res.code)) throw new Error(res.message || `API ${res.code}`);
+  const d = res.data || {};
 
-  const minSizeMm = pickNum(d.minSize, /(\d+)\s*mm/i);
-  const minSizePx = pickNum(d.minSize, /(\d+)\s*px/i);
+  const minSizeMm = pickNum(d.minSize, /([\d.]+)\s*mm/i);
+  const minSizePx = pickNum(d.minSize, /([\d.]+)\s*px/i);
   const toHex = (h?: string) => (h ? (h.startsWith("#") ? h : `#${h}`) : undefined);
 
   const mapped: CiGuideline = {
-    // 규정 문단들을 배열로 쪼개서 매핑
     logoGuideLines:   splitLines(d.basicLogo),
     marginRules:      splitLines(d.marginRule),
     backgroundRules:  splitLines(d.backgroundRule),
@@ -75,21 +90,22 @@ export async function getCiGuideline(logoId: number): Promise<CiGuideline> {
     },
   };
 
-  // 디버깅용(원하면 잠깐 켜서 확인)
   console.debug("[CI dto]", d);
   console.debug("[CI mapped]", mapped);
-
   return mapped;
 }
 
 // CI 가이드라인 생성
 export async function createCiGuideline(logoId: number): Promise<void> {
-  await createCiGuidelineDto(logoId);
+  const res = await createCiGuidelineDto(logoId); // ApiResponse<unknown>
+  if (!ok(res.code)) throw new Error(res.message || `API ${res.code}`);
 }
-
 
 // 태그 목록
 export async function getAllLogoTags(): Promise<LogoTag[]> {
-  const list = await fetchLogoTagsDto();
-  return list.map(t => ({ id: t.tagId, name: t.tagName }));
+  const res = await fetchLogoTagsDto(); // ApiResponse<LogoTagDto[]>
+  if (!ok(res.code) || !Array.isArray(res.data)) {
+    throw new Error(res.message || `API ${res.code}`);
+  }
+  return res.data.map(t => ({ id: t.tagId, name: t.tagName }));
 }

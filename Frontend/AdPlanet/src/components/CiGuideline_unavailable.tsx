@@ -2,7 +2,7 @@ import React from "react";
 import astronautSearching from "../assets/astronaut_searching.png";
 import { RoundButton } from "./RoundButton";
 
-import type { CiGuideline } from "../types/logo";
+import type { CiGuideline } from "../services/dto/logo.dto";
 
 type Props = {
   data?: CiGuideline;
@@ -41,7 +41,7 @@ export default function CiGuidelineUnavailable({ onCreate, className, creating }
         text={creating ? "생성 중…" : "생성하기"}
         size="md"
         variant="fill"
-        onClick={onCreate}          // ← 여기서 부모의 navigate 핸들러 실행
+        onClick={onCreate}
         className="mt-8"
       />
     </div>
