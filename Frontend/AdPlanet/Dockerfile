@@ -1,4 +1,4 @@
-FROM node:20-alpine as builder
+FROM node:22.17.0-slim as builder
 # 작업 위치 지정
 WORKDIR /app
 

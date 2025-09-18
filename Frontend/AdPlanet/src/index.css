@@ -74,7 +74,7 @@
 
 @layer base{
   html, body{
-    @apply bg-background text-text-color
+    @apply bg-background text-text-color;
   }
 }
 :root {

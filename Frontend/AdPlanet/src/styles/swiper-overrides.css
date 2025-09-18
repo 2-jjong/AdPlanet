@@ -1,0 +1,17 @@
+/* 수직 스크롤바 위치/두께/컬러 커스텀 */
+:root {
+  --swiper-scrollbar-size: 6px; /* 두께 */
+}
+
+.swiper-vertical > .swiper-scrollbar {
+  right: 6px;
+}
+
+.swiper-scrollbar {
+  background: rgba(135, 222, 218, 0.12);
+  border-radius: 9999px;
+}
+
+.swiper-scrollbar-drag {
+  background: #87deda;
+}
