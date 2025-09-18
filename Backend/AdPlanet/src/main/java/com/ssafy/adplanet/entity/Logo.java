@@ -1,5 +1,6 @@
 package com.ssafy.adplanet.entity;
 
+import com.ssafy.adplanet.enums.LogoStyle;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -37,6 +38,10 @@ public class Logo {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "style", length = 20, nullable = false)
+    private LogoStyle style;
 
     public void changeImgUrl(String newUrl) {
         this.imgUrl = newUrl;

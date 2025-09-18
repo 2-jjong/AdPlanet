@@ -1,12 +1,14 @@
 package com.ssafy.adplanet.controller.poster;
 
 import com.ssafy.adplanet.dto.ResponseDto;
+import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
+import com.ssafy.adplanet.dto.poster.request.PosterTagRequest;
 import com.ssafy.adplanet.dto.poster.response.*;
 import com.ssafy.adplanet.enums.JobStatus;
 import com.ssafy.adplanet.enums.PosterDownloadFormat;
 import com.ssafy.adplanet.enums.PosterListOrder;
 import com.ssafy.adplanet.enums.PosterStyle;
-import com.ssafy.adplanet.service.PosterService;
+import com.ssafy.adplanet.service.poster.PosterService;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -37,7 +39,7 @@ public class PosterController {
 
     private final PosterService posterService;
 
-    @PostMapping(consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
+    @PostMapping(consumes = { MediaType.MULTIPART_FORM_DATA_VALUE, MediaType.APPLICATION_OCTET_STREAM_VALUE })
     @Operation(summary = "포스터 생성 요청", description = "포스터 생성을 요청합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "요청 성공"),
@@ -46,14 +48,18 @@ public class PosterController {
     public ResponseEntity<ResponseDto<ImageProcessingJob>> createPoster(
             @Parameter(description = "포스터 스타일")
             @RequestParam(value = "style", required = false) PosterStyle style,
-            @Parameter(description = "프롬프트", required = true)
-            @RequestPart("prompt") String prompt,
+            @Parameter(description = "요청 정보", required = true)
+            @RequestPart(value = "request") CreatePosterRequest request,
             @Parameter(description = "스케치 이미지")
             @RequestPart(value = "sketchImage", required = false) MultipartFile sketchImage,
             @Parameter(description = "제품 이미지")
             @RequestPart(value = "productImage", required = false) MultipartFile productImage,
             @Parameter(description = "모델 이미지")
-            @RequestPart(value = "modelImage", required = false) MultipartFile modelImage
+            @RequestPart(value = "modelImage", required = false) MultipartFile modelImage,
+            @Parameter(description = "구도 이미지")
+            @RequestPart(value = "skeletonImage", required = false) MultipartFile skeletonImage,
+            @Parameter(description = "이전 이미지")
+            @RequestPart(value = "previousImage", required = false) MultipartFile previousImage
     ) {
         ImageProcessingJob response = new ImageProcessingJob(
                 UUID.randomUUID().toString(),
@@ -74,6 +80,7 @@ public class PosterController {
             @PathVariable("jobId") String jobId
     ) {
         PosterResponse poster = new PosterResponse(
+                1L,
                 1L,
                 "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
         );
@@ -98,32 +105,11 @@ public class PosterController {
     ) {
         PosterResponse poster = new PosterResponse(
                 1L,
+                1L,
                 "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png",
                 "아삭아삭한 배추 이미지, 싱싱한 초록색 활용"
         );
         return ResponseEntity.ok(ResponseDto.ok(poster));
-    }
-
-    @PostMapping(value = "/{posterId}/inpaint", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
-    @Operation(summary = "포스터 수정", description = "마스크 이미지와 프롬프트로 포스터 수정을 요청합니다.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "요청 성공"),
-            @ApiResponse(responseCode = "500", description = "서버 에러")
-    })
-    public ResponseEntity<ResponseDto<ImageProcessingJob>> inpaintPoster(
-            @Parameter(description = "포스터 id", required = true)
-            @PathVariable("posterId") Long posterId,
-            @Parameter(description = "프롬프트", required = true)
-            @RequestPart("prompt") String prompt,
-            @Parameter(description = "마스크 이미지", required = true)
-            @RequestPart("maskImage") MultipartFile maskImage
-    ) {
-        ImageProcessingJob response = new ImageProcessingJob(
-                UUID.randomUUID().toString(),
-                JobStatus.QUEUED,
-                LocalDateTime.now()
-        );
-        return ResponseEntity.ok(ResponseDto.ok(response));
     }
 
     @GetMapping("/{posterId}/copy")
@@ -142,20 +128,18 @@ public class PosterController {
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 
-    @PostMapping(value = "/{posterId}/copy", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
+    @PostMapping(value = "/save", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
     @Operation(summary = "포스터 저장", description = "문구를 포함한 포스터 이미지를 저장합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "저장 성공"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<PosterResponse>> createPosterCopy(
-            @Parameter(description = "포스터 id", required = true)
-            @PathVariable("posterId") Long posterId,
             @Parameter(description = "이미지", required = true)
             @RequestPart("image") MultipartFile image
     ) {
         PosterResponse response = new PosterResponse(
-                posterId,
+                1L,
                 "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
         );
         return ResponseEntity.ok(ResponseDto.ok(response));
@@ -219,6 +203,8 @@ public class PosterController {
             PosterGroupResponse group = new PosterGroupResponse(
                     i,
                     "https://dummyimage.com/600x400/000/fff&text=Poster+" + i,
+                    "싸피컴퍼니 " + i,
+                    "포기는 배추 셀 때나 하는 말" + i,
                     LocalDateTime.now().minusDays(15 - i) // 생성일 임의로 설정
             );
             list.add(group);
@@ -249,8 +235,12 @@ public class PosterController {
         }
 
         PosterGroupResponse response = new PosterGroupResponse(
+                groupId,
                 "https://dummyimage.com/600x400/000/fff&text=Poster+0",
+                "싸피컴퍼니",
+                "포기는 배추 셀 때나 하는 말",
                 "아삭아삭한 배추 이미지, 싱싱한 초록색 활용",
+                LocalDateTime.now(),
                 history
         );
 
@@ -276,5 +266,18 @@ public class PosterController {
         }
 
         return ResponseEntity.ok(ResponseDto.ok(response));
+    }
+
+    @PostMapping("/tags")
+    @Operation(summary = "포스터 태그 지정", description = "포스터 그룹에 대한 태그를 지정합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<Void>> createPosterTag(
+            @Parameter(description = "포스터 태그 지정", required = true)
+            @RequestBody PosterTagRequest request
+    ) {
+        return ResponseEntity.ok(ResponseDto.ok());
     }
 }
