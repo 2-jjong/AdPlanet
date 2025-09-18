@@ -101,3 +101,27 @@ export async function fetchLogoTags(): Promise<ApiResponse<LogoTag[]>> {
   );
   return data;
 }
+
+export const LogoStyle={
+    SIMPLE:"SIMPLE",
+    MONO:"MONO",
+} as const;
+
+export type LogoStyle=(typeof LogoStyle)[keyof typeof LogoStyle];
+
+export interface CreateLogoRequest{
+    title:string,
+    content?:string,
+    prompt:string,
+    style?:LogoStyle;
+}
+
+export interface Logo{
+    logoId:number,
+    imgUrl:string;
+}
+
+export interface LogoTagRequest{
+    logoId:number,
+    tagName:string;
+}

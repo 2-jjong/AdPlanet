@@ -1,3 +1,5 @@
+import type { ApiResponse } from "../types/api";
+import apiClient from "./apiClient";
 import {
   // DTO 함수 & 타입
   fetchLogoList,
@@ -10,6 +12,9 @@ import {
   type CiGuideline,
   type LogoTag,
   type LogoListQuery,
+  type CreateLogoRequest,
+  type LogoTagRequest,
+  type Logo,
 } from "./dto/logo.dto";
 
 // API 성공 코드 헬퍼
@@ -59,4 +64,20 @@ export async function getAllLogoTags(): Promise<LogoTag[]> {
     throw new Error(res.message || `API ${res.code}`);
   }
   return res.data; // 가공 없음
+}
+
+// 로고 생성
+export async function createLogo (req:CreateLogoRequest): Promise<Logo> {
+  const {style, ...body}=req;
+  const {data}=await apiClient.post("/api/logos",body,{params:{style},});
+  if(data.code!=="S0000") throw new Error(data.message||"로고 생성 실패")
+  return data.data;
+}
+
+//로고 태그 지정
+export async function logoTagSetting (req:LogoTagRequest):Promise<ApiResponse<null>> {
+  const {data}=await apiClient.post<ApiResponse<null>>("/api/logos/tags",req);
+  if(data.code!=="S0000") throw new Error(data.message||"로고 태그 저장 실패")
+  return data;
+  
 }
