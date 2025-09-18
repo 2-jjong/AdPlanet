@@ -1,6 +1,7 @@
 import { useContext } from 'react';
-import { AuthContext } from '../../contexts/AuthContext';
-import type { AuthContextType } from '../../types/auth';
+import type { AuthContextType } from '../types/auth';
+import { AuthContext } from '../contexts/AuthContext';
+
 
 /**
  * 인증 관련 상태와 액션을 사용하는 커스텀 훅

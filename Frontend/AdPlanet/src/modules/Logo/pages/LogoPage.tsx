@@ -1,9 +1,9 @@
 import React from "react";
-import { Button } from "../components/Button";
-import LogoClean from "../assets/clean.png";
-import LogoPunk from "../assets/punk.png";
-import LogoCartoon from "../assets/cartoon.png";
-import LogoMono from "../assets/mono.png";
+import LogoClean from "../../../assets/images/clean.png";
+import LogoPunk from "../../../assets/images/punk.png";
+import LogoCartoon from "../../../assets/images/cartoon.png";
+import LogoMono from "../../../assets/images/mono.png";
+import { Button } from "../../../components/UI/Button/Button";
 const recommends = [
   { src: LogoClean, label: "깔끔한" },
   { src: LogoPunk, label: "핑크" },

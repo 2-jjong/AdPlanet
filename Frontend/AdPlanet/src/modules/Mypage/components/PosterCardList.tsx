@@ -121,3 +121,11 @@
 //     </div>
 //   );
 // }
+
+import React from "react";
+
+const PosterCardList = () => {
+  return <div></div>;
+};
+
+export default PosterCardList;
