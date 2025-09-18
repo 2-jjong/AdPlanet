@@ -14,7 +14,7 @@ type Props = { data: CiGuidelineData };
 
 const Box: React.FC<{ title: string; children?: React.ReactNode }> = ({ title, children }) => (
   <div className="rounded-xl border border-slate-700/80 bg-slate-800/40 p-4">
-    <h4 className="text-[#87DEDA] font-semibold mb-2">{title}</h4>
+    <h4 className="text-primary font-semibold mb-2">{title}</h4>
     {children}
   </div>
 );

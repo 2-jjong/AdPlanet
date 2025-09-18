@@ -26,7 +26,7 @@ type CiGuidelineData = {
   palette: { primary: ColorSpec[]; secondary: ColorSpec[]; neutral: ColorSpec[] };
 };
 
-function adaptCiGuideline(ci?: CiDomain | null): CiGuidelineData {
+function adaptCiGuideline(ci?: CiDomain | null) {
   const primary = ci?.palette.primary
     ? [{ name: ci.palette.primary.name ?? "Primary", hex: ci.palette.primary.hex, note: ci.palette.primary.guide }]
     : [];
@@ -38,13 +38,20 @@ function adaptCiGuideline(ci?: CiDomain | null): CiGuidelineData {
     : [];
 
   return {
-    basicRules: ci?.logoGuideLines ?? [],
-    minSize: { widthMm: 0, dpiPx: 0 },        // 서버에 값 없으니 기본값
-    marginRules: [],                           // 서버에 값 없으니 기본값
-    backgroundRules: [],                       // 서버에 값 없으니 기본값
+    basicRules:      ci?.logoGuideLines ?? [],
+    marginRules:     ci?.marginRules ?? [],
+    backgroundRules: ci?.backgroundRules ?? [],
+    // 금지 규정도 보여주려면 CiGuideline.tsx 타입에 추가해서 넘겨도 됨:
+    // prohibitionRules: ci?.prohibitionRules ?? [],
+    minSize: {
+      widthMm: ci?.minSizeMm ?? 0,
+      dpiPx:   ci?.minSizePx ?? 0,
+    },
     palette: { primary, secondary, neutral },
   };
 }
+
+
 // ──────────────────────────────────────────────────────────────────────
 
 export default function LogoDetailPage() {
@@ -77,16 +84,20 @@ export default function LogoDetailPage() {
     try {
       setCiCreateError(null);
       setCreatingCi(true);
-      await createCiGuideline(logoId);           // 생성 API 호출
-      const fresh = await getCiGuideline(logoId); // 최신 가이드라인 재조회
+
+      await createCiGuideline(logoId);      // 바디 없이 POST
+      const fresh = await getCiGuideline(logoId); // 재조회
       setCi(fresh);
-      setActiveIndex(1);                         // 섹션2가 보이도록 (0-based)
+      setActiveIndex(1);
     } catch (e: any) {
+      // 에러 로그
+      console.error("[CI create] ", e?.response?.status, e?.response?.data || e);
       setCiCreateError(e?.message ?? "CI 가이드라인 생성에 실패했습니다.");
     } finally {
       setCreatingCi(false);
     }
   };
+
 
   // 데이터 로드
   useEffect(() => {
@@ -171,7 +182,7 @@ return (
           {/* 헤더 */}
           <header className="mb-8 flex items-center justify-between">
             <h1 className="text-3xl font-extrabold tracking-tight">
-              <span className="text-[#87DEDA]">{detail.name}</span>
+              <span className="text-primary">{detail.name}</span>
               <span className="ml-1">의 로고</span>
             </h1>
             {/* <Link to="/archive/logo" className="rounded-xl px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700">
@@ -194,13 +205,13 @@ return (
             <section className="col-span-12 lg:col-span-6 space-y-8">
               {detail.slogan && (
                 <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
-                  <h2 className="text-xl font-bold text-[#87DEDA]">슬로건(선택사항)</h2>
+                  <h2 className="text-xl font-bold text-primary">슬로건(선택사항)</h2>
                   <p className="mt-3 text-lg leading-relaxed">{detail.slogan}</p>
                 </div>
               )}
               {detail.prompt && (
                 <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
-                  <h2 className="text-xl font-bold text-[#87DEDA]">프롬프트</h2>
+                  <h2 className="text-xl font-bold text-primary">프롬프트</h2>
                   <p className="mt-3 whitespace-pre-wrap leading-relaxed">{detail.prompt}</p>
                 </div>
               )}
@@ -237,7 +248,6 @@ return (
           </div>
         </div>
       </FullpageSection>
-
     </FullpageContainer>
   </div>
 );

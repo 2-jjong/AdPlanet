@@ -13,7 +13,7 @@ export function LogoCard({
         "h-[400px] w-full rounded-2xl overflow-hidden shadow-lg",
         "bg-gray-100 text-black flex items-center justify-center",
         "transition-transform duration-300",
-        isActive ? "ring-2 ring-[#87DEDA]" : "",
+        isActive ? "ring-2 ring-primary" : "",
       ].join(" ")}
     >
       {imgUrl ? (

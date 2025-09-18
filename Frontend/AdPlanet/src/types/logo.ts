@@ -12,6 +12,13 @@ export interface LogoTag {
 
 export interface CiGuideline {
   logoGuideLines?: string[]; 
+
+  minSizeMm?: number;
+  minSizePx?: number;
+  marginRules?: string[];
+  backgroundRules?: string[];
+  prohibitionRules?: string[];
+
   palette: {
     primary?: { name: string; hex: string; guide?: string };
     secondary?: { name: string; hex: string; guide?: string };

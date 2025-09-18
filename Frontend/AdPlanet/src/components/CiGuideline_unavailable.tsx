@@ -15,7 +15,7 @@ export default function CiGuidelineUnavailable({ onCreate, className, creating }
   return (
     <div
       className={[
-        "rounded-[28px] border-2 border-dashed border-[#87DEDA]/70 bg-slate-800/40",
+        "rounded-[28px] border-2 border-dashed border-primary/70 bg-slate-800/40",
         "px-6 sm:px-10 py-10 sm:py-14",
         "min-h-[420px] flex flex-col items-center justify-center text-center",
         className ?? "",

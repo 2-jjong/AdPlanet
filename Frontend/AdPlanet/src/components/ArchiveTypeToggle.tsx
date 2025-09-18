@@ -22,7 +22,7 @@ export default function ArchiveTypeToggle() {
         className={[
           "px-6 py-2 text-sm rounded-full transition",
           active
-            ? "bg-[#87DEDA] text-[#1D1F33] font-semibold"
+            ? "bg-primary text-[#1D1F33] font-semibold"
             : "text-slate-300 hover:text-white",
         ].join(" ")}
       >

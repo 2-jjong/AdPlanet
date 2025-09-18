@@ -1,6 +1,7 @@
 import apiClient from "../../services/apiClient";
 import type { ApiResponse } from "../../types/api";
 
+
 // 목록
 export interface LogoListItemDto {
   logoId: number; name: string; slogan: string; imgUrl: string;
@@ -12,17 +13,6 @@ export interface LogoListQueryDto { order?: "LATEST" | "OLDEST"; tagId?: number;
 // 상세
 export interface LogoDetailDto {
   name: string; slogan: string; imgUrl: string; prompt?: string;
-}
-
-// CI 가이드라인
-export interface CiGuidelineDto {
-  logoGuide?: string;      
-  primaryColor?: string;   
-  secondaryColor?: string; 
-  neutralColor?: string;   
-  primaryGuide?: string;   
-  secondaryGuide?: string;
-  neutralGuide?: string;
 }
 
 // 태그 목록
@@ -57,21 +47,43 @@ export async function fetchLogoDetailDto(logoId: number) {
   return data.data;
 }
 
+// CI 가이드라인
+export interface CiGuidelineDto {
+  id?: number;
+  logoId?: number;
+
+  basicLogo?: string;
+  minSize?: string;           
+  marginRule?: string;
+  backgroundRule?: string;
+  prohibitionRule?: string;
+
+  primaryColor?: string;     
+  secondaryColor?: string;
+  neutralColor?: string;
+
+  primaryGuide?: string;
+  secondaryGuide?: string;
+  neutralGuide?: string;
+}
+
 // CI 가이드라인 정보
 export async function fetchCiGuidelineDto(logoId: number) {
   const { data } = await apiClient.get<ApiResponse<CiGuidelineDto>>(`/api/logos/${logoId}/ci-guideline`);
   if (!ok(data?.code)) throw new Error(data?.message || `API ${data?.code}`);
-
-  // 색상은 # 보정해서 넘겨주면 서비스에서 그대로 사용 가능
-  const d = data.data;
-
-  return {
-    ...d,
-    primaryColor: ensureHex(d.primaryColor),
-    secondaryColor: ensureHex(d.secondaryColor),
-    neutralColor: ensureHex(d.neutralColor),
-  } as CiGuidelineDto;
+  return data.data || {};
 }
+
+// CI 가이드라인 생성 요청
+export async function createCiGuidelineDto(logoId: number) {
+  const { data } = await apiClient.post<ApiResponse<unknown>>(
+    `/api/logos/${logoId}/ci-guideline`
+  );
+  if (!ok(data?.code)) throw new Error(data?.message || `API ${data?.code}`);
+  return true;
+}
+
+
 
 // 로고 카테고리 태그 목록
 export async function fetchLogoTagsDto() {

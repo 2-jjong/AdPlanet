@@ -36,7 +36,7 @@ export default function SortBar() {
             className={[
               "text-lg md:text-xl transition-colors",
               value === opt.key
-                ? "text-[#87DEDA] font-semibold"
+                ? "text-primary font-semibold"
                 : "text-white/90 hover:text-white"
             ].join(" ")}
           >
