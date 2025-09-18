@@ -1,4 +1,3 @@
-import React from "react";
 import astronautSearching from "../assets/astronaut_searching.png";
 import { RoundButton } from "./RoundButton";
 

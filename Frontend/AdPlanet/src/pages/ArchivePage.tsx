@@ -1,8 +1,8 @@
 import React from 'react';
-import { useSearchParams, Outlet } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import Navigation from '../components/Navigation';
 import LogoCardList from '../components/LogoCardList';
-import PosterCardList from '../components/PosterCardList';
+// import PosterCardList from '../components/PosterCardList';
 import ArchiveToolBar from '../components/ArchiveToolbar';
 
 
