@@ -18,6 +18,7 @@ public class AuthServiceImpl implements AuthService {
     private final SSAFYOAuthService ssafyOAuthService;
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
+    private final RefreshTokenService refreshTokenService;
 
 
     @Override
@@ -42,6 +43,9 @@ public class AuthServiceImpl implements AuthService {
         // JWT 토큰 생성
         String accessToken = jwtUtil.generateAccessToken(user.getUserId());
         String refreshToken = jwtUtil.generateRefreshToken(user.getUserId());
+
+        // RefreshToken을 Redis에 저장
+        refreshTokenService.saveRefreshToken(user.getUserId(), refreshToken);
 
         return new LoginTokens(accessToken, refreshToken);
     }
@@ -69,6 +73,55 @@ public class AuthServiceImpl implements AuthService {
         String accessToken = jwtUtil.generateAccessToken(user.getUserId());
         String refreshToken = jwtUtil.generateRefreshToken(user.getUserId());
 
+        // RefreshToken을 Redis에 저장
+        refreshTokenService.saveRefreshToken(user.getUserId(), refreshToken);
+
         return new LoginTokens(accessToken, refreshToken);
+    }
+
+    @Override
+    public LoginTokens reissueTokens(String refreshToken) {
+        try {
+            // RefreshToken에서 userId 추출
+            if (!jwtUtil.validateToken(refreshToken)) {
+                throw new RuntimeException("유효하지 않은 RefreshToken");
+            }
+
+            if (jwtUtil.isTokenExpired(refreshToken)) {
+                throw new RuntimeException("만료된 RefreshToken");
+            }
+
+            if (!"REFRESH".equals(jwtUtil.getTokenType(refreshToken))) {
+                throw new RuntimeException("RefreshToken이 아닙니다");
+            }
+
+            Long userId = jwtUtil.getUserIdFromToken(refreshToken);
+
+            // Redis에서 저장된 RefreshToken과 비교
+            if (!refreshTokenService.isValidRefreshToken(userId, refreshToken)) {
+                throw new RuntimeException("유효하지 않은 RefreshToken");
+            }
+
+            // 새로운 토큰 생성
+            String newAccessToken = jwtUtil.generateAccessToken(userId);
+            String newRefreshToken = jwtUtil.generateRefreshToken(userId);
+
+            // 새로운 RefreshToken을 Redis에 저장
+            refreshTokenService.saveRefreshToken(userId, newRefreshToken);
+
+            return new LoginTokens(newAccessToken, newRefreshToken);
+
+        } catch (Exception e) {
+            log.error("토큰 갱신 실패: {}", e.getMessage());
+            throw new RuntimeException("토큰 갱신 실패: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void logout(Long userId) {
+        // Redis에서 RefreshToken 삭제
+        refreshTokenService.deleteRefreshToken(userId);
+
+        log.info("로그아웃 완료 - UserId: {}", userId);
     }
 }
