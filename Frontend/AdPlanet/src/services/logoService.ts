@@ -3,7 +3,6 @@ import {
   fetchLogoListDto, fetchLogoDetailDto, fetchCiGuidelineDto, createCiGuidelineDto, fetchLogoTagsDto,
   type LogoListItemDto, toAbsolute,
 } from "./dto/logo.dto";
-import {  } from "./dto/logo.dto";
 
 
 // 목록 매핑
@@ -93,3 +92,4 @@ export async function getAllLogoTags(): Promise<LogoTag[]> {
   const list = await fetchLogoTagsDto();
   return list.map(t => ({ id: t.tagId, name: t.tagName }));
 }
+

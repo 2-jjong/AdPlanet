@@ -19,6 +19,8 @@ export default {
         'float': 'float 6s ease-in-out infinite',
         'twinkle': 'twinkle 2s ease-in-out infinite alternate',
         'orbit': 'orbit 20s linear infinite',
+        'breath': 'breath 2.2s ease-in-out infinite',
+        'planet-breath': 'planet-breath 2.2s ease-in-out infinite',
       },
       keyframes: {
         float: {
@@ -32,6 +34,16 @@ export default {
         orbit: {
           '0%': { transform: 'rotate(0deg) translateX(100px) rotate(0deg)' },
           '100%': { transform: 'rotate(360deg) translateX(100px) rotate(-360deg)' },
+        },
+        breath: {
+          '0%': { transform: 'scale(1)', opacity: '0.88' },
+          '50%': { transform: 'scale(1.12)', opacity: '1' },
+          '100%': { transform: 'scale(1)', opacity: '0.88' },
+        },
+        'planet-breath': {
+          '0%': { transform: 'translate(-50%, 50%) scale(0.9)', opacity: '0.8' },
+          '50%': { transform: 'translate(-50%, 50%) scale(1.15)', opacity: '1.2' },
+          '100%': { transform: 'translate(-50%, 50%) scale(0.9)', opacity: '0.8' },
         },
       },
     },

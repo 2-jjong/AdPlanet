@@ -1,4 +1,4 @@
-import {createBrowserRouter, RouteObject, RouterProvider, Navigate} from 'react-router-dom';
+import {createBrowserRouter, type RouteObject, RouterProvider} from 'react-router-dom';
 import HomePage from '../pages/HomePage';
 import LogoPage from '../pages/LogoPage';
 import LogoDetailPage from '../pages/LogoDetailPage';
@@ -37,13 +37,13 @@ const routeConfig = [
         { path: "poster", element: <PosterCardList /> },
     ],
   },
-  { 
-    path: "/archive/logo/:id",   
-    element: <LogoDetailPage /> 
+  {
+    path: "/archive/logo/:id",
+    element: <LogoDetailPage />
   },
-  { 
-    path: "/archive/poster/:id", 
-    element: <PosterDetailPage /> 
+  {
+    path: "/archive/poster/:id",
+    element: <PosterDetailPage />
   },
 
   {
