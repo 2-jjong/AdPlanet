@@ -109,3 +109,4 @@ export async function getAllLogoTags(): Promise<LogoTag[]> {
   }
   return res.data.map(t => ({ id: t.tagId, name: t.tagName }));
 }
+

@@ -125,7 +125,8 @@ const Navigation: React.FC = () => {
           Archive
         </Link>
       </nav>
-      
+
+
       <button 
         onClick={handleLoginClick}
         className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 lg:px-6 rounded-lg transition-colors text-sm lg:text-base"

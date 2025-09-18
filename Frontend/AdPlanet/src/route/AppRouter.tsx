@@ -1,4 +1,4 @@
-import {createBrowserRouter, RouteObject, RouterProvider, Navigate} from 'react-router-dom';
+import {createBrowserRouter, type RouteObject, RouterProvider, Navigate} from 'react-router-dom';
 import HomePage from '../pages/HomePage';
 import LogoPage from '../pages/LogoPage';
 import LogoDetailPage from '../pages/LogoDetailPage';
@@ -7,7 +7,7 @@ import PosterPage from '../pages/PosterPage';
 import WatermarkDetectionPage from '../pages/WatermarkDetectionPage';
 import ArchivePage from '../pages/ArchivePage';
 import LogoCardList from "../components/LogoCardList";
-import PosterCardList from "../components/PosterCardList";
+// import PosterCardList from "../components/PosterCardList";
 import AuthCallbackPage from '../pages/AuthCallbackPage';
 import { PATHS } from '../constants/paths';
 
@@ -34,12 +34,12 @@ const routeConfig = [
       children: [
         { index: true, element: <Navigate to="logo" replace /> }, // 기본 진입 /archive/logo
         { path: "logo",   element: <LogoCardList /> },
-        { path: "poster", element: <PosterCardList /> },
+        // { path: "poster", element: <PosterCardList /> },
     ],
   },
-  { 
-    path: "/archive/logo/:id",   
-    element: <LogoDetailPage /> 
+  {
+    path: "/archive/logo/:id",
+    element: <LogoDetailPage />
   },
   // { 
   //   path: "/archive/poster/:id", 
