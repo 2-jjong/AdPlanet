@@ -21,7 +21,7 @@ public class WatermarkServiceImpl implements WatermarkService {
     @Override
     public byte[] insertWatermark(MultipartFile imageFile, String creator, String content) throws Exception {
         if (creator == null || creator.trim().isEmpty()) {
-            throw new IllegalArgumentException("워터마크 제작자가 없습니다.");
+            throw new IllegalArgumentException("워터마크 제작자 값이 없습니다.");
         }
         if (content == null || content.trim().isEmpty()) {
             throw new IllegalArgumentException("워터마크 내용이 없습니다.");
