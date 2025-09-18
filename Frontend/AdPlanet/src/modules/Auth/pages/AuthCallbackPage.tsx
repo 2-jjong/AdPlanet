@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { extractAuthCode, loginWithAuthCode } from "../../../services/authService";
+import { loginWithAuthCode, extractAuthCode } from "../../../services/authService";
+import type { ApiResponse } from "../../../types/api";
 import { PATHS } from "../../../constants/paths";
 
 const AuthCallbackPage: React.FC = () => {
@@ -15,10 +16,8 @@ const AuthCallbackPage: React.FC = () => {
         const authCode = extractAuthCode();
 
         if (authCode) {
-          // 인증 코드로 로그인 처리
-          const loginSuccess = await loginWithAuthCode(authCode);
-
-          if (loginSuccess) {
+          const res: ApiResponse<null> = await loginWithAuthCode(authCode);
+          if (res.code === 'S0000') {
             setStatus("success");
             setMessage("로그인에 성공했습니다!");
 
@@ -28,7 +27,7 @@ const AuthCallbackPage: React.FC = () => {
             }, 2000);
           } else {
             setStatus("error");
-            setMessage("로그인에 실패했습니다.");
+            setMessage(res.message || "로그인에 실패했습니다.");
 
             // 3초 후 홈페이지로 리다이렉트
             setTimeout(() => {
