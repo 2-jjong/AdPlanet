@@ -3,10 +3,14 @@ package com.ssafy.adplanet.controller.logo;
 import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.ci.CiGuidelineResponse;
 import com.ssafy.adplanet.dto.logo.*;
+import com.ssafy.adplanet.dto.tag.AssignLogoTagsRequest;
+import com.ssafy.adplanet.dto.tag.CreateTagRequest;
+import com.ssafy.adplanet.dto.tag.TagDto;
 import com.ssafy.adplanet.enums.LogoListOrder;
 import com.ssafy.adplanet.enums.LogoStyle;
 import com.ssafy.adplanet.service.ci.CiGuidelineServiceImpl;
 import com.ssafy.adplanet.service.logo.LogoService;
+import com.ssafy.adplanet.service.tag.TagService;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/logos")
@@ -37,6 +42,7 @@ public class LogoController {
 
     private final LogoService logoService;
     private final CiGuidelineServiceImpl ciGuidelineService;
+    private final TagService tagService;
 
     @PostMapping
     @Operation(summary = "로고 생성", description = "프롬프트를 기반으로 로고를 생성합니다.")
@@ -47,11 +53,11 @@ public class LogoController {
     public ResponseEntity<ResponseDto<LogoDto>> createLogo(
             @Parameter(
                     in = ParameterIn.QUERY,
-                    name = "sytle",
+                    name = "style",
                     description = "로고 스타일 (SIMPLE | MONO). 미지정 시 SIMPLE",
                     schema = @Schema(implementation = LogoStyle.class, allowableValues = {"SIMPLE","MONO"})
             )
-            @RequestParam(name = "sytle", required = false, defaultValue = "SIMPLE") LogoStyle style,
+            @RequestParam(name = "style", required = false, defaultValue = "SIMPLE") LogoStyle style,
             @Parameter(description = "로고 생성 요청 바디", required = true)
             @RequestBody CreateLogoRequest req,
 
@@ -137,26 +143,45 @@ public class LogoController {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
-    public ResponseEntity<ResponseDto<List<LogoTagItem>>> getLogoTags() {
-        var list = List.of(
-                new LogoTagItem(1L, "자연적인"),
-                new LogoTagItem(2L, "미니멀")
-        );
+    public ResponseEntity<ResponseDto<List<TagDto>>> getLogoTags() {
+        var list = tagService.search(null);
         return ResponseEntity.ok(new ResponseDto<>("S0000", list, null));
     }
 
     @PostMapping("/tags")
-    @Operation(
-            summary = "로고 태그 지정",
-            description = "logoId에 tagName을 지정합니다.")
+    @Operation(summary = "태그 생성(단일)", description = "새 태그를 1개 생성하고 {id, name}을 반환합니다. 중복 이름은 400")
+    public ResponseEntity<ResponseDto<TagDto>> createTag(@RequestBody CreateTagRequest req) {
+        try {
+            TagDto dto = tagService.create(req.name());
+            return ResponseEntity.ok(ResponseDto.ok(dto));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ResponseDto.error("TG4001", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ResponseDto.error("TG5001", "서버 오류"));
+        }
+    }
+
+    @PutMapping("/{logoId}/tags")
+    @Operation(summary = "로고 태그 부여", description = "로고 생성 이후, tagIds 목록으로 로고의 태그를 설정합니다.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청")
+            @ApiResponse(responseCode = "200", description = "성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청(존재하지 않는 tagId 포함 등)"),
+            @ApiResponse(responseCode = "404", description = "로고 없음")
     })
-    public ResponseEntity<ResponseDto<Void>> assignLogoTag (
-            @RequestBody LogoTagAssignRequest req
-    ) {
-        return ResponseEntity.ok(new ResponseDto<>("S0000", null, null));
+    public ResponseEntity<ResponseDto<List<TagDto>>> assignTagsToLogo(
+            @PathVariable Long logoId,
+            @RequestBody AssignLogoTagsRequest req
+            ) {
+        try {
+            var result = tagService.setTags(logoId, req.tagIds());
+            return ResponseEntity.ok(new ResponseDto<>("S0000", null, null));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.badRequest().body(ResponseDto.error("LG4041", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ResponseDto.error("LG4001", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ResponseDto.error("LG5001", "서버 오류"));
+        }
     }
 
     @PostMapping("/{logoId}/ci-guideline")
