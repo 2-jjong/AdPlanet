@@ -34,11 +34,11 @@ public class WatermarkController {
     })
     public ResponseEntity<?> insertWatermark(
             @Parameter(description = "워터마크를 삽입할 원본 이미지 파일", required = true)
-            @RequestParam("image") MultipartFile imageFile,
+            @RequestPart("image") MultipartFile imageFile,
             @Parameter(description = "워터마크 제작자", required = true, example = "제작자 이메일")
-            @RequestParam("creator") String creator,
+            @RequestPart("creator") String creator,
             @Parameter(description = "워터마크 내용", required = true, example = "AdPlanet 워터마크")
-            @RequestParam("content") String content) {
+            @RequestPart("content") String content) {
 
         log.info("워터마크 삽입 요청 - 파일명: {}, 파일크기: {}bytes, 제작자: '{}', 내용: '{}'",
                 imageFile.getOriginalFilename(), imageFile.getSize(), creator, content);
@@ -73,7 +73,7 @@ public class WatermarkController {
     })
     public ResponseEntity<?> detectWatermark(
             @Parameter(description = "워터마크가 삽입된 이미지 파일", required = true)
-            @RequestParam("image") MultipartFile imageFile) {
+            @RequestPart("image") MultipartFile imageFile) {
 
         log.info("워터마크 검출 요청 - 파일명: {}, 파일크기: {}bytes",
                 imageFile.getOriginalFilename(), imageFile.getSize());
