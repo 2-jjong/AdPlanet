@@ -49,7 +49,7 @@ dependencies {
     // WebClient
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
-    // AMPQ (Rabbit MQ)
+    // AMQP (Rabbit MQ)
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
 
     // S3

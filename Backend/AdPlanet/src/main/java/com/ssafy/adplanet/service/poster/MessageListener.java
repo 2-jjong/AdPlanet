@@ -2,12 +2,16 @@ package com.ssafy.adplanet.service.poster;
 
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class MessageListener {
 
-    @RabbitListener(queues = "ham.test.queue")
+    private static final Logger log = LoggerFactory.getLogger(MessageListener.class);
+
+    @RabbitListener(queues = "${app.queue.test}")
     public void receiveMessage(String message) {
-        System.out.println(" [x] Received: " + message);
+        log.info(" [x] Received: " + message);
     }
 }

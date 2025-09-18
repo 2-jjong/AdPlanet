@@ -25,7 +25,7 @@ public class ImageProcessingJob{
     @Column(name = "status", nullable = false)
     JobStatus status;
 
-    @Column(name = "group_id")
+    @Column(name = "style")
     PosterStyle style;
 
     @Column(name = "prompt", nullable = false)
