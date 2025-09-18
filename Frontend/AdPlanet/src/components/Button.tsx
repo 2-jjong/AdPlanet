@@ -12,12 +12,12 @@ const sizes = {
 };
 
 const variants = {
-  primary: "bg-background text-white hover:bg-[#6fc7c3] focus:ring-[#87DEDA]",
+  primary: "bg-background text-white hover:bg-[#6fc7c3] focus:ring-primary",
   secondary: "bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-300",
   danger: "bg-red-500 text-white hover:bg-red-600 focus:ring-red-400",
-  fill: "bg-primary text-white hover:bg-[#6fc7c3] focus:ring-[#87DEDA]",
+  fill: "bg-primary text-white hover:bg-[#6fc7c3] focus:ring-primary",
   outline:
-    "border-2 border-dotted border-primary text-text-color bg-transparent hover:bg-primary hover:text-white focus:ring-[#87DEDA]",
+    "border-2 border-dotted border-primary text-text-color bg-transparent hover:bg-primary hover:text-white focus:ring-primary",
 };
 
 interface ButtonProps {
