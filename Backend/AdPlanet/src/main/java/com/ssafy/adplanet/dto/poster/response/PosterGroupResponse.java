@@ -20,7 +20,13 @@ public record PosterGroupResponse(
     @Schema(description = "프롬프트", example = "아삭아삭한 배추 이미지, 싱싱한 초록색 활용")
     String prompt,
 
+    @Schema(description = "제목", example = "싸피컴퍼니")
+    String title,
+
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(description = "내용", example = "포기는 배추 셀 때나 하는 말")
+    String content,
+
     @Schema(description = "생성 일시", example = "2025-09-13T10:00:00Z")
     LocalDateTime createdAt,
 
@@ -28,11 +34,11 @@ public record PosterGroupResponse(
     @Schema(description = "생성한 포스터 목록")
     List<PosterResponse> history
 ){
-    public PosterGroupResponse(String imgUrl, String prompt, List<PosterResponse> history) {
-        this(null, imgUrl, prompt, null, history);
+    public PosterGroupResponse(Long posterGroupId, String imgUrl, String title, String content, LocalDateTime createdAt) {
+        this(posterGroupId, imgUrl, null, title, content, createdAt, null);
     }
 
-    public PosterGroupResponse(Long posterGroupId, String imgUrl, LocalDateTime createdAt) {
-        this(posterGroupId, imgUrl, null, createdAt, null);
+    public PosterGroupResponse(Long posterGroupId, String imgUrl, String title, String content, String prompt, LocalDateTime createdAt) {
+        this(posterGroupId, imgUrl, prompt, title, content, createdAt, null);
     }
 }

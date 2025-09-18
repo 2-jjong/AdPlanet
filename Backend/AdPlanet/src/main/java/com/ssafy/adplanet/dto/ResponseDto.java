@@ -9,6 +9,7 @@ public record ResponseDto<T>(
         @JsonInclude(JsonInclude.Include.NON_NULL) T data,
         @JsonInclude(JsonInclude.Include.NON_NULL) String message
 ) {
+    public static <T> ResponseDto<T> ok() { return new ResponseDto<>("S0000", null, null); }
     public static <T> ResponseDto<T> ok(T data) { return new ResponseDto<>("S0000", data, null); }
     public static <T> ResponseDto<T> error(String c, String m) { return new ResponseDto<>(c, null, m); }
 }
