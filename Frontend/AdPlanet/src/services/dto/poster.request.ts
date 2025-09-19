@@ -13,7 +13,7 @@ export interface PosterGroupListQuery {
 }
 
 export interface CreatePosterJsonRequest {
-  groupId: number;
+  groupId?: number; // 그룹 미선택 시 생략 가능
   title: string;
   content?: string;
   prompt: string;

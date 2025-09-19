@@ -3,6 +3,7 @@
 export interface Poster {
   posterId: number;
   imgUrl: string;
+  groupId?: number;
 }
 
 export interface PosterTag {

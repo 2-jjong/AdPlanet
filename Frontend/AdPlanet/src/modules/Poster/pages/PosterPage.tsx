@@ -1,23 +1,21 @@
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import PromptInput from "../components/PromptInput";
-import SkeletonCanvas from "../components/SkeletonCanvas";
+// SkeletonCanvas is consumed inside PosterSidebar
 import StyleSelectionDialog from "../components/StyleSelectionDialog";
 import Accordion from "../components/Accordion";
 import UploadDropzone from "../components/UploadDropzone";
-import TextEditor from "../../../components/UI/Text/TextEditor";
-import ChatRoomList from "../components/ChatRoomList";
+// TextEditor is now used inside PosterSidebar
+import GroupList from "../components/GroupList";
 import GenerationHistory from "../components/GenerationHistory";
-import { Button } from "../../../components/UI/Button/Button";
-import type {
-  UploadedImage,
-  PosterGenerationState,
-  SkeletonPose,
-  TextOverlay,
-  ChatRoom,
-  GenerationRecord,
-} from "../../../types/poster";
+import PosterTopBar from "../components/PosterTopBar";
+import PosterCanvasView from "../components/PosterCanvasView";
+import PosterSidebar from "../components/PosterSidebar";
+import type { UploadedImage, PosterGenerationState, SkeletonPose, TextOverlay, GenerationRecord } from "../../../types/poster";
 import { PATHS } from "../../../constants/paths";
+import { useCreatePosterMutation } from "../hooks/usePosterMutations";
+import { defaultSkeletonPose } from "../components/defaultPose";
+import { usePosterGroups, usePosterGroupDetail } from "../hooks/usePosterQueries";
 
 const PosterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -25,7 +23,7 @@ const PosterPage: React.FC = () => {
   const [state, setState] = useState<PosterGenerationState>({
     step: "upload",
     uploadedImages: [],
-    generatedPoster: "/src/assets/poster.jpg", // 테스트용 이미지
+    generatedPoster: null,
     currentPose: null,
     prompt: "",
     isGenerating: false,
@@ -41,9 +39,11 @@ const PosterPage: React.FC = () => {
   const [selectedTextId, setSelectedTextId] = useState<string | undefined>();
   const [isFileAccordionOpen, setIsFileAccordionOpen] = useState(false);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const createPosterMutation = useCreatePosterMutation();
 
-  // 채팅방 관련 상태
-  const [isChatListOpen, setIsChatListOpen] = useState(false);
+  // 그룹 목록 사이드바 상태
+  const [isGroupListOpen, setIsGroupListOpen] = useState(false);
+  const groupsQuery = usePosterGroups({});
 
   // 파일 첨부 아코디언 자동 닫기 핸들러
   const handleOutsideClick = useCallback(() => {
@@ -68,63 +68,11 @@ const PosterPage: React.FC = () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isImagePreviewOpen]);
-  const [currentRoomId, setCurrentRoomId] = useState<string>("room-1");
   const [selectedRecordId, setSelectedRecordId] = useState<string | undefined>();
+  const [currentGroupId, setCurrentGroupId] = useState<number | undefined>(undefined);
 
-  // 더미 채팅방 데이터
-  const [chatRooms] = useState<ChatRoom[]>([
-    {
-      id: "room-1",
-      title: "새 포스터 프로젝트",
-      lastUpdated: new Date(),
-      messageCount: 5,
-      isActive: true,
-    },
-    {
-      id: "room-2",
-      title: "여름 세일 포스터",
-      lastUpdated: new Date(Date.now() - 86400000), // 어제
-      thumbnail: "/src/assets/poster.jpg",
-      messageCount: 12,
-      isActive: false,
-    },
-    {
-      id: "room-3",
-      title: "신제품 런칭 광고",
-      lastUpdated: new Date(Date.now() - 172800000), // 2일 전
-      thumbnail: "/src/assets/poster.jpg",
-      messageCount: 8,
-      isActive: false,
-    },
-  ]);
-
-  // 더미 생성 기록 데이터
-  const [generationRecords] = useState<GenerationRecord[]>([
-    {
-      id: "record-1",
-      timestamp: new Date(Date.now() - 300000), // 5분 전
-      thumbnail: "/src/assets/poster.jpg",
-      prompt: "깔끔한 포스터 생성",
-      step: "upload",
-      status: "completed",
-    },
-    {
-      id: "record-2",
-      timestamp: new Date(Date.now() - 180000), // 3분 전
-      thumbnail: "/src/assets/poster.jpg",
-      prompt: "포즈 조정된 포스터",
-      step: "edit",
-      status: "completed",
-    },
-    {
-      id: "record-3",
-      timestamp: new Date(Date.now() - 60000), // 1분 전
-      thumbnail: "/src/assets/poster.jpg",
-      prompt: "텍스트 추가된 포스터",
-      step: "text-edit",
-      status: "generating",
-    },
-  ]);
+  // 생성 히스토리 (그룹 선택 시 서버 데이터로 갱신)
+  const [generationRecords, setGenerationRecords] = useState<GenerationRecord[]>([]);
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setState((prev) => ({
@@ -165,79 +113,44 @@ const PosterPage: React.FC = () => {
   }, []);
 
   const handleGenerate = useCallback(async () => {
+    if (!personImage && !productImage && !sketchImage && !state.prompt.trim()) {
+      return;
+    }
+
     setState((prev) => ({ ...prev, isGenerating: true }));
 
-    // 실제 API 호출 시뮬레이션
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    try {
+      const res = await createPosterMutation.mutateAsync({
+        groupId: currentGroupId, // 없으면 생략되어 서버가 새 그룹을 생성
+        title: state.title || 'Untitled',
+        content: state.content || undefined,
+        prompt: state.prompt,
+        style: undefined, // StyleSelectionDialog에서 선택 시 연동
+        images: {
+          person: personImage?.file ?? null,
+          product: productImage?.file ?? null,
+          sketch: sketchImage?.file ?? null,
+          skeleton: null,
+          previous: null,
+        },
+      });
 
-    // 더미 포스터 이미지 URL
-    const dummyPosterUrl = "/src/assets/poster.jpg";
-
-    // 기본 스켈레톤 포즈 생성
-    const defaultPose = {
-      points: [
-        // 머리
-        { id: "head", x: 175, y: 80, name: "머리", color: "#8B5CF6" },
-        { id: "neck", x: 175, y: 120, name: "목", color: "#A855F7" },
-
-        // 몸통
-        { id: "chest", x: 175, y: 160, name: "가슴", color: "#3B82F6" },
-        { id: "waist", x: 175, y: 220, name: "허리", color: "#10B981" },
-
-        // 팔
-        { id: "left_shoulder", x: 135, y: 140, name: "왼쪽 어깨", color: "#10B981" },
-        { id: "left_elbow", x: 95, y: 180, name: "왼쪽 팔꿈치", color: "#06B6D4" },
-        { id: "left_wrist", x: 75, y: 220, name: "왼쪽 손목", color: "#059669" },
-
-        { id: "right_shoulder", x: 215, y: 140, name: "오른쪽 어깨", color: "#F59E0B" },
-        { id: "right_elbow", x: 255, y: 180, name: "오른쪽 팔꿈치", color: "#EAB308" },
-        { id: "right_wrist", x: 275, y: 220, name: "오른쪽 손목", color: "#84CC16" },
-
-        // 다리
-        { id: "left_hip", x: 155, y: 280, name: "왼쪽 엉덩이", color: "#06B6D4" },
-        { id: "left_knee", x: 145, y: 380, name: "왼쪽 무릎", color: "#3B82F6" },
-        { id: "left_ankle", x: 135, y: 460, name: "왼쪽 발목", color: "#8B5CF6" },
-
-        { id: "right_hip", x: 195, y: 280, name: "오른쪽 엉덩이", color: "#10B981" },
-        { id: "right_knee", x: 205, y: 380, name: "오른쪽 무릎", color: "#3B82F6" },
-        { id: "right_ankle", x: 215, y: 460, name: "오른쪽 발목", color: "#8B5CF6" },
-      ],
-      connections: [
-        // 머리-목-가슴
-        { from: "head", to: "neck", color: "#8B5CF6" },
-        { from: "neck", to: "chest", color: "#3B82F6" },
-        { from: "chest", to: "waist", color: "#10B981" },
-
-        // 왼쪽 팔
-        { from: "chest", to: "left_shoulder", color: "#10B981" },
-        { from: "left_shoulder", to: "left_elbow", color: "#06B6D4" },
-        { from: "left_elbow", to: "left_wrist", color: "#059669" },
-
-        // 오른쪽 팔
-        { from: "chest", to: "right_shoulder", color: "#F59E0B" },
-        { from: "right_shoulder", to: "right_elbow", color: "#EAB308" },
-        { from: "right_elbow", to: "right_wrist", color: "#84CC16" },
-
-        // 왼쪽 다리
-        { from: "waist", to: "left_hip", color: "#06B6D4" },
-        { from: "left_hip", to: "left_knee", color: "#3B82F6" },
-        { from: "left_knee", to: "left_ankle", color: "#8B5CF6" },
-
-        // 오른쪽 다리
-        { from: "waist", to: "right_hip", color: "#10B981" },
-        { from: "right_hip", to: "right_knee", color: "#3B82F6" },
-        { from: "right_knee", to: "right_ankle", color: "#8B5CF6" },
-      ],
-    };
-
-    setState((prev) => ({
-      ...prev,
-      step: "edit",
-      generatedPoster: dummyPosterUrl,
-      currentPose: defaultPose,
-      isGenerating: false,
-    }));
-  }, []);
+      const url = res.data?.imgUrl || null;
+      const newGroupId = (res.data as any)?.groupId as number | undefined;
+      setState((prev) => ({
+        ...prev,
+        step: url ? 'edit' : prev.step,
+        generatedPoster: url,
+        currentPose: prev.currentPose ?? defaultSkeletonPose,
+        isGenerating: false,
+      }));
+      if (typeof newGroupId === 'number' && Number.isFinite(newGroupId)) {
+        setCurrentGroupId(newGroupId);
+      }
+    } catch (e) {
+      setState((prev) => ({ ...prev, isGenerating: false }));
+    }
+  }, [createPosterMutation, personImage, productImage, sketchImage, state.title, state.content, state.prompt]);
 
   const handlePoseChange = useCallback((pose: SkeletonPose) => {
     setState((prev) => ({ ...prev, currentPose: pose }));
@@ -279,19 +192,43 @@ const PosterPage: React.FC = () => {
     [handleUpdateText]
   );
 
-  // 채팅방 관련 핸들러들
-  const handleSelectRoom = useCallback((roomId: string) => {
-    setCurrentRoomId(roomId);
-    setIsChatListOpen(false);
-    // 실제로는 선택된 방의 데이터를 로드
+  // 그룹 선택/신규
+  const handleSelectGroup = useCallback((groupId: number) => {
+    setCurrentGroupId(groupId);
+    setIsGroupListOpen(false);
   }, []);
 
-  const handleNewRoom = useCallback(() => {
-    const newRoomId = `room-${Date.now()}`;
-    setCurrentRoomId(newRoomId);
-    setIsChatListOpen(false);
-    // 새 방 생성 로직
+  const handleNewGroup = useCallback(() => {
+    setCurrentGroupId(undefined);
+    setIsGroupListOpen(false);
   }, []);
+
+  // 현재 그룹 상세를 불러와 히스토리와 캔버스를 동기화
+  const groupDetailQuery = usePosterGroupDetail(currentGroupId as number);
+
+  React.useEffect(() => {
+    const detail = groupDetailQuery.data;
+    if (!detail) return;
+    // 히스토리 변환: 서버 포스터 목록을 UI 레코드로 맵핑
+    const mapped = (detail.posters || []).map((p, idx) => ({
+      id: String(p.posterId),
+      timestamp: new Date(),
+      thumbnail: p.imgUrl,
+      prompt: detail.title || `생성 ${idx + 1}`,
+      step: 'generate' as const,
+      status: 'completed' as const,
+    }));
+    // 마지막 이미지로 캔버스 업데이트
+    const last = detail.posters && detail.posters.length > 0 ? detail.posters[detail.posters.length - 1] : undefined;
+    setState((prev) => ({
+      ...prev,
+      generatedPoster: last?.imgUrl ?? prev.generatedPoster,
+    }));
+    // 히스토리는 로컬 상태가 아니라 props로 넘기므로 여기선 필요 시 확장 가능
+    // 현재 컴포넌트의 generationRecords는 로컬 상태이므로 동기화
+    // 간단히 replace (최초 로드/그룹 변경 시 갱신)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupDetailQuery.data]);
 
   const handleSelectRecord = useCallback(
     (recordId: string) => {
@@ -311,83 +248,30 @@ const PosterPage: React.FC = () => {
         onClose={() => setIsStyleDialogOpen(false)}
       />
 
-      {/* 채팅방 목록 사이드바 */}
-      <ChatRoomList
-        chatRooms={chatRooms}
-        currentRoomId={currentRoomId}
-        onSelectRoom={handleSelectRoom}
-        onNewRoom={handleNewRoom}
-        isOpen={isChatListOpen}
-        onToggle={() => setIsChatListOpen(!isChatListOpen)}
+      {/* 그룹 목록 사이드바 */}
+      <GroupList
+        groups={groupsQuery.data ?? []}
+        currentGroupId={currentGroupId}
+        onSelectGroup={handleSelectGroup}
+        onNewGroup={handleNewGroup}
+        isOpen={isGroupListOpen}
+        onToggle={() => setIsGroupListOpen(!isGroupListOpen)}
       />
 
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ${
-          isChatListOpen ? "lg:ml-72" : "lg:ml-16"
+          isGroupListOpen ? "lg:ml-72" : "lg:ml-16"
         }`}
         style={{ height: "calc(100vh - 0px)" }}
       >
         {/* Header + 생성 히스토리 통합 */}
-        <header className='flex items-center justify-between p-6 border-b border-white/5 flex-shrink-0 bg-background/50 backdrop-blur-xl'>
-          {/* 왼쪽: AdPlanet 로고 */}
-          <div className='flex items-center'>
-            <div>
-              <h1 className='text-2xl lg:text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent'>
-                AdPlanet
-              </h1>
-              <p className='text-sm text-text-color/60 mt-1'>AI 포스터 생성 스튜디오</p>
-            </div>
-          </div>
-
-          {/* 중앙: 생성 히스토리 컨트롤 */}
-          <div className='flex items-center gap-2 bg-background/30 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/10'>
-            <div className='p-1.5 bg-primary/10 rounded-lg'>
-              <svg
-                className='w-3.5 h-3.5 text-primary'
-                fill='none'
-                stroke='currentColor'
-                viewBox='0 0 24 24'
-              >
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth={2}
-                  d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
-                />
-              </svg>
-            </div>
-            <div>
-              <h3 className='text-sm font-semibold text-text-color'>생성 히스토리</h3>
-              <p className='text-xs text-text-color/60'>{generationRecords.length}개의 단계</p>
-            </div>
-            <button
-              onClick={() => {
-                // 생성 히스토리 다이얼로그 열기
-                const event = new CustomEvent("openGenerationHistory");
-                window.dispatchEvent(event);
-              }}
-              className='p-2 text-text-color/60 hover:text-text-color hover:bg-white/5 rounded-lg transition-all ml-2'
-            >
-              <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth={2}
-                  d='M4 6h16M4 12h16M4 18h16'
-                />
-              </svg>
-            </button>
-          </div>
-
-          {/* 오른쪽: 액션 버튼들 */}
-          <div className='flex items-center gap-3'>
-            <Button text='내보내기' variant='outline' size='xs' />
-            <Button text='아카이브' variant='outline' size='xs' />
-            <div className='w-8 h-8 bg-gradient-to-r from-primary/20 to-primary/10 rounded-full flex items-center justify-center'>
-              <div className='w-2 h-2 bg-primary rounded-full'></div>
-            </div>
-          </div>
-        </header>
+        <PosterTopBar
+          historyCount={generationRecords.length}
+          onOpenHistory={() => {
+            const event = new CustomEvent("openGenerationHistory");
+            window.dispatchEvent(event);
+          }}
+        />
 
         {/* 생성 과정 히스토리 - 이벤트 기반으로 처리 */}
         <GenerationHistory
@@ -404,119 +288,48 @@ const PosterPage: React.FC = () => {
           >
             {/* 가운데: Canvas + 프롬프트 */}
             <main className='relative flex flex-col items-center w-full max-w-[500px] mx-auto flex-1 min-h-0'>
-              <div
-                className='relative w-full aspect-square max-w-[400px] max-h-[50vh] rounded-3xl border-2 border-dashed border-primary/30 hover:border-primary/50 shadow-2xl shadow-primary/5 bg-gradient-to-br from-background to-background/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 group cursor-pointer'
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (state.generatedPoster) {
-                    setIsImagePreviewOpen(true);
-                  }
-                }}
-              >
-                {state.generatedPoster ? (
-                  <div className='relative w-full h-full'>
-                    <img
-                      src={state.generatedPoster}
-                      alt='Generated Poster'
-                      className='w-full h-full object-cover rounded-2xl'
-                    />
-
-                    {/* 텍스트 오버레이들 */}
-                    {state.textOverlays.map((text) => (
-                      <div
-                        key={text.id}
-                        className={`absolute cursor-move select-none ${
-                          selectedTextId === text.id ? "ring-2 ring-primary" : ""
-                        }`}
-                        style={{
-                          left: `${text.x}%`,
-                          top: `${text.y}%`,
-                          fontSize: `${text.fontSize}px`,
-                          color: text.color,
-                          fontWeight: text.fontWeight,
-                          fontFamily: text.fontFamily,
-                          transform: "translate(-50%, -50%)",
-                          textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
-                        }}
-                        onClick={() =>
-                          setSelectedTextId(selectedTextId === text.id ? undefined : text.id)
-                        }
-                        onMouseDown={(e) => {
-                          const rect = e.currentTarget.parentElement!.getBoundingClientRect();
-                          const startX = e.clientX;
-                          const startY = e.clientY;
-                          const startLeft = text.x;
-                          const startTop = text.y;
-
-                          const handleMouseMove = (e: MouseEvent) => {
-                            const deltaX = ((e.clientX - startX) / rect.width) * 100;
-                            const deltaY = ((e.clientY - startY) / rect.height) * 100;
-                            const newX = Math.max(0, Math.min(100, startLeft + deltaX));
-                            const newY = Math.max(0, Math.min(100, startTop + deltaY));
-                            handleTextPositionChange(text.id, newX, newY);
-                          };
-
-                          const handleMouseUp = () => {
-                            document.removeEventListener("mousemove", handleMouseMove);
-                            document.removeEventListener("mouseup", handleMouseUp);
-                          };
-
-                          document.addEventListener("mousemove", handleMouseMove);
-                          document.addEventListener("mouseup", handleMouseUp);
-                        }}
-                      >
-                        {text.text}
-                      </div>
-                    ))}
+              <PosterCanvasView generatedPoster={state.generatedPoster} onOpenPreview={() => setIsImagePreviewOpen(true)}>
+                {/* 텍스트 오버레이들 */}
+                {state.textOverlays.map((text) => (
+                  <div
+                    key={text.id}
+                    className={`absolute cursor-move select-none ${selectedTextId === text.id ? "ring-2 ring-primary" : ""}`}
+                    style={{
+                      left: `${text.x}%`,
+                      top: `${text.y}%`,
+                      fontSize: `${text.fontSize}px`,
+                      color: text.color,
+                      fontWeight: text.fontWeight,
+                      fontFamily: text.fontFamily,
+                      transform: "translate(-50%, -50%)",
+                      textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
+                    }}
+                    onClick={() => setSelectedTextId(selectedTextId === text.id ? undefined : text.id)}
+                    onMouseDown={(e) => {
+                      const rect = e.currentTarget.parentElement!.getBoundingClientRect();
+                      const startX = e.clientX;
+                      const startY = e.clientY;
+                      const startLeft = text.x;
+                      const startTop = text.y;
+                      const handleMouseMove = (e: MouseEvent) => {
+                        const deltaX = ((e.clientX - startX) / rect.width) * 100;
+                        const deltaY = ((e.clientY - startY) / rect.height) * 100;
+                        const newX = Math.max(0, Math.min(100, startLeft + deltaX));
+                        const newY = Math.max(0, Math.min(100, startTop + deltaY));
+                        handleTextPositionChange(text.id, newX, newY);
+                      };
+                      const handleMouseUp = () => {
+                        document.removeEventListener("mousemove", handleMouseMove);
+                        document.removeEventListener("mouseup", handleMouseUp);
+                      };
+                      document.addEventListener("mousemove", handleMouseMove);
+                      document.addEventListener("mouseup", handleMouseUp);
+                    }}
+                  >
+                    {text.text}
                   </div>
-                ) : (
-                  <div className='text-center text-text-color/60 group-hover:text-text-color/80 transition-colors'>
-                    <div className='w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-primary/20 to-primary/5 rounded-3xl flex items-center justify-center group-hover:scale-105 transition-transform'>
-                      <svg
-                        className='w-12 h-12 text-primary/60'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'
-                      >
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={1.5}
-                          d='M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'
-                        />
-                      </svg>
-                    </div>
-                    <h3 className='text-lg font-semibold mb-2'>포스터 캔버스</h3>
-                    <p className='text-sm text-text-color/50 max-w-sm mx-auto leading-relaxed'>
-                      파일을 업로드하고 프롬프트를 입력하여
-                      <br />
-                      AI가 생성한 포스터를 확인하세요
-                    </p>
-                  </div>
-                )}
-
-                {/* 포스터 위 버튼들 */}
-                {state.generatedPoster && (
-                  <div className='absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity'>
-                    <button className='px-4 py-2 bg-background/90 backdrop-blur-sm text-text-color rounded-xl text-sm hover:bg-background transition-all shadow-lg border border-white/10'>
-                      <svg
-                        className='w-4 h-4 inline mr-2'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'
-                      >
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={2}
-                          d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4 4m4-4v12'
-                        />
-                      </svg>
-                      내보내기
-                    </button>
-                  </div>
-                )}
-              </div>
+                ))}
+              </PosterCanvasView>
 
               {/* 하단 프롬프트 영역 - 고정 위치 */}
               <div className='w-full flex-shrink-0 mt-4'>
@@ -533,190 +346,23 @@ const PosterPage: React.FC = () => {
           </div>
 
           {/* 오른쪽: 통합 사이드바 */}
-          <aside
-            className={`${
-              state.step === "edit" && state.currentPose
-                ? "w-[400px] lg:w-[480px]"
-                : "w-[300px] lg:w-[340px]"
-            } border-l border-white/5 bg-background/50 backdrop-blur-xl overflow-y-auto scrollbar-hidden transition-all duration-300`}
-            style={{ height: "100%" }}
-          >
+          <aside className={`${state.step === "edit" && state.currentPose ? "w-[400px] lg:w-[480px]" : "w-[300px] lg:w-[340px]"} border-l border-white/5 bg-background/50 backdrop-blur-xl overflow-y-auto scrollbar-hidden transition-all duration-300`} style={{ height: "100%" }}>
+            <PosterSidebar
+              step={state.step}
+              currentPose={state.currentPose}
+              isGenerating={state.isGenerating}
+              textOverlays={state.textOverlays}
+              selectedTextId={selectedTextId}
+              onPoseChange={handlePoseChange}
+              onBackToEdit={() => setState((prev) => ({ ...prev, step: "edit", textOverlays: [] }))}
+              onComplete={handleComplete}
+              onAddText={handleAddText}
+              onUpdateText={handleUpdateText}
+              onRemoveText={handleRemoveText}
+              onSelectText={setSelectedTextId}
+            />
             <div className='p-4 flex flex-col gap-4'>
-              {state.step === "text-edit" ? (
-                <>
-                  {/* 텍스트 편집 */}
-                  <section className='flex flex-col gap-3 flex-1 min-h-0'>
-                    <div className='flex items-center gap-3 pb-3 border-b border-white/10'>
-                      <div className='p-2 bg-primary/10 rounded-lg'>
-                        <svg
-                          className='w-4 h-4 text-primary'
-                          fill='none'
-                          stroke='currentColor'
-                          viewBox='0 0 24 24'
-                        >
-                          <path
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
-                            strokeWidth={2}
-                            d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
-                          />
-                        </svg>
-                      </div>
-                      <h3 className='text-base font-bold text-text-color'>텍스트 편집</h3>
-                    </div>
-                    <div className='flex-1 overflow-y-auto'>
-                      <TextEditor
-                        textOverlays={state.textOverlays}
-                        onAddText={handleAddText}
-                        onUpdateText={handleUpdateText}
-                        onRemoveText={handleRemoveText}
-                        selectedTextId={selectedTextId}
-                        onSelectText={setSelectedTextId}
-                      />
-                    </div>
-                  </section>
-
-                  {/* 버튼들 */}
-                  <div className='flex flex-col gap-3 pt-4 border-t border-white/10'>
-                    <button
-                      onClick={() =>
-                        setState((prev) => ({
-                          ...prev,
-                          step: "edit",
-                          textOverlays: [], // 텍스트 오버레이 모두 제거
-                        }))
-                      }
-                      className='w-full flex items-center justify-center gap-2 border border-primary/30 text-primary py-3 rounded-xl font-medium transition-all hover:bg-primary/10 hover:border-primary/50'
-                    >
-                      <svg
-                        className='w-4 h-4'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'
-                      >
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={2}
-                          d='M15 19l-7-7 7-7'
-                        />
-                      </svg>
-                      포즈 편집으로 돌아가기
-                    </button>
-
-                    <button
-                      onClick={handleComplete}
-                      className='w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary/80 text-background py-3 rounded-xl font-medium transition-all hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl'
-                    >
-                      <svg
-                        className='w-4 h-4'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'
-                      >
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={2}
-                          d='M5 13l4 4L19 7'
-                        />
-                      </svg>
-                      완료하고 홈으로
-                    </button>
-                  </div>
-                </>
-              ) : state.step === "edit" && state.currentPose ? (
-                <div className='h-full flex flex-col'>
-                  {/* 포즈 조정 */}
-                  <section className='flex flex-col gap-3 flex-1 min-h-0'>
-                    <div className='flex items-center gap-3 pb-3 border-b border-white/10 flex-shrink-0'>
-                      <div className='p-2 bg-primary/10 rounded-lg'>
-                        <svg
-                          className='w-4 h-4 text-primary'
-                          fill='none'
-                          stroke='currentColor'
-                          viewBox='0 0 24 24'
-                        >
-                          <path
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
-                            strokeWidth={2}
-                            d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
-                          />
-                        </svg>
-                      </div>
-                      <h3 className='text-base font-bold text-text-color'>포즈 조정</h3>
-                    </div>
-                    <div className='bg-background/50 rounded-xl border border-white/10 p-3 flex-1 min-h-0 flex items-center justify-center'>
-                      <div className='w-full h-full max-w-md max-h-full'>
-                        <SkeletonCanvas
-                          pose={state.currentPose}
-                          onPoseChange={handlePoseChange}
-                          width={state.step === "edit" ? 360 : 350}
-                          height={state.step === "edit" ? 480 : 500}
-                        />
-                      </div>
-                    </div>
-                  </section>
-
-                  {/* 버튼들 */}
-                  <div className='flex flex-col gap-3 pt-4 border-t border-white/10 flex-shrink-0'>
-                    <button
-                      onClick={async () => {
-                        await handleGenerate();
-                        // 재생성 후 텍스트 편집 단계로 이동
-                        setState((prev) => ({ ...prev, step: "text-edit" }));
-                      }}
-                      disabled={state.isGenerating}
-                      className='w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary/80 text-background py-3 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl'
-                    >
-                      {state.isGenerating ? (
-                        <>
-                          <div className='w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin'></div>
-                          재생성 중...
-                        </>
-                      ) : (
-                        <>
-                          <svg
-                            className='w-4 h-4'
-                            fill='none'
-                            stroke='currentColor'
-                            viewBox='0 0 24 24'
-                          >
-                            <path
-                              strokeLinecap='round'
-                              strokeLinejoin='round'
-                              strokeWidth={2}
-                              d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
-                            />
-                          </svg>
-                          포즈 적용하여 재생성
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      onClick={handleComplete}
-                      className='w-full flex items-center justify-center gap-2 border border-primary/30 text-primary py-3 rounded-xl font-medium transition-all hover:bg-primary/10 hover:border-primary/50'
-                    >
-                      <svg
-                        className='w-4 h-4'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'
-                      >
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={2}
-                          d='M5 13l4 4L19 7'
-                        />
-                      </svg>
-                      완료하고 홈으로
-                    </button>
-                  </div>
-                </div>
-              ) : (
+              {!(state.step === 'text-edit' || (state.step === 'edit' && state.currentPose)) && (
                 <div className='flex flex-col gap-4'>
                   {/* 파일 첨부 */}
                   <section
