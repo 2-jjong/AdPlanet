@@ -125,7 +125,7 @@ export default function LogoDetailPage() {
       <Navigation />
       <FullpageContainer activeIndex={activeIndex} setActiveIndex={setActiveIndex}>
         {/* SECTION 1 */}
-        <FullpageSection className="!p-0 !items-start !justify-start">
+        <FullpageSection>
           <div className="font-jamsil mx-auto w-full max-w-7xl px-6 py-8">
             <header className="mb-8 flex items-center justify-between">
               <h1 className="text-3xl font-extrabold tracking-tight">
@@ -164,7 +164,7 @@ export default function LogoDetailPage() {
         </FullpageSection>
 
         {/* SECTION 2 */}
-        <FullpageSection className="!p-0 !items-start !justify-start">
+        <FullpageSection>
           <div className="font-jamsil mx-auto w-full max-w-7xl px-6 py-8">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-3xl font-extrabold tracking-tight">CI 가이드라인</h2>
