@@ -45,16 +45,17 @@ apiClient.interceptors.response.use(
     }
 
     // 응답을 ApiResponse 형식으로 변환
-    const standardizedResponse = {
+    // 서버가 이미 ApiResponse<T> 형태를 준다고 가정하되, 방어적으로 표준화
+    const standardized: typeof response = {
       ...response,
       data: {
         code: response.data?.code,
-        data: response.data?.data || null, // 실제 데이터 (없으면 null)
-        message: response.data?.message || null // 메시지 (없으면 null)
-      } as ApiResponse<never>
-    };
+        data: response.data?.data ?? null,
+        message: response.data?.message ?? null,
+      } as ApiResponse<unknown>,
+    } as any;
 
-    return standardizedResponse;
+    return standardized;
   },
   async (error) => {
     const originalRequest = error.config;
@@ -64,10 +65,10 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
       
       try {
-        // 토큰 재발급 시도
-        const reissueSuccess = await reissueToken();
-        
-        if (reissueSuccess) {
+        // 토큰 재발급 시도: ApiResponse<null> 반환
+        const reissue = await reissueToken();
+
+        if (reissue?.code === 'S0000') {
           // 재발급 성공 시 원래 요청 재시도
           return apiClient(originalRequest);
         } else {
