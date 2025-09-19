@@ -41,8 +41,8 @@ public class AuthServiceImpl implements AuthService {
                 });
 
         // JWT 토큰 생성
-        String accessToken = jwtUtil.generateAccessToken(user.getUserId());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getUserId());
+        String accessToken = jwtUtil.generateAccessToken(user.getUserId(), user.getEmail());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getUserId(), user.getEmail());
 
         // RefreshToken을 Redis에 저장
         refreshTokenService.saveRefreshToken(user.getUserId(), refreshToken);
@@ -70,8 +70,8 @@ public class AuthServiceImpl implements AuthService {
                 });
 
         // JWT 토큰 생성
-        String accessToken = jwtUtil.generateAccessToken(user.getUserId());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getUserId());
+        String accessToken = jwtUtil.generateAccessToken(user.getUserId(), user.getEmail());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getUserId(), user.getEmail());
 
         // RefreshToken을 Redis에 저장
         refreshTokenService.saveRefreshToken(user.getUserId(), refreshToken);
@@ -91,7 +91,7 @@ public class AuthServiceImpl implements AuthService {
                 throw new RuntimeException("만료된 RefreshToken");
             }
 
-            if (!"REFRESH".equals(jwtUtil.getTokenType(refreshToken))) {
+            if (!"REFRESH".equals(jwtUtil.getTokenTypeFromToken(refreshToken))) {
                 throw new RuntimeException("RefreshToken이 아닙니다");
             }
 
@@ -102,9 +102,11 @@ public class AuthServiceImpl implements AuthService {
                 throw new RuntimeException("유효하지 않은 RefreshToken");
             }
 
+            User user = userRepository.findById(userId).orElse(null);
+
             // 새로운 토큰 생성
-            String newAccessToken = jwtUtil.generateAccessToken(userId);
-            String newRefreshToken = jwtUtil.generateRefreshToken(userId);
+            String newAccessToken = jwtUtil.generateAccessToken(userId, user.getEmail());
+            String newRefreshToken = jwtUtil.generateRefreshToken(userId, user.getEmail());
 
             // 새로운 RefreshToken을 Redis에 저장
             refreshTokenService.saveRefreshToken(userId, newRefreshToken);
