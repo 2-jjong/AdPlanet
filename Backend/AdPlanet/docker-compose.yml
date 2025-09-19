@@ -13,3 +13,9 @@ services:
     env_file:
       - /opt/app/secrets/adplanet.env
     restart: unless-stopped
+    networks:
+      - adplanet
+
+networks:
+  adplanet:
+    external: true
