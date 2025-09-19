@@ -59,7 +59,7 @@ public class SSAFYOAuthServiceImpl implements SSAFYOAuthService {
     @Override
     public SSAFYOAuthTokenResponse getOAuthTokenForTest(String authCode) {
         String[] redirectUris = {
-                "http://j13d201.p.ssafy.io:8081/api/test/code",
+                "https://j13d201.p.ssafy.io/api/test/code",
                 redirectUri,
                 "http://localhost:8081/api/test/code",
                 "http://localhost:5173/auth/callback"
