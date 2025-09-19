@@ -24,7 +24,7 @@ public class PosterGroup {
 
     @OneToOne
     @JoinColumn(name = "poster_id")
-    private Poster poster;
+    private Poster mainPoster;
 
     @Column(name = "title")
     private String title;
