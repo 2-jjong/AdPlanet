@@ -2,11 +2,14 @@ package com.ssafy.adplanet.service.logo;
 
 import com.ssafy.adplanet.dto.logo.CreateLogoRequest;
 import com.ssafy.adplanet.dto.logo.LogoDto;
+import com.ssafy.adplanet.dto.logo.LogoListItem;
 import com.ssafy.adplanet.entity.Logo;
+import com.ssafy.adplanet.enums.LogoListOrder;
 import com.ssafy.adplanet.enums.LogoStyle;
 import com.ssafy.adplanet.repository.LogoRepository;
 import com.ssafy.adplanet.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +17,7 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
@@ -32,9 +36,9 @@ public class LogoServiceImpl implements LogoService {
 
         String slogan = (req.content() == null) ? "" : req.content().trim();
 
-        // 1) DB 선저장 (키 생성용 ID 필요)
+        // 1) DB 선저장
         Logo logo = Logo.builder()
-                .userId(userId)
+                .userId(userId)                 // ✅ 옵션 A: Long userId 사용
                 .name(req.title())
                 .slogan(slogan)
                 .prompt(req.prompt())
@@ -43,7 +47,7 @@ public class LogoServiceImpl implements LogoService {
                 .build();
         logoRepository.saveAndFlush(logo);
 
-        // 2) 이미지 생성 (실제론 생성형 AI 결과물 사용)
+        // 2) 더미 이미지(실제에선 생성형 결과 사용)
         byte[] imageBytes = generateDummyPng(req.title(), slogan);
 
         // 3) 업로드 + URI 저장
@@ -51,9 +55,31 @@ public class LogoServiceImpl implements LogoService {
         s3Service.upload(key, imageBytes, "image/png");
         logo.changeImgUrl(s3Service.toS3Uri(key));
 
-        // 4) 프리사인 URL 발급 후 응답
+        // 4) 프리사인 URL 반환
         String presignedUrl = s3Service.presignGet(key);
         return new LogoDto(logo.getId(), presignedUrl);
+    }
+
+    // ✅ 목록 조회 추가
+    @Override
+    public List<LogoListItem> list(Long userId, List<Long> tagIds, LogoListOrder order) {
+        if (userId == null) throw new IllegalArgumentException("userId는 필수입니다.");
+        Sort sort = (order == null ? LogoListOrder.NEWEST : order).toSort();
+
+        List<Logo> logos = (tagIds == null || tagIds.isEmpty())
+                ? logoRepository.findByUserId(userId, sort)
+                : logoRepository.findByUserIdAndAllTags(userId, tagIds, tagIds.size(), sort);
+
+        return logos.stream()
+                .map(l -> new LogoListItem(
+                        l.getId(),
+                        l.getName(),
+                        l.getSlogan(),
+                        // 목록은 S3 Key/URI를 줄지, 접근가능 URL을 줄지 팀 규칙에 맞추자.
+                        // 여기서는 저장된 imgUrl 그대로 사용 (toS3Uri 형태)
+                        l.getImgUrl()
+                ))
+                .toList();
     }
 
     // --- helpers (기존 더미 생성 코드 유지) ---
