@@ -1,6 +1,6 @@
 import type { ApiResponse } from "../types/api";
 import apiClient from "./apiClient";
-import type { LogoListQuery, CreateLogoRequest, AssignLogoTagsRequest } from "./dto/logo.request";
+import type { LogoListQuery, CreateLogoRequest, AssignLogoTagsRequest, AddLogoTag, LogoDownloadRequest } from "./dto/logo.request";
 import type { LogoListItem, LogoDetail, CiGuideline, LogoTag, Logo, AssignedLogoTag } from "./dto/logo.response";
 
 /** 로고 태그 부여 (일괄) */
@@ -64,6 +64,12 @@ export async function getAllLogoTags(): Promise<ApiResponse<LogoTag[]>> {
 }
 
 /** 태그 생성(단일) */
+export async function addLogoTag(req:AddLogoTag):Promise<ApiResponse<LogoTag>> {
+  const {data}=await apiClient.post<ApiResponse<LogoTag>>(
+    '/api/logos/tags', req
+  );
+  return data;
+}
 
 /** 로고 상세 조회 */
 export async function getLogoDetail(logoId: number): Promise<ApiResponse<LogoDetail>> {
@@ -75,5 +81,9 @@ export async function getLogoDetail(logoId: number): Promise<ApiResponse<LogoDet
 
 
 /** 로고 다운로드 */
-
-
+export async function logoDownload(req:LogoDownloadRequest):Promise<ApiResponse<string>>{
+  const {data}=await apiClient.get<ApiResponse<string>>(
+    `/api/logos/${req.logoId}/download`,{params:{format: req.format}}
+  );
+  return data;
+}
