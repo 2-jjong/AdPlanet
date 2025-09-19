@@ -7,11 +7,11 @@ import com.ssafy.adplanet.enums.LogoListOrder;
 import com.ssafy.adplanet.enums.LogoStyle;
 import com.ssafy.adplanet.service.ci.CiGuidelineServiceImpl;
 import com.ssafy.adplanet.service.logo.LogoService;
+import com.ssafy.adplanet.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,12 +53,10 @@ public class LogoController {
             )
             @RequestParam(name = "sytle", required = false, defaultValue = "SIMPLE") LogoStyle style,
             @Parameter(description = "로고 생성 요청 바디", required = true)
-            @RequestBody CreateLogoRequest req,
-
-            Authentication auth
+            @RequestBody CreateLogoRequest req
     ) {
         try {
-            Long userId = (Long) auth.getPrincipal();
+            Long userId = SecurityUtil.getCurrentUserId();
             LogoDto dto = logoService.create(userId, req, style);
             return ResponseEntity.ok(ResponseDto.ok(dto));
         } catch (IllegalArgumentException e) {
