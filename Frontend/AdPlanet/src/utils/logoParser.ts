@@ -1,10 +1,9 @@
 import apiClient from "../services/apiClient";
-
+import type { CiGuideline as CiDto, LogoDetail as DetailDto } from "../services/dto/logo.dto";
 
 /* ─────────────────────────────────────────────────────────────
-   공통 유틸
+   logo 관련 유틸
 ───────────────────────────────────────────────────────────── */
-const ok = (code?: string) => code === "S0000";
 
 /** 절대 URL로 변환 (이미 절대면 그대로, 빈값이면 빈값, 상대면 baseURL 기준으로 절대) */
 export const toAbsolute = (p: string) => {
@@ -13,13 +12,13 @@ export const toAbsolute = (p: string) => {
   return base ? new URL(p.startsWith("/") ? p : `/${p}`, base).toString() : p;
 };
 
-const splitToList = (s?: string): string[] =>
+export const splitToList = (s?: string): string[] =>
   (s ?? "")
-    .split(/\r?\n|[;|]|,/) // 줄바꿈, 세미콜론, |, 쉼표 단위 분해
+    .split(/\r?\n|[;|]|,/) // 줄바꿈, 세미콜론, |, 쉼표
     .map(v => v.trim())
     .filter(Boolean);
 
-const parseMinSize = (s?: string): { mm?: number; px?: number } => {
+export const parseMinSize = (s?: string): { mm?: number; px?: number } => {
   if (!s) return {};
   const mm = s.match(/([\d.]+)\s*mm/i)?.[1];
   const px = s.match(/([\d.]+)\s*px/i)?.[1];
@@ -30,8 +29,8 @@ const parseMinSize = (s?: string): { mm?: number; px?: number } => {
 };
 
 type ColorSpecDto = { color?: string; guide?: string; label: string };
-const parseColorSpec = ({ color, guide, label }: ColorSpecDto) => {
-  // color가 "Sky Blue #00AAFF" 혹은 "#00AAFF" 등일 수 있으니 둘 다 처리
+export const parseColorSpec = ({ color, guide, label }: ColorSpecDto) => {
+  // color가 "Sky Blue #00AAFF" 혹은 "#00AAFF" 등일 수 있음
   const hexMatch = color?.match(/#[0-9a-f]{6}/i)?.[0];
   const name =
     color && hexMatch ? color.replace(hexMatch, "").trim() || label : label;

@@ -31,20 +31,30 @@ export interface AssignedLogoTag {
 export interface CiGuideline {
   id?: number;
   logoId?: number;
-
   basicLogo?: string;
-  minSize?: string;
+  minSize?: string[];
   marginRule?: string;
   backgroundRule?: string;
   prohibitionRule?: string;
-
   primaryColor?: string;
   secondaryColor?: string;
   neutralColor?: string;
-
-  primaryGuide?: string;
-  secondaryGuide?: string;
-  neutralGuide?: string;
+  primaryGuide?: {
+    hex?: string;
+    rgb?: string;     
+    CMYK?: string;    
+    mainUsage?: string;
+  };
+  secondaryGuide?: {
+    hex?: string;
+    rgb?: string;
+    CMYK?: string;
+    mainUsage?: string;
+  };
+  neutralGuide?: Array<{
+    name?: string; 
+    value?: string; 
+  }>;
 }
 
 // 로고 생성 결과

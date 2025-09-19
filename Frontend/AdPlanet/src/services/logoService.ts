@@ -2,6 +2,8 @@ import type { ApiResponse } from "../types/api";
 import apiClient from "./apiClient";
 import type { LogoListQuery, CreateLogoRequest, AssignLogoTagsRequest } from "./dto/logo.request";
 import type { LogoListItem, LogoDetail, CiGuideline, LogoTag, Logo, AssignedLogoTag } from "./dto/logo.response";
+import { splitToList, parseMinSize, parseColorSpec, toAbsolute } from "../utils/logoParser";
+
 
 /** 로고 태그 부여 (일괄) */
 export async function assignLogoTags(
