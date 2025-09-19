@@ -26,21 +26,22 @@ public class JwtUtil {
         this.refreshTokenExpiration = refreshTokenExpiration;
     }
 
-    public String generateAccessToken(Long userId) {
-        return createToken(userId, accessTokenExpiration, "ACCESS");
+    public String generateAccessToken(Long userId, String userEmail) {
+        return createToken(userId, userEmail, accessTokenExpiration, "ACCESS");
     }
 
-    public String generateRefreshToken(Long userId) {
-        return createToken(userId, refreshTokenExpiration, "REFRESH");
+    public String generateRefreshToken(Long userId, String userEmail) {
+        return createToken(userId, userEmail, refreshTokenExpiration, "REFRESH");
     }
 
-    private String createToken(Long userId, long expiration, String tokenType) {
+    private String createToken(Long userId, String userEmail, long expiration, String tokenType) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
                 .subject(userId.toString())
                 .claim("type", tokenType)
+                .claim("email", userEmail)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(secretKey)
@@ -60,9 +61,14 @@ public class JwtUtil {
         return Long.valueOf(claims.getSubject());
     }
 
-    public String getTokenType(String token) {
+    public String getTokenTypeFromToken(String token) {
         Claims claims = getClaimsFromToken(token);
         return claims.get("type", String.class);
+    }
+
+    public String getUserEmailFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return claims.get("email", String.class);
     }
 
     public boolean validateToken(String token) {

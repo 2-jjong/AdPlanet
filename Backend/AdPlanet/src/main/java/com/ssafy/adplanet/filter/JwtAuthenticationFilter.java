@@ -1,5 +1,6 @@
 package com.ssafy.adplanet.filter;
 
+import com.ssafy.adplanet.security.JwtUserPrincipal;
 import com.ssafy.adplanet.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -32,15 +33,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
             try {
                 Long userId = jwtUtil.getUserIdFromToken(token);
-                String tokenType = jwtUtil.getTokenType(token);
+                String userEmail = jwtUtil.getUserEmailFromToken(token);
+                String tokenType = jwtUtil.getTokenTypeFromToken(token);
 
                 // ACCESS 토큰만 인증 처리
                 if ("ACCESS".equals(tokenType)) {
+                    JwtUserPrincipal principal = new JwtUserPrincipal(userId, userEmail);
                     UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userId, null, new ArrayList<>());
+                        new UsernamePasswordAuthenticationToken(principal, null, new ArrayList<>());
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                    log.debug("JWT 인증 성공 - 사용자 ID: {}", userId);
+                    log.debug("JWT 인증 성공 - 사용자 ID: {}, 이메일: {}", userId, userEmail);
                 }
             } catch (Exception e) {
                 log.error("JWT 인증 처리 중 오류 발생", e);

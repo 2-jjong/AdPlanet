@@ -5,6 +5,7 @@ import com.ssafy.adplanet.dto.auth.LoginRequest;
 import com.ssafy.adplanet.dto.auth.LoginTokens;
 import com.ssafy.adplanet.dto.auth.oauth.SSAFYLoginResponseDto;
 import com.ssafy.adplanet.service.auth.AuthService;
+import com.ssafy.adplanet.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -126,13 +127,11 @@ public class AuthController {
             @ApiResponse(responseCode = "200", description = "로그아웃 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
-    public ResponseEntity<ResponseDto<Void>> logout(Authentication auth) {
+    public ResponseEntity<ResponseDto<Void>> logout() {
         try {
-            // Authentication에서 userId 추출
-            if (auth != null && auth.getPrincipal() != null) {
-                Long userId = (Long) auth.getPrincipal();
-                authService.logout(userId);
-            }
+
+            Long userId = SecurityUtil.getCurrentUserId();
+            authService.logout(userId);
 
             // 리프레시 토큰 쿠키 삭제
             ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")

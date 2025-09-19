@@ -61,7 +61,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
             }
 
             // RefreshToken 타입 검증
-            if (!"REFRESH".equals(jwtUtil.getTokenType(refreshToken))) {
+            if (!"REFRESH".equals(jwtUtil.getTokenTypeFromToken(refreshToken))) {
                 log.debug("RefreshToken 검증 실패 - 토큰 타입 오류 - UserId: {}", userId);
                 return false;
             }
