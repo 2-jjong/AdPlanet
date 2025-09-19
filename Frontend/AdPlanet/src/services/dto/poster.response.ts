@@ -21,6 +21,7 @@ export interface PosterCopy {
   content: string;
 }
 
+/** 포스터 그룹 목록 아이템 */
 export interface PosterGroupItem {
   posterGroupId: number;
   imageUrl: string;
