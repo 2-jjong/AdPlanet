@@ -1,10 +1,6 @@
 package com.ssafy.adplanet.entity;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.ssafy.adplanet.dto.poster.response.PosterResponse;
 import com.ssafy.adplanet.enums.JobStatus;
-import com.ssafy.adplanet.enums.PosterStyle;
-import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,7 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ImageProcessingJob{
+public class ImageJob {
 
     @Id
     @Column(name = "id")
@@ -25,18 +21,13 @@ public class ImageProcessingJob{
     @Column(name = "status", nullable = false)
     JobStatus status;
 
-    @Column(name = "style")
-    PosterStyle style;
-
-    @Column(name = "prompt", nullable = false)
-    String prompt;
-
-    //
-
     @Column(name = "created_at", nullable = false)
     LocalDateTime createdAt;
 
+    @Column(name = "updated_at", nullable = false)
+    LocalDateTime updatedAt;
+
     @OneToOne
-    @JoinColumn(name = "poster_id", nullable = false)
-    Poster poster;
+    @JoinColumn(name = "poster_id")
+    Poster resultPoster;
 }
