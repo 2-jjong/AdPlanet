@@ -22,6 +22,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -89,20 +90,26 @@ public class PosterController {
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<ImageJobResponse>> getStatus(
+            Authentication auth,
             @Parameter(description = "작업 id", required = true)
             @PathVariable("jobId") String jobId
     ) {
-        PosterResponse poster = new PosterResponse(
-                1L,
-                1L,
-                "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
-        );
-        ImageJobResponse response = new ImageJobResponse(
-                UUID.randomUUID().toString(),
-                JobStatus.COMPLETED,
-                LocalDateTime.now(),
-                poster
-        );
+
+        ImageJobResponse response = posterService.getStatus(jobId);
+
+        // Skeleton Code
+//        PosterResponse poster = new PosterResponse(
+//                1L,
+//                1L,
+//                "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
+//        );
+//        ImageJobResponse response = new ImageJobResponse(
+//                UUID.randomUUID().toString(),
+//                JobStatus.COMPLETED,
+//                LocalDateTime.now(),
+//                poster
+//        );
+
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 

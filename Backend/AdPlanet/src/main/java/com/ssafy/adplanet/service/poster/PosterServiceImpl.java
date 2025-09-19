@@ -3,7 +3,9 @@ package com.ssafy.adplanet.service.poster;
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
 import com.ssafy.adplanet.dto.poster.request.ImageJobMessage;
 import com.ssafy.adplanet.dto.poster.response.ImageJobResponse;
+import com.ssafy.adplanet.dto.poster.response.PosterResponse;
 import com.ssafy.adplanet.entity.ImageJob;
+import com.ssafy.adplanet.entity.Poster;
 import com.ssafy.adplanet.enums.JobStatus;
 import com.ssafy.adplanet.enums.PosterStyle;
 import com.ssafy.adplanet.repository.ImageJobRepository;
@@ -75,12 +77,34 @@ public class PosterServiceImpl implements PosterService {
     @Override
     public ImageJobResponse getStatus(String jobId) {
 
-        // 1. Job DB 조회 (상태 체크)
+        // 1. Job DB 조회
+        ImageJob job = imageJobRepository.findById(jobId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 JobId가 존재하지 않습니다: " + jobId));
 
-        // 2-1. QUEUED/PROCESSING/FAILED: ImageProcessingJob 반환
-
-        // 2-2. COMPLETED: 결과 Poster 함께 반환
-
-        return null;
+        // 2. 상태에 따른 분기 처리
+        return switch (job.getStatus()) {
+            // 2-1. QUEUED/PROCESSING/FAILED -> Job 상태만 반환
+            case QUEUED, PROCESSING, FAILED ->
+                new ImageJobResponse(
+                        job.getId(),
+                        job.getStatus(),
+                        job.getCreatedAt()
+                );
+            // 2-2. COMPLETED -> 결과 포스터 포함 반환
+            case COMPLETED -> {
+                Poster poster = job.getResultPoster();
+                PosterResponse posterResponse = new PosterResponse(
+                        poster.getId(),
+                        poster.getPosterGroup().getId(),
+                        poster.getImgUrl()
+                );
+                yield new ImageJobResponse(
+                        job.getId(),
+                        job.getStatus(),
+                        job.getCreatedAt(),
+                        posterResponse
+                );
+            }
+        };
     }
 }

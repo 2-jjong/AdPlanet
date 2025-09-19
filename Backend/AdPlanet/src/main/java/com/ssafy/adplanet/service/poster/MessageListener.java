@@ -9,6 +9,7 @@ import com.ssafy.adplanet.enums.JobStatus;
 import com.ssafy.adplanet.repository.ImageJobRepository;
 import com.ssafy.adplanet.repository.PosterGroupRepository;
 import com.ssafy.adplanet.repository.PosterRepository;
+import com.ssafy.adplanet.repository.UserRepository;
 import com.ssafy.adplanet.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -17,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import javax.imageio.ImageIO;
@@ -35,12 +37,14 @@ public class MessageListener {
     private final ImageJobRepository imageJobRepository;
     private final PosterGroupRepository posterGroupRepository;
     private final PosterRepository posterRepository;
+    private final UserRepository userRepository;
     private final RestTemplate restTemplate;
 
     private String workerServerUrl = "";
 
     private static final int MAX_RETRY = 3;
 
+    @Transactional
     @RabbitListener(queues = "${app.queue.test}")
     public void receiveJob(ImageJobMessage message) {
 
@@ -70,9 +74,10 @@ public class MessageListener {
                     ImageGenerateRequest request = new ImageGenerateRequest();
 
                     // 2. 파이썬 서버 요청 (추후 수정: 실제 url)
-                    ResponseEntity<String> response = restTemplate.postForEntity(workerServerUrl, request, String.class);
+//                    ResponseEntity<String> response = restTemplate.postForEntity(workerServerUrl, request, String.class);
 
-                    if (response.getStatusCode().is2xxSuccessful()) {
+//                    if (response.getStatusCode().is2xxSuccessful()) {
+                    if (true) {
 
                         // COMPLETED: GENERATION SUCCESS
 
@@ -82,7 +87,7 @@ public class MessageListener {
                         imageJobRepository.save(imageJob);
                         success = true;
 
-                        User userRef = User.builder().userId(message.userId()).build();
+                        User userRef = userRepository.getReferenceById(message.userId());
 
                         PosterGroup posterGroup;
                         if (message.groupId() != null) {
@@ -114,7 +119,7 @@ public class MessageListener {
                         // 3) S3 업로드 + URI 저장
                         String key = s3Service.buildKey("poster_" + poster.getId() + ".png");
                         s3Service.upload(key, imageBytes, "image/png");
-                        poster.changeImgUrl(s3Service.toS3Uri(key));
+                        poster.setImgUrl(s3Service.toS3Uri(key));
 
                         // 4) 대표 포스터 변경
                         posterGroup.setMainPoster(poster);
