@@ -81,25 +81,23 @@ public class LogoController {
     @GetMapping
     @Operation(
             summary = "로고 목록 조회",
-            description = "정렬(order)과 태그(tagId) 조건으로 로고 목록을 조회합니다. (스켈레톤: 더미 데이터 반환)"
+            description = "정렬(order)과 태그(tagIds) 조건으로 로고 목록을 조회합니다. " +
+                    "태그를 선택하지 않으면 해당 사용자의 전체 로고를 반환합니다."
     )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청")
-    })
+    @ApiResponse(responseCode = "200", description = "조회 성공")
     public ResponseEntity<ResponseDto<List<LogoListItem>>> getLogos(
-            @RequestParam(defaultValue = "LATEST") LogoListOrder order,
-            @RequestParam(required = false) Long tagId
+            @Parameter(description = "정렬 기준 (기본값=NEWEST)")
+            @RequestParam(name = "order", required = false, defaultValue = "NEWEST")
+            LogoListOrder order,
+
+            @Parameter(description = "다중 태그 id 목록 (CSV/반복 파라미터 모두 허용). 예: tagIds=1,2,3 또는 tagIds=1&tagIds=2")
+            @RequestParam(name = "tagIds", required = false)
+            List<Long> tagIds
     ) {
-        List<LogoListItem> list = new ArrayList<>();
-        list.add(new LogoListItem(1L, "싸피컴퍼니", "포기는 배추 셀 때나 하는 말",
-                staticUrl("/images/logo_1.png")));
-        for (long i = 2; i <= 10; i++) {
-            list.add(new LogoListItem(i, "AdPlanet", "로고와 포스터를 한 번에!",
-                    staticUrl("/images/logo_2.png")));
-        }
-        if (order == LogoListOrder.OLDEST) Collections.reverse(list);
-        return ResponseEntity.ok(ResponseDto.ok(list));
+        Long userId = SecurityUtil.getCurrentUserId();
+
+        List<LogoListItem> data = logoService.list(userId, tagIds, order);
+        return ResponseEntity.ok(new ResponseDto<>("S0000", data, null));
     }
 
     @GetMapping("/{logoId}")

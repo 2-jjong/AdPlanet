@@ -22,8 +22,9 @@ public class Logo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(name = "name", nullable = false, length = 100)
     private String name;
@@ -52,6 +53,7 @@ public class Logo {
             joinColumns = @JoinColumn(name = "logo_id"),
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
+    @Builder.Default
     private Set<Tag> tags = new HashSet<>();
 
     public void setTags(Collection<Tag> newTags) {

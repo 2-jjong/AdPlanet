@@ -1,6 +1,9 @@
 package com.ssafy.adplanet.dto.logo;
 
+import com.ssafy.adplanet.dto.tag.TagDto;
 import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.util.List;
 
 @Schema(description = "로고 목록 아이템")
 public record LogoListItem(
@@ -14,5 +17,8 @@ public record LogoListItem(
         String slogan,
 
         @Schema(description = "이미지 URL", example = "/images/logo_1")
-        String imgUrl
+        String imgUrl,
+
+        @Schema(description = "태그 목록")
+        List<TagDto> tags
 ) {}
