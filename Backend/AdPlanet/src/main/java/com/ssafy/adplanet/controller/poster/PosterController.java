@@ -9,8 +9,11 @@ import com.ssafy.adplanet.enums.PosterDownloadFormat;
 import com.ssafy.adplanet.enums.PosterListOrder;
 import com.ssafy.adplanet.enums.PosterStyle;
 import com.ssafy.adplanet.service.poster.PosterService;
+import io.swagger.v3.oas.annotations.media.Encoding;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -39,13 +42,16 @@ public class PosterController {
 
     private final PosterService posterService;
 
-    @PostMapping(consumes = { MediaType.MULTIPART_FORM_DATA_VALUE, MediaType.APPLICATION_OCTET_STREAM_VALUE })
+    @PostMapping(consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
     @Operation(summary = "포스터 생성 요청", description = "포스터 생성을 요청합니다.")
+    @RequestBody(content = @Content(
+            encoding = @Encoding(name = "request", contentType = MediaType.APPLICATION_JSON_VALUE)))
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "요청 성공"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
-    public ResponseEntity<ResponseDto<ImageProcessingJob>> createPoster(
+    public ResponseEntity<ResponseDto<ImageJobResponse>> createPoster(
+//            Authentication auth,
             @Parameter(description = "포스터 스타일")
             @RequestParam(value = "style", required = false) PosterStyle style,
             @Parameter(description = "요청 정보", required = true)
@@ -61,11 +67,18 @@ public class PosterController {
             @Parameter(description = "이전 이미지")
             @RequestPart(value = "previousImage", required = false) MultipartFile previousImage
     ) {
-        ImageProcessingJob response = new ImageProcessingJob(
+
+//        Long userId = (Long) auth.getPrincipal();
+
+        posterService.create(1L, style, request, sketchImage, productImage, modelImage, skeletonImage, previousImage);
+
+        // Skeleton Code
+        ImageJobResponse response = new ImageJobResponse(
                 UUID.randomUUID().toString(),
                 JobStatus.QUEUED,
                 LocalDateTime.now()
         );
+
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 
@@ -75,7 +88,7 @@ public class PosterController {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
-    public ResponseEntity<ResponseDto<ImageProcessingJob>> getStatus(
+    public ResponseEntity<ResponseDto<ImageJobResponse>> getStatus(
             @Parameter(description = "작업 id", required = true)
             @PathVariable("jobId") String jobId
     ) {
@@ -84,7 +97,7 @@ public class PosterController {
                 1L,
                 "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
         );
-        ImageProcessingJob response = new ImageProcessingJob(
+        ImageJobResponse response = new ImageJobResponse(
                 UUID.randomUUID().toString(),
                 JobStatus.COMPLETED,
                 LocalDateTime.now(),
@@ -221,7 +234,7 @@ public class PosterController {
     })
     public ResponseEntity<ResponseDto<PosterGroupResponse>> getPosterGroupDetail(
             @Parameter(description = "포스터 그룹 id", required = true)
-            @RequestParam(value = "groupId") Long groupId
+            @PathVariable(value = "groupId") Long groupId
     ) {
 
         List<PosterResponse> history = new ArrayList<>();
@@ -271,7 +284,7 @@ public class PosterController {
     @PostMapping("/tags")
     @Operation(summary = "포스터 태그 지정", description = "포스터 그룹에 대한 태그를 지정합니다.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "200", description = "지정 성공"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<Void>> createPosterTag(
