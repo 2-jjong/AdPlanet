@@ -72,12 +72,6 @@ public class LogoController {
         }
     }
 
-    private String staticUrl(String path) {
-        return ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path(path)
-                .toUriString();
-    }
-
     @GetMapping
     @Operation(
             summary = "로고 목록 조회",
@@ -107,28 +101,25 @@ public class LogoController {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청")
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "404", description = "데이터 없음")
     })
 
     public ResponseEntity<ResponseDto<LogoDetail>> getLogoDetail(
-//            @Parameter(description = "Bearer 액세스 토큰(문서 표기용)", example = "Bearer eyJhbGciOiJI...")
-//            @RequestHeader(name = "Authorization", required = false) String authorization,
             @Parameter(description = "로고 ID", example = "1")
             @PathVariable Long logoId
     ) {
-        if (logoId == null || logoId <= 0) {
-            return ResponseEntity.badRequest()
-                    .body(new ResponseDto<>("LG4001", null, "logoId가 유효하지 않습니다."));
+        try {
+            long userId = SecurityUtil.getCurrentUserId();
+            LogoDetail detail = logoService.detail(userId, logoId);
+            return ResponseEntity.ok(new ResponseDto<>("S0000", detail, null));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ResponseDto.error("LG4001", e.getMessage()));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseDto.error("LG4040", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ResponseDto.error("LG5000", "서버 오류"));
         }
-
-        LogoDetail detail = new LogoDetail(
-                "싸피컴퍼니",
-                "포기는 배추 셀 때나 하는 말",
-                "images/logo_1",
-                "아삭아삭한 배추 이미지, 싱싱한 초록색 활용"
-        );
-
-        return ResponseEntity.ok(new ResponseDto<>("S0000", detail, null));
     }
 
     @GetMapping("/tags")

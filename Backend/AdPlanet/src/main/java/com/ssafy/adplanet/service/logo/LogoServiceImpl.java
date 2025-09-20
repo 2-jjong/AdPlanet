@@ -1,15 +1,16 @@
 package com.ssafy.adplanet.service.logo;
 
 import com.ssafy.adplanet.dto.logo.CreateLogoRequest;
+import com.ssafy.adplanet.dto.logo.LogoDetail;
 import com.ssafy.adplanet.dto.logo.LogoDto;
 import com.ssafy.adplanet.dto.logo.LogoListItem;
 import com.ssafy.adplanet.dto.tag.TagDto;
 import com.ssafy.adplanet.entity.Logo;
 import com.ssafy.adplanet.entity.User;
-import com.ssafy.adplanet.enums.LogoListOrder;      // ✅ 여기로 통일
+import com.ssafy.adplanet.enums.LogoListOrder;
 import com.ssafy.adplanet.enums.LogoStyle;
 import com.ssafy.adplanet.repository.LogoRepository;
-import com.ssafy.adplanet.repository.UserRepository; // ✅ 추가
+import com.ssafy.adplanet.repository.UserRepository;
 import com.ssafy.adplanet.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -22,6 +23,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.Comparator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @Service
 @Transactional(readOnly = true)
@@ -93,12 +95,30 @@ public class LogoServiceImpl implements LogoService {
                         l.getId(),
                         l.getName(),
                         l.getSlogan(),
-                        l.getImgUrl(),
+                        s3Service.toHttpUrl(l.getImgUrl()),
                         l.getTags().stream()
                                 .map(t -> new TagDto(t.getId(), t.getName()))
                                 .toList()
                 ))
                 .toList();
+    }
+
+    @Override
+    public LogoDetail detail(Long userId, Long logoId) {
+        if (userId == null) throw new IllegalArgumentException("userId는 필수입니다.");
+        if (logoId == null || logoId <= 0) throw new IllegalArgumentException("logoId가 유효하지 않습니다.");
+
+        Logo logo = logoRepository.findByIdAndUser_UserId(logoId, userId)
+                .orElseThrow(() -> new NoSuchElementException("해당 사용자의 로고를 찾을 수 없습니다."));
+
+        String imageUrl = s3Service.toHttpUrl(logo.getImgUrl());
+
+        return new LogoDetail(
+                logo.getName(),
+                logo.getSlogan(),
+                imageUrl,
+                logo.getPrompt()
+        );
     }
 
     private static byte[] generateDummyPng(String title, String slogan) {
