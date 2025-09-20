@@ -10,7 +10,7 @@ import com.ssafy.adplanet.enums.LogoStyle;
 import java.util.List;
 
 public interface LogoService {
-    LogoDto create(Long userId, CreateLogoRequest req, LogoStyle style);
-    List<LogoListItem> list(Long userId, List<Long> tagIds, LogoListOrder order);
-    LogoDetail detail(Long userId, Long logoId);
+    LogoDto logoCreate(Long userId, CreateLogoRequest req, LogoStyle style);
+    List<LogoListItem> logoList(Long userId, List<Long> tagIds, LogoListOrder order);
+    LogoDetail logoDetail(Long userId, Long logoId);
 }

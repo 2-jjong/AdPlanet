@@ -63,7 +63,7 @@ public class LogoController {
     ) {
         try {
             Long userId = SecurityUtil.getCurrentUserId();
-            LogoDto dto = logoService.create(userId, req, style);
+            LogoDto dto = logoService.logoCreate(userId, req, style);
             return ResponseEntity.ok(ResponseDto.ok(dto));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ResponseDto.error("LG4001", e.getMessage()));
@@ -90,7 +90,7 @@ public class LogoController {
     ) {
         Long userId = SecurityUtil.getCurrentUserId();
 
-        List<LogoListItem> data = logoService.list(userId, tagIds, order);
+        List<LogoListItem> data = logoService.logoList(userId, tagIds, order);
         return ResponseEntity.ok(new ResponseDto<>("S0000", data, null));
     }
 
@@ -111,7 +111,7 @@ public class LogoController {
     ) {
         try {
             long userId = SecurityUtil.getCurrentUserId();
-            LogoDetail detail = logoService.detail(userId, logoId);
+            LogoDetail detail = logoService.logoDetail(userId, logoId);
             return ResponseEntity.ok(new ResponseDto<>("S0000", detail, null));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ResponseDto.error("LG4001", e.getMessage()));

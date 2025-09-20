@@ -36,7 +36,7 @@ public class LogoServiceImpl implements LogoService {
 
     @Override
     @Transactional
-    public LogoDto create(Long userId, CreateLogoRequest req, LogoStyle style) {
+    public LogoDto logoCreate(Long userId, CreateLogoRequest req, LogoStyle style) {
         if (userId == null) throw new IllegalArgumentException("userId는 필수입니다.");
         if (req.title() == null || req.title().isBlank()) throw new IllegalArgumentException("title은 필수입니다.");
         if (req.prompt() == null || req.prompt().isBlank()) throw new IllegalArgumentException("prompt는 필수입니다.");
@@ -66,7 +66,7 @@ public class LogoServiceImpl implements LogoService {
     }
 
     @Override
-    public List<LogoListItem> list(Long userId, List<Long> tagIds, LogoListOrder order) {
+    public List<LogoListItem> logoList(Long userId, List<Long> tagIds, LogoListOrder order) {
         if (userId == null) throw new IllegalArgumentException("userId는 필수입니다.");
         Sort sort = (order == null ? LogoListOrder.NEWEST : order).toSort();
 
@@ -104,7 +104,7 @@ public class LogoServiceImpl implements LogoService {
     }
 
     @Override
-    public LogoDetail detail(Long userId, Long logoId) {
+    public LogoDetail logoDetail(Long userId, Long logoId) {
         if (userId == null) throw new IllegalArgumentException("userId는 필수입니다.");
         if (logoId == null || logoId <= 0) throw new IllegalArgumentException("logoId가 유효하지 않습니다.");
 
