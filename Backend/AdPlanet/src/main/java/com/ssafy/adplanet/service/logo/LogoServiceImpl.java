@@ -4,9 +4,11 @@ import com.ssafy.adplanet.dto.logo.CreateLogoRequest;
 import com.ssafy.adplanet.dto.logo.LogoDto;
 import com.ssafy.adplanet.dto.logo.LogoListItem;
 import com.ssafy.adplanet.entity.Logo;
-import com.ssafy.adplanet.enums.LogoListOrder;
+import com.ssafy.adplanet.entity.User;
+import com.ssafy.adplanet.enums.LogoListOrder;      // ✅ 여기로 통일
 import com.ssafy.adplanet.enums.LogoStyle;
 import com.ssafy.adplanet.repository.LogoRepository;
+import com.ssafy.adplanet.repository.UserRepository; // ✅ 추가
 import com.ssafy.adplanet.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -25,6 +27,7 @@ import java.util.List;
 public class LogoServiceImpl implements LogoService {
 
     private final LogoRepository logoRepository;
+    private final UserRepository userRepository;
     private final S3Service s3Service;
 
     @Override
@@ -36,9 +39,10 @@ public class LogoServiceImpl implements LogoService {
 
         String slogan = (req.content() == null) ? "" : req.content().trim();
 
-        // 1) DB 선저장
+        User userRef = userRepository.getReferenceById(userId);
+
         Logo logo = Logo.builder()
-                .userId(userId)                 // ✅ 옵션 A: Long userId 사용
+                .user(userRef)
                 .name(req.title())
                 .slogan(slogan)
                 .prompt(req.prompt())
@@ -47,27 +51,23 @@ public class LogoServiceImpl implements LogoService {
                 .build();
         logoRepository.saveAndFlush(logo);
 
-        // 2) 더미 이미지(실제에선 생성형 결과 사용)
         byte[] imageBytes = generateDummyPng(req.title(), slogan);
 
-        // 3) 업로드 + URI 저장
         String key = s3Service.buildKey("logo_" + logo.getId() + ".png");
         s3Service.upload(key, imageBytes, "image/png");
         logo.changeImgUrl(s3Service.toS3Uri(key));
 
-        // 4) 프리사인 URL 반환
         String presignedUrl = s3Service.presignGet(key);
         return new LogoDto(logo.getId(), presignedUrl);
     }
 
-    // ✅ 목록 조회 추가
     @Override
     public List<LogoListItem> list(Long userId, List<Long> tagIds, LogoListOrder order) {
         if (userId == null) throw new IllegalArgumentException("userId는 필수입니다.");
         Sort sort = (order == null ? LogoListOrder.NEWEST : order).toSort();
 
-        List<Logo> logos = (tagIds == null || tagIds.isEmpty())
-                ? logoRepository.findByUserId(userId, sort)
+        var logos = (tagIds == null || tagIds.isEmpty())
+                ? logoRepository.findByUser_UserId(userId, sort)
                 : logoRepository.findByUserIdAndAllTags(userId, tagIds, tagIds.size(), sort);
 
         return logos.stream()
@@ -75,8 +75,6 @@ public class LogoServiceImpl implements LogoService {
                         l.getId(),
                         l.getName(),
                         l.getSlogan(),
-                        // 목록은 S3 Key/URI를 줄지, 접근가능 URL을 줄지 팀 규칙에 맞추자.
-                        // 여기서는 저장된 imgUrl 그대로 사용 (toS3Uri 형태)
                         l.getImgUrl()
                 ))
                 .toList();

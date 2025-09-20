@@ -53,6 +53,7 @@ public class Logo {
             joinColumns = @JoinColumn(name = "logo_id"),
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
+    @Builder.Default
     private Set<Tag> tags = new HashSet<>();
 
     public void setTags(Collection<Tag> newTags) {
