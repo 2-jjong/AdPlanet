@@ -1,10 +1,10 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { LogoDownloadRequest } from "../../../services/dto/logo.dto";
 import { logoDownload } from "../../../services/logoService";
-import type { ApiResponse } from "../../../types/api";
+import type { AxiosResponse } from "axios";
 
 export function useLogoDownload() {
-  return useMutation<ApiResponse<string>, Error, LogoDownloadRequest>({
+  return useMutation<AxiosResponse<Blob>, Error, LogoDownloadRequest>({
     mutationFn: (req) => logoDownload(req),
   });
 }

@@ -77,15 +77,28 @@ const LogoPage: React.FC = () => {
       { logoId: data.data.logoId, format: ext },
       {
         onSuccess: (res) => {
-          if (res?.code === "S0000") {
-            const url = res.data; // 서버에서 응답한 이미지 URL
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `logo.${ext}`;
-            link.click();
-          } else {
-            alert("다운로드 실패");
+          // Blob 생성
+          const blob = new Blob([res.data], {
+            type: res.headers["content-type"],
+          });
+
+          // 파일명 추출 (Content-Disposition)
+          let filename = "download.png";
+          const disposition = res.headers["content-disposition"];
+          if (disposition) {
+            const match = disposition.match(/filename="?(.+)"?/);
+            if (match?.[1]) filename = match[1];
           }
+
+          // 가짜 링크 생성해서 다운로드 실행
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.URL.revokeObjectURL(url);
         },
         onError: (err) => {
           console.error("다운로드 에러:", err);
@@ -96,35 +109,37 @@ const LogoPage: React.FC = () => {
   };
 
   return (
-    <div className='flex flex-row w-full min-h-screen'>
-      <div className='flex-1 flex flex-col md:p-6'>
+    <div className="flex flex-row w-full min-h-screen">
+      <div className="flex-1 flex flex-col md:p-6">
         {/* Header */}
-        <header className='flex items-start justify-between'>
+        <header className="flex items-start justify-between">
           {/* <h1 className='text-4xl md:text-5xl font-bold text-primary'>AdPlanet</h1> */}
           <Header />
-          <div className='flex items-center gap-2 md:gap-3 flex-nowrap'>
+          <div className="flex items-center gap-2 md:gap-3 flex-nowrap">
             <Button
-              text='다운로드'
+              text="다운로드"
               variant={data?.data.imgUrl ? "fill" : "outline"}
-              size='xs'
+              size="xs"
               onClick={() => setIsDownloadModalOpen(true)}
             />
             <Button
-              text='Archive 바로가기'
-              variant='outline'
-              size='xs'
+              text="Archive 바로가기"
+              variant="outline"
+              size="xs"
               onClick={() => navigate("/archive")}
             />
           </div>
         </header>
 
         {/* 로고 추천, 캔버스 영역 */}
-        <section className='mt-6 grid grid-cols-1 md:grid-cols-[160px,1fr] gap-6'>
+        <section className="mt-6 grid grid-cols-1 md:grid-cols-[160px,1fr] gap-6">
           {/* 로고 추천 영역 */}
-          <aside className='w-full border-2 border-dotted border-primary rounded-xl p-3 md:p-4 flex flex-col items-center'>
-            <h2 className='text-lg font-jamsil text-text-color text-center'>Recommend</h2>
+          <aside className="w-full border-2 border-dotted border-primary rounded-xl p-3 md:p-4 flex flex-col items-center">
+            <h2 className="text-lg font-jamsil text-text-color text-center">
+              Recommend
+            </h2>
 
-            <div className='mt-3 grid grid-cols-2 md:grid-cols-1 gap-4 w-full'>
+            <div className="mt-3 grid grid-cols-2 md:grid-cols-1 gap-4 w-full">
               {recommends.map((item, idx) => (
                 <div
                   key={idx}
@@ -141,8 +156,8 @@ const LogoPage: React.FC = () => {
                   <img
                     src={item.src}
                     alt={item.label}
-                    className='w-full aspect-square h-auto rounded-2xl object-contain ring-1 ring-white/10'
-                    loading='lazy'
+                    className="w-full aspect-square h-auto rounded-2xl object-contain ring-1 ring-white/10"
+                    loading="lazy"
                   />
                 </div>
               ))}
@@ -150,18 +165,20 @@ const LogoPage: React.FC = () => {
           </aside>
 
           {/* Canvas */}
-          <main className='relative'>
-            <div className='h-[360px] md:h-[520px] lg:h-[560px] w-full flex items-center justify-center rounded-2xl border-2 border-dotted border-primary'>
-              {isPending && <p className='opacity-70'>로고 생성 중...</p>}
-              {error && <p className='text-red-500 text-sm'>{error.message}</p>}
+          <main className="relative">
+            <div className="h-[360px] md:h-[520px] lg:h-[560px] w-full flex items-center justify-center rounded-2xl border-2 border-dotted border-primary">
+              {isPending && <p className="opacity-70">로고 생성 중...</p>}
+              {error && <p className="text-red-500 text-sm">{error.message}</p>}
               {data ? (
                 <img
                   src={data.data.imgUrl}
-                  alt='Generated Logo'
-                  className='max-h-full max-w-full rounded-xl'
+                  alt="Generated Logo"
+                  className="max-h-full max-w-full rounded-xl"
                 />
               ) : (
-                !isPending && <p className='opacity-70'>로고가 여기에 표시됩니다.</p>
+                !isPending && (
+                  <p className="opacity-70">로고가 여기에 표시됩니다.</p>
+                )
               )}
             </div>
           </main>
@@ -169,37 +186,41 @@ const LogoPage: React.FC = () => {
       </div>
 
       {/* 오른쪽 프롬프트 영역 */}
-      <aside className='w-[320px] md:w-[360px] bg-[#12131F] border-l border-white/10 p-4 flex flex-col gap-6'>
+      <aside className="w-[320px] md:w-[360px] bg-[#12131F] border-l border-white/10 p-4 flex flex-col gap-6">
         {/* 기본 정보 */}
-        <section className='flex flex-col gap-3 mt-10'>
-          <h3 className='text-lg font-semibold border-b border-white/20 pb-1'>기본 정보</h3>
+        <section className="flex flex-col gap-3 mt-10">
+          <h3 className="text-lg font-semibold border-b border-white/20 pb-1">
+            기본 정보
+          </h3>
           <input
-            type='text'
-            placeholder='회사/브랜드 명'
+            type="text"
+            placeholder="회사/브랜드 명"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className='w-full rounded-md bg-transparent border border-primary px-3 py-2 text-sm'
+            className="w-full rounded-md bg-transparent border border-primary px-3 py-2 text-sm"
           />
           <input
-            type='text'
-            placeholder='슬로건 (선택사항)'
+            type="text"
+            placeholder="슬로건 (선택사항)"
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className='w-full rounded-md bg-transparent border border-primary px-3 py-2 text-sm'
+            className="w-full rounded-md bg-transparent border border-primary px-3 py-2 text-sm"
           />
         </section>
 
         {/* 로고 설명 */}
-        <section className='flex flex-col gap-3 flex-1'>
-          <h3 className='text-lg font-semibold border-b border-white/20 pb-1'>로고 설명</h3>
+        <section className="flex flex-col gap-3 flex-1">
+          <h3 className="text-lg font-semibold border-b border-white/20 pb-1">
+            로고 설명
+          </h3>
           <textarea
-            placeholder='원하는 로고의 모양, 스타일, 분위기를 자세히 설명해주세요.'
-            className='w-full h-40 resize-none rounded-md bg-transparent border border-primary px-3 py-2 text-sm'
+            placeholder="원하는 로고의 모양, 스타일, 분위기를 자세히 설명해주세요."
+            className="w-full h-40 resize-none rounded-md bg-transparent border border-primary px-3 py-2 text-sm"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             maxLength={199}
           />
-          <div className='flex justify-end text-xs opacity-70'>
+          <div className="flex justify-end text-xs opacity-70">
             <span>{prompt.length} / 200</span>
           </div>
         </section>
@@ -207,7 +228,7 @@ const LogoPage: React.FC = () => {
         {/* 버튼 */}
         <Button
           text={isPending ? "생성 중..." : "로고 생성하기"}
-          variant='fill'
+          variant="fill"
           onClick={handleGenerate}
           disabled={isPending}
         />
