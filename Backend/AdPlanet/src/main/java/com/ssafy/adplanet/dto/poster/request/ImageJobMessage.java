@@ -23,11 +23,11 @@ public record ImageJobMessage(
 
         /* 이미지 생성 요청 값 */
     String prompt,              // 프롬프트
-    String sketchImgUrl,        // 스케치 이미지
-    String productImgUrl,       // 제품 이미지
-    String modelImgUrl,         // 모델 이미지
-    String skeletonImgUrl,      // 구도 이미지
-    String previousImgUrl       // 이전 이미지
+    String sketchKey,        // 스케치 이미지
+    String productKey,       // 제품 이미지
+    String modelKey,         // 모델 이미지
+    String skeletonKey,      // 구도 이미지
+    String previousKey       // 이전 이미지
 ){
 
 }

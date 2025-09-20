@@ -4,7 +4,6 @@ import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
 import com.ssafy.adplanet.dto.poster.request.PosterTagRequest;
 import com.ssafy.adplanet.dto.poster.response.*;
-import com.ssafy.adplanet.enums.JobStatus;
 import com.ssafy.adplanet.enums.PosterDownloadFormat;
 import com.ssafy.adplanet.enums.PosterListOrder;
 import com.ssafy.adplanet.enums.PosterStyle;
@@ -33,7 +32,6 @@ import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -52,7 +50,7 @@ public class PosterController {
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<ImageJobResponse>> createPoster(
-//            Authentication auth,
+            Authentication auth,
             @Parameter(description = "포스터 스타일")
             @RequestParam(value = "style", required = false) PosterStyle style,
             @Parameter(description = "요청 정보", required = true)
@@ -69,16 +67,9 @@ public class PosterController {
             @RequestPart(value = "previousImage", required = false) MultipartFile previousImage
     ) {
 
-//        Long userId = (Long) auth.getPrincipal();
+        Long userId = 4L;
 
-        posterService.create(1L, style, request, sketchImage, productImage, modelImage, skeletonImage, previousImage);
-
-        // Skeleton Code
-        ImageJobResponse response = new ImageJobResponse(
-                UUID.randomUUID().toString(),
-                JobStatus.QUEUED,
-                LocalDateTime.now()
-        );
+        ImageJobResponse response = posterService.create(userId, style, request, sketchImage, productImage, modelImage, skeletonImage, previousImage);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
@@ -96,19 +87,6 @@ public class PosterController {
     ) {
 
         ImageJobResponse response = posterService.getStatus(jobId);
-
-        // Skeleton Code
-//        PosterResponse poster = new PosterResponse(
-//                1L,
-//                1L,
-//                "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
-//        );
-//        ImageJobResponse response = new ImageJobResponse(
-//                UUID.randomUUID().toString(),
-//                JobStatus.COMPLETED,
-//                LocalDateTime.now(),
-//                poster
-//        );
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }

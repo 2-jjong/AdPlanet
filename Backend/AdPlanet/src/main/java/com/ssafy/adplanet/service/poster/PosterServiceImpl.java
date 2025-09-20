@@ -13,15 +13,22 @@ import com.ssafy.adplanet.repository.PosterRepository;
 import com.ssafy.adplanet.service.gms.GmsService;
 import com.ssafy.adplanet.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class PosterServiceImpl implements PosterService {
+
+    private static final Logger log = LoggerFactory.getLogger(MessageListener.class);
 
     private final S3Service s3Service;
     private final GmsService gmsService;
@@ -36,7 +43,12 @@ public class PosterServiceImpl implements PosterService {
 
         // 1. 시나리오 별로 요청값 검증
 
-        // 2. 이미지 S3 저장
+        // 2. 이미지 S3 저장 & Key 발급
+        String sketchKey = uploadIfExists(sketchImage, "sketch", jobId);
+        String productKey = uploadIfExists(productImage, "product", jobId);
+        String modelKey = uploadIfExists(modelImage, "model", jobId);
+        String skeletonKey = uploadIfExists(skeletonImage, "skeleton", jobId);
+        String previousKey = uploadIfExists(previousImage, "previous", jobId);
 
         // 3. MQ 발행
         ImageJobMessage message = new ImageJobMessage(
@@ -49,11 +61,11 @@ public class PosterServiceImpl implements PosterService {
                 request.title(),
                 request.content(),
                 request.prompt(),
-                null,
-                null,
-                null,
-                null,
-                null
+                sketchKey,
+                productKey,
+                modelKey,
+                skeletonKey,
+                previousKey
         );
         messagePublisher.sendJob(message);
 
@@ -72,6 +84,21 @@ public class PosterServiceImpl implements PosterService {
                 JobStatus.QUEUED,
                 message.createdAt()
         );
+    }
+
+    private String uploadIfExists(MultipartFile multipartFile, String prefix, String jobId) {
+
+        if (multipartFile == null || multipartFile.isEmpty()) return null;
+
+        String key = s3Service.buildKey(prefix + "_" + jobId + ".png");
+
+        try (InputStream inputStream = multipartFile.getInputStream()) {
+            s3Service.upload(key, inputStream, "image/png");
+        } catch (IOException e) {
+            throw new RuntimeException("파일 업로드 실패", e);
+        }
+
+        return key;
     }
 
     @Override
