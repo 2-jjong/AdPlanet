@@ -8,7 +8,7 @@ import type { LogoListItem as LogoCardType, LogoListQuery } from "../../../servi
 
 /** 정렬 */
 function parseOrder(v: string | null): LogoListQuery["order"] {
-  return v === "OLDEST" ? "OLDEST" : "LATEST"; // 기본값 LATEST
+  return v === "OLDEST" ? "OLDEST" : "NEWEST"; // 기본값 NEWEST
 }
 
 /** 태그 ID */

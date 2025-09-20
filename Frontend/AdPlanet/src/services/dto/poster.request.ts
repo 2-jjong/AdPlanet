@@ -8,7 +8,8 @@ export const PosterStyle = {
 export type PosterStyle = (typeof PosterStyle)[keyof typeof PosterStyle];
 
 export interface PosterGroupListQuery {
-  order?: 'LATEST' | 'OLDEST';
+  // TODO : LATEST인지 NEWEST인지 확인 필요함
+  order?: 'NEWEST' | 'OLDEST';
   tagId?: number;
 }
 

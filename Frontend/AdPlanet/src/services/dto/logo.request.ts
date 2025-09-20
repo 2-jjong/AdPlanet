@@ -2,7 +2,7 @@
 
 // 목록 조회 쿼리
 export interface LogoListQuery {
-  order?: "LATEST" | "OLDEST";
+  order?: "NEWEST" | "OLDEST";
   tagId?: number;
 }
 
