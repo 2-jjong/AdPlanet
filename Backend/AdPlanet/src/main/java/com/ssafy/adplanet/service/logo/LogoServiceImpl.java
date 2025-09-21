@@ -1,14 +1,12 @@
 package com.ssafy.adplanet.service.logo;
 
-import com.ssafy.adplanet.dto.logo.CreateLogoRequest;
-import com.ssafy.adplanet.dto.logo.LogoDetail;
-import com.ssafy.adplanet.dto.logo.LogoDto;
-import com.ssafy.adplanet.dto.logo.LogoListItem;
+import com.ssafy.adplanet.dto.logo.*;
 import com.ssafy.adplanet.dto.tag.TagDto;
 import com.ssafy.adplanet.entity.Logo;
 import com.ssafy.adplanet.entity.User;
 import com.ssafy.adplanet.enums.LogoListOrder;
 import com.ssafy.adplanet.enums.LogoStyle;
+import com.ssafy.adplanet.external.AiClient;
 import com.ssafy.adplanet.repository.LogoRepository;
 import com.ssafy.adplanet.repository.UserRepository;
 import com.ssafy.adplanet.service.s3.S3Service;
@@ -18,8 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Comparator;
 import java.util.List;
@@ -30,9 +27,14 @@ import java.util.NoSuchElementException;
 @RequiredArgsConstructor
 public class LogoServiceImpl implements LogoService {
 
+    private static final int DEFAULT_W = 800;
+    private static final int DEFAULT_H = 600;
+    private static final int MAX_BYTES = 20 * 1024 * 1024;
+
     private final LogoRepository logoRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
+    private final AiClient aiClient;
 
     @Override
     @Transactional
@@ -42,9 +44,9 @@ public class LogoServiceImpl implements LogoService {
         if (req.prompt() == null || req.prompt().isBlank()) throw new IllegalArgumentException("prompt는 필수입니다.");
 
         String slogan = (req.content() == null) ? "" : req.content().trim();
-
         User userRef = userRepository.getReferenceById(userId);
 
+        // 1) pending 상태로 먼저 저장 (id 확보)
         Logo logo = Logo.builder()
                 .user(userRef)
                 .name(req.title())
@@ -55,14 +57,38 @@ public class LogoServiceImpl implements LogoService {
                 .build();
         logoRepository.saveAndFlush(logo);
 
-        byte[] imageBytes = generateDummyPng(req.title(), slogan);
+        try {
+            // 2) Python 서버 호출 → 바이트 수신
+            var genReq = new LogoGenerateRequest(
+                    req.title(),
+                    slogan,
+                    req.prompt(),
+                    DEFAULT_W, DEFAULT_H,
+                    style
+            );
+            byte[] rawBytes = aiClient.generateLogo(genReq);
 
-        String key = s3Service.buildKey("logo_" + logo.getId() + ".png");
-        s3Service.upload(key, imageBytes, "image/png");
-        logo.changeImgUrl(s3Service.toS3Uri(key));
+            if (rawBytes == null || rawBytes.length == 0) {
+                throw new IllegalStateException("AI 서버에서 빈 이미지를 반환했습니다.");
+            }
+            if (rawBytes.length > MAX_BYTES) {
+                throw new IllegalStateException("이미지 용량 초과(" + rawBytes.length + " bytes)");
+            }
 
-        String presignedUrl = s3Service.presignGet(key);
-        return new LogoDto(logo.getId(), presignedUrl);
+            byte[] pngBytes = toPng(rawBytes);
+
+            // 4) S3 업로드 & URL 갱신 (png 고정)
+            String key = s3Service.buildKey("logos/logo_" + logo.getId() + ".png");
+            s3Service.upload(key, pngBytes, "image/png");
+            logo.changeImgUrl(s3Service.toS3Uri(key));
+
+            String presignedUrl = s3Service.presignGet(key);
+            return new LogoDto(logo.getId(), presignedUrl);
+
+        } catch (Exception e) {
+            logoRepository.delete(logo);
+            throw e;
+        }
     }
 
     @Override
@@ -71,25 +97,19 @@ public class LogoServiceImpl implements LogoService {
         Sort sort = (order == null ? LogoListOrder.NEWEST : order).toSort();
 
         List<Logo> logos;
-
         if (tagIds == null || tagIds.isEmpty()) {
-            // [A] 태그 미선택: EntityGraph로 tags까지 한 번에
             logos = logoRepository.findByUser_UserId(userId, sort);
-
         } else {
-            // [B] 태그 선택(AND): id 선조회 → fetch-join 재조회 → 서비스에서 정렬
             List<Long> ids = logoRepository.findIdsByUserIdAndAllTags(userId, tagIds, tagIds.size());
             if (ids.isEmpty()) return List.of();
 
             logos = logoRepository.findAllWithTagsByIdIn(ids);
 
-            // 서비스에서 정렬
             Comparator<Logo> cmp = Comparator.comparing(Logo::getCreatedAt);
             if (order == null || order == LogoListOrder.NEWEST) cmp = cmp.reversed();
             logos.sort(cmp);
         }
 
-        // 매핑 (tags 포함)
         return logos.stream()
                 .map(l -> new LogoListItem(
                         l.getId(),
@@ -112,7 +132,6 @@ public class LogoServiceImpl implements LogoService {
                 .orElseThrow(() -> new NoSuchElementException("해당 사용자의 로고를 찾을 수 없습니다."));
 
         String imageUrl = s3Service.toHttpUrl(logo.getImgUrl());
-
         return new LogoDetail(
                 logo.getName(),
                 logo.getSlogan(),
@@ -121,37 +140,15 @@ public class LogoServiceImpl implements LogoService {
         );
     }
 
-    private static byte[] generateDummyPng(String title, String slogan) {
-        try {
-            int W = 512, H = 512;
-            BufferedImage img = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g = img.createGraphics();
-            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            g.setColor(new Color(0xF2F7FA)); g.fillRect(0,0,W,H);
-            g.setColor(new Color(0x46A9DB)); g.fillOval(W/2-120, H/2-120, 240, 240);
-            g.setColor(new Color(0x193747));
-
-            g.setFont(new Font("SansSerif", Font.BOLD, 28));
-            drawCentered(g, (title == null ? "" : title), W/2, H/2+10);
-
-            g.setFont(new Font("SansSerif", Font.PLAIN, 16));
-            drawCentered(g, (slogan == null ? "" : slogan), W/2, H/2+40);
-
-            g.dispose();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(img, "png", baos);
-            return baos.toByteArray();
+    private static byte[] toPng(byte[] src) {
+        try (var in = new ByteArrayInputStream(src);
+             var out = new ByteArrayOutputStream()) {
+            var img = ImageIO.read(in);
+            if (img == null) throw new IllegalArgumentException("지원하지 않는 이미지 포맷이거나 손상된 데이터입니다.");
+            ImageIO.write(img, "png", out);
+            return out.toByteArray();
         } catch (Exception e) {
-            throw new IllegalStateException("더미 이미지 생성 실패: " + e.getMessage(), e);
+            throw new IllegalStateException("PNG 변환 실패: " + e.getMessage(), e);
         }
-    }
-
-    private static void drawCentered(Graphics2D g, String text, int cx, int cy) {
-        if (text == null || text.isBlank()) return;
-        var fm = g.getFontMetrics();
-        int x = cx - fm.stringWidth(text)/2;
-        int y = cy - fm.getHeight()/2 + fm.getAscent();
-        g.drawString(text, x, y);
     }
 }
