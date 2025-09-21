@@ -3,6 +3,7 @@ package com.ssafy.adplanet.config;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,4 +33,22 @@ public class WebClientConfig {
                 .build();
     }
 
+    @Bean
+    public WebClient aiWebClient(
+            @Value("${adplanet.ai.base-url}") String baseUrl,
+            @Value("${adplanet.ai.read-timeout-seconds:120}") int readTimeoutSeconds
+    ) {
+        var http = reactor.netty.http.client.HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10_000)
+                .responseTimeout(Duration.ofSeconds(readTimeoutSeconds))
+                .doOnConnected(c -> c
+                        .addHandlerLast(new ReadTimeoutHandler(readTimeoutSeconds, TimeUnit.SECONDS))
+                        .addHandlerLast(new WriteTimeoutHandler(readTimeoutSeconds, TimeUnit.SECONDS)));
+
+        return WebClient.builder()
+                .baseUrl(baseUrl)
+                .clientConnector(new ReactorClientHttpConnector(http))
+                .codecs(c -> c.defaultCodecs().maxInMemorySize(25 * 1024 * 1024))
+                .build();
+    }
 }

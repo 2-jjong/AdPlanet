@@ -6,9 +6,9 @@ import com.ssafy.adplanet.entity.Logo;
 import com.ssafy.adplanet.entity.User;
 import com.ssafy.adplanet.enums.LogoListOrder;
 import com.ssafy.adplanet.enums.LogoStyle;
-import com.ssafy.adplanet.external.AiClient;
 import com.ssafy.adplanet.repository.LogoRepository;
 import com.ssafy.adplanet.repository.UserRepository;
+import com.ssafy.adplanet.service.ai.AiService;
 import com.ssafy.adplanet.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -34,7 +34,7 @@ public class LogoServiceImpl implements LogoService {
     private final LogoRepository logoRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
-    private final AiClient aiClient;
+    private final AiService aiService;
 
     @Override
     @Transactional
@@ -66,7 +66,7 @@ public class LogoServiceImpl implements LogoService {
                     DEFAULT_W, DEFAULT_H,
                     style
             );
-            byte[] rawBytes = aiClient.generateLogo(genReq);
+            byte[] rawBytes = aiService.generateLogo(genReq);
 
             if (rawBytes == null || rawBytes.length == 0) {
                 throw new IllegalStateException("AI 서버에서 빈 이미지를 반환했습니다.");
