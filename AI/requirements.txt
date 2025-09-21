@@ -3,3 +3,11 @@ uvicorn[standard]
 python-multipart
 Pillow
 pydantic
+transformers
+diffusers
+accelerate
+peft
+huggingface_hub
+
+# --- 고속 다운로드를 위한 추가 기능 (Optional) ---
+hf_xet
