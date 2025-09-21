@@ -244,16 +244,12 @@ const LogoPage: React.FC = () => {
             <div className="h-[360px] md:h-[520px] lg:h-[560px] w-full flex items-center justify-center rounded-2xl overflow-hidden relative bg-white/5 border border-white/10">
               <AdPlanetLoaderOverlay show={isPending || showLoader} tip="로고를 멋지게 만드는 중..." />
               {error && <p className="text-red-500 text-sm">{error.message}</p>}
-              {imageUrl ? (
+              {imageUrl && (
                 <img
                   src={imageUrl}
                   alt="Generated Logo"
                   className="max-h-full max-w-full rounded-xl"
                 />
-              ) : (
-                !isPending && (
-                  <p className="opacity-70">로고가 여기에 표시됩니다.</p>
-                )
               )}
             </div>
           </main>
