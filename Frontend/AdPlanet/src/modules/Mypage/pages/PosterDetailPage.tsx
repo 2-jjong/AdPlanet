@@ -3,10 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import Navigation from "../../../components/Layout/Navigation";
 import { RoundButton } from "../../../components/UI/Button/RoundButton";
-import { getPosterGroupDetail, getPoster } from "../../../services/posterService";
+import { getPosterGroupDetail, getPoster, getPosterJob } from "../../../services/posterService"; // ✅ prompt용
+// Import PosterGroupDetail type
 import type { PosterGroupDetail, PosterDetail as PosterDetailDto } from "../../../services/dto/poster.dto";
-import { toAbsolute } from "../../../utils/posterParser"; 
-
 
 // Fullpage
 'use client';
@@ -17,6 +16,11 @@ import '@shinyongjun/react-fullpage/css'
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation as SwNav, Keyboard, Mousewheel } from "swiper/modules";
 
+// 유틸
+import { toAbsolute } from "../../../utils/logoParser";
+
+// 모달
+import PosterPreviewModal from "../components/PosterPreviewModal";
 
 export default function PosterDetailPage() {
   const { id } = useParams();
@@ -32,7 +36,13 @@ export default function PosterDetailPage() {
   // 선택 포스터(히어로 영역)
   const [heroUrl, setHeroUrl] = useState<string>("");
   const [selectedPosterId, setSelectedPosterId] = useState<number | null>(null);
-  const [selectedPoster, setSelectedPoster] = useState<PosterDetailDto | null>(null); // prompt 포함
+  const [selectedPoster, setSelectedPoster] = useState<PosterDetailDto | null>(null);
+
+  // 모달 상태
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
+  const [modalPrompt, setModalPrompt] = useState<string | null>(null);
 
   // 1) 그룹 상세
   useEffect(() => {
@@ -44,16 +54,13 @@ export default function PosterDetailPage() {
 
         if (!Number.isFinite(groupId)) throw new Error("잘못된 포스터 그룹 ID 입니다.");
 
-        const res = await getPosterGroupDetail(groupId); // { code, data }
+        const res = await getPosterGroupDetail(groupId);
         if (!alive) return;
 
         const d = res.data;
         setData(d);
 
-        // 기본 히어로 = 그룹 대표 이미지
         setHeroUrl(toAbsolute(d.imgUrl));
-
-        // 히스토리의 첫 포스터를 기본 선택 (있으면)
         const first = d.history?.[0];
         setSelectedPosterId(first ? first.posterId : null);
       } catch (e: any) {
@@ -67,7 +74,7 @@ export default function PosterDetailPage() {
     return () => { alive = false; };
   }, [groupId]);
 
-  // 2) 선택 포스터 상세(프롬프트) 로드
+  // 2) 히어로 포스터 prompt
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -76,7 +83,7 @@ export default function PosterDetailPage() {
         return;
       }
       try {
-        const res = await getPoster(selectedPosterId); // { code, data }
+        const res = await getPoster(selectedPosterId);
         if (!alive) return;
         setSelectedPoster(res.data ?? null);
       } catch {
@@ -117,6 +124,23 @@ export default function PosterDetailPage() {
     );
   }
 
+  // 모달 오픈 핸들러
+  const openPosterModal = async (posterId: number, imgUrl: string) => {
+    setModalOpen(true);
+    setModalLoading(true);
+    setModalImageUrl(imgUrl ? toAbsolute(imgUrl) : null);
+    setModalPrompt(null);
+
+    try {
+      const res = await getPoster(posterId);
+      setModalPrompt(res.data?.prompt ?? null);
+    } catch {
+      setModalPrompt(null);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-slate-200">
       <Navigation />
@@ -135,25 +159,18 @@ export default function PosterDetailPage() {
             </header>
 
             <div className="grid grid-cols-12 gap-10 items-start">
-              {/* 좌: 히어로 (3:4) */}
+              {/* 좌: 히어로 */}
               <section className="col-span-12 lg:col-span-7">
                 <div className="rounded-[36px] bg-slate-900/40 border border-slate-800 p-6">
                   <div className="w-full overflow-hidden rounded-[28px] bg-slate-950 aspect-[3/4]">
                     {heroUrl ? (
-                      <img
-                        src={heroUrl}
-                        alt={data.title || "포스터"}
-                        className="w-full h-full object-cover"
-                        loading="eager"
-                      />
-                    ) : (
-                      <div className="w-full h-full" />
-                    )}
+                      <img src={heroUrl} alt={data.title || "포스터"} className="w-full h-full object-cover" />
+                    ) : <div className="w-full h-full" />}
                   </div>
                 </div>
               </section>
 
-              {/* 우: 슬로건 + 프롬프트 + Export */}
+              {/* 우: 슬로건 + 프롬프트 */}
               <section className="col-span-12 lg:col-span-5 space-y-8">
                 {!!data.content && (
                   <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
@@ -161,14 +178,12 @@ export default function PosterDetailPage() {
                     <p className="mt-3 text-lg leading-relaxed whitespace-pre-wrap">{data.content}</p>
                   </div>
                 )}
-
                 <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
                   <h2 className="text-xl font-bold text-primary">프롬프트</h2>
                   <p className="mt-3 whitespace-pre-wrap leading-relaxed">
                     {selectedPoster?.prompt ?? "선택된 포스터의 프롬프트가 없습니다."}
                   </p>
                 </div>
-
                 <div className="flex justify-end">
                   <RoundButton text="Export" variant="outline" />
                 </div>
@@ -213,19 +228,22 @@ export default function PosterDetailPage() {
                     1024: { slidesPerView: 3.2, spaceBetween: 36 },
                     1280: { slidesPerView: 4.2, spaceBetween: 40 },
                   }}
+                  // 모달창 띄우기
+                  preventClicks={false}
+                  preventClicksPropagation={false}
                 >
                   {(data.history ?? []).map((p) => (
                     <SwiperSlide key={p.posterId} className="!h-auto">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setHeroUrl(toAbsolute(p.imgUrl));
-                          setSelectedPosterId(p.posterId);
-                          setActiveIndex(0); // 필요 없으면 제거
-                        }}
-                        className="group block w-full text-left"
-                        title="미리보기"
-                      >
+                        <button
+                          type="button"
+                          className="group block w-full text-left pointer-events-auto"
+                          // onClick -> onClickCapture + stopPropagation
+                          onClickCapture={(e) => {
+                            e.stopPropagation();
+                            openPosterModal(p.posterId, p.imgUrl);
+                          }}
+                          title="미리보기"
+                        >
                         <div className="relative rounded-2xl overflow-hidden border border-slate-800 group-hover:border-primary/60 transition-colors">
                           <img
                             src={toAbsolute(p.imgUrl)}
@@ -246,6 +264,17 @@ export default function PosterDetailPage() {
           </div>
         </FullpageSection>
       </FullpageContainer>
+
+      {/* 모달 */}
+      <PosterPreviewModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={data.title}
+        imageUrl={modalImageUrl}
+        slogan={data.content}
+        prompt={modalPrompt}
+        loading={modalLoading}
+      />
     </div>
   );
 }
