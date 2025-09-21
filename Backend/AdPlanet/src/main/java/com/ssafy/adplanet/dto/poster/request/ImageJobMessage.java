@@ -29,5 +29,7 @@ public record ImageJobMessage(
     String skeletonKey,      // 구도 이미지
     String previousKey       // 이전 이미지
 ){
-
+    public ImageJobMessage(String jobId) {
+        this(jobId, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    }
 }
