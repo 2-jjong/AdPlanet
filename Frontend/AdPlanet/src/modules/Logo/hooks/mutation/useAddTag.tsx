@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { AddLogoTag, LogoTag } from "../../../services/dto/logo.dto";
-import { addLogoTag } from "../../../services/logoService";
-import type { ApiResponse } from "../../../types/api";
+import type { AddLogoTag, LogoTag } from "../../../../services/dto/logo.dto";
+import { addLogoTag } from "../../../../services/logoService";
+import type { ApiResponse } from "../../../../types/api";
 
 export function useAddTag() {
   const queryClient = useQueryClient(); //전역 queryClient 가져오기

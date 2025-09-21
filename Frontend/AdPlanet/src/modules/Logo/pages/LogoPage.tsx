@@ -9,8 +9,8 @@ import DownloadModal from "../components/DownloadModal";
 import { Button } from "../../../components/UI/Button/Button";
 import Header from "../../../components/Layout/Header";
 import { LogoStyle } from "../../../services/dto/logo.request";
-import { useCreateLogo } from "../hooks/useCreateLogo";
-import { useLogoDownload } from "../hooks/useLogoDownload";
+import { useCreateLogo } from "../hooks/mutation/useCreateLogo";
+import { useLogoDownload } from "../hooks/mutation/useLogoDownload";
 
 const recommends: { src: string; label: string; value: LogoStyle }[] = [
   { src: LogoClean, label: "깔끔한", value: LogoStyle.SIMPLE },
