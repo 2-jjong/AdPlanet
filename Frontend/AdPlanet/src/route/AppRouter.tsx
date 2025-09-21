@@ -11,6 +11,7 @@ import PosterPage from "../modules/Poster/pages/PosterPage";
 import LogoCardList from "../modules/Mypage/components/LogoCardList";
 import AuthCallbackPage from "../modules/Auth/pages/AuthCallbackPage";
 
+
 const routeConfig = [
   {
     path: PATHS.HOME,
@@ -35,8 +36,31 @@ const routeConfig = [
       { index: true, element: <Navigate to='logo' replace /> }, // 기본 진입 /archive/logo
       { path: "logo", element: <LogoCardList /> },
       { path: "poster", element: <PosterCardList /> },
+
     ],
   },
+  // 태그 경로들
+  { 
+    path: "/archive/logo/tags",         
+    element: <ArchivePage /> 
+
+  },
+  { 
+    path: "/archive/logo/tags/:tagIds", 
+    element: <ArchivePage /> 
+
+  },
+  { 
+    path: "/archive/poster/tags",         
+    element: <ArchivePage /> 
+
+  },
+  { 
+    path: "/archive/poster/tags/:tagIds", 
+    element: <ArchivePage /> 
+
+  },
+  // 상세 페이지
   {
     path: "/archive/logo/:id",
     element: <LogoDetailPage />,

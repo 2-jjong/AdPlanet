@@ -13,9 +13,9 @@ function parseOrder(v: string | null): LogoListQuery["order"] {
 }
 
 /** 태그 ID */
-function parseTagId(v: string | null): number {
+function parseTagId(v: string | null): number | undefined {
   const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? n : 1;
+  return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
 export default function LogoCardList() {
@@ -41,7 +41,7 @@ export default function LogoCardList() {
 
         console.debug("[LogoCardList] fetch list", { order, tagId });
 
-        const response = await getLogoList({ order, tagId }); // 서비스가 이미 Domain 배열 반환
+        const response = await getLogoList({ order, tagIds: [tagId] }); // 서비스가 이미 Domain 배열 반환
         if (!alive) return;
         setItems(response.data ?? []);
 

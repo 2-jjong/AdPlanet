@@ -2,7 +2,6 @@ import type { ApiResponse } from "../types/api";
 import apiClient from "./apiClient";
 import type { LogoListQuery, CreateLogoRequest, AssignLogoTagsRequest } from "./dto/logo.request";
 import type { LogoListItem, LogoDetail, CiGuideline, LogoTag, Logo, AssignedLogoTag } from "./dto/logo.response";
-import { splitToList, parseMinSize, parseColorSpec, toAbsolute } from "../utils/logoParser";
 
 
 /** 로고 태그 부여 (일괄) */
@@ -22,9 +21,14 @@ export async function assignLogoTags(
 export async function getLogoList(
   params: LogoListQuery
 ): Promise<ApiResponse<LogoListItem[]>> {
+  const query: Record<string, any> = {};
+  if (params.order) query.order = params.order;            // NEWEST는 생략 가능
+  if (params.tagIds && params.tagIds.length > 0) {
+    query.tagIds = params.tagIds.join(",");                // CSV로 고정
+  }
   const { data } = await apiClient.get<ApiResponse<LogoListItem[]>>(
     "/api/logos",
-    { params }
+    { params: query }
   );
   return data;
 }

@@ -3,7 +3,7 @@
 // 목록 조회 쿼리
 export interface LogoListQuery {
   order?: "NEWEST" | "OLDEST";
-  tagId?: number;
+  tagIds?: number[]; // 다중 태그 지원
 }
 
 export const LogoStyle = {

@@ -1,6 +1,6 @@
-// Newest, Oldest, Tags 버튼 컴포넌트
 import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { inferKind, isTagsRoute, buildTagsPath } from "../../../utils/archiveRouteParser";
 
 type SortKey = "newest" | "oldest" | "tags";
 
@@ -11,18 +11,34 @@ const OPTIONS: { key: SortKey; label: string }[] = [
 ];
 
 export default function SortBar() {
-  const [params, setParams] = useSearchParams();
-  const value: SortKey = (params.get("sort") as SortKey) || "newest";
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [sp] = useSearchParams();
+
+  const kind = (sp.get("view") as "logo" | "poster") ?? inferKind(location.pathname);
+  const value: SortKey = isTagsRoute(location.pathname)
+    ? "tags"
+    : sp.get("order") === "OLDEST" ? "oldest" : "newest";
 
   const setValue = (v: SortKey) => {
-    params.set("sort", v);
-    setParams(params, { replace: true });
+    if (v === "tags") {
+      // ✅ 태그 화면으로 (경로를 /archive/{kind}/tags 로 전환)
+      navigate(buildTagsPath(kind) + location.search);
+      return;
+    }
+
+    // 목록 화면으로 (경로를 /archive/{kind} 로 되돌리고, 정렬만 쿼리로)
+    const next = new URLSearchParams(location.search);
+    if (v === "newest") next.delete("order"); else next.set("order", "OLDEST");
+    next.delete("mode");    // 태그 모드 끄기
+    next.delete("tagIds");  // 태그 선택 제거
+
+    const base = `/archive/${kind}`;
+    const qs = next.toString();
+    navigate(qs ? `${base}?${qs}` : base, { replace: true });
   };
 
-  const Divider = () => (
-    <span aria-hidden className="mx-6 h-6 w-px bg-white/30" />
-  );
-
+  const Divider = () => <span aria-hidden className="mx-6 h-6 w-px bg-white/30" />;
   const items = useMemo(() => OPTIONS, []);
 
   return (
@@ -35,9 +51,7 @@ export default function SortBar() {
             onClick={() => setValue(opt.key)}
             className={[
               "text-lg md:text-xl transition-colors",
-              value === opt.key
-                ? "text-primary font-semibold"
-                : "text-white/90 hover:text-white"
+              value === opt.key ? "text-primary font-semibold" : "text-white/90 hover:text-white",
             ].join(" ")}
           >
             {opt.label}

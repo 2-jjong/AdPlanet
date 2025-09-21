@@ -25,8 +25,7 @@ export default function PosterCardList() {
         setLoading(true);
 
         // TODO : ArchiveToolbar 쿼리 반영 (latest -> newest)
-        const orderParam = (params.get("order") || "LATEST") as "LATEST" | "OLDEST";
-        // const orderParam = (params.get("order") || "NEWEST") as "NEWEST" | "OLDEST";
+        const orderParam = (params.get("order") || "NEWEST") as "NEWEST" | "OLDEST";
         const tagIdParam = params.get("tagId");
 
         const res = await getPosterGroups({
