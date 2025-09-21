@@ -11,12 +11,16 @@ import Header from "../../../components/Layout/Header";
 import { LogoStyle } from "../../../services/dto/logo.request";
 import { useCreateLogo } from "../hooks/mutation/useCreateLogo";
 import { useLogoDownload } from "../hooks/mutation/useLogoDownload";
+import AdPlanetLoaderOverlay from "../components/AdPlanetLoaderOverlay";
+import GenerateButton from "../components/GenerateButton";
+import TiltCard from "../components/TiltCard";
+import StylePreviewOverlay from "../components/StylePreviewOverlay";
 
 const recommends: { src: string; label: string; value: LogoStyle }[] = [
-  { src: LogoClean, label: "깔끔한", value: LogoStyle.SIMPLE },
-  { src: LogoPunk, label: "핑크", value: LogoStyle.SIMPLE },
-  { src: LogoCartoon, label: "만화같은", value: LogoStyle.SIMPLE },
-  { src: LogoMono, label: "흑백", value: LogoStyle.MONO },
+  { src: LogoClean, label: "Simple", value: LogoStyle.SIMPLE },
+  { src: LogoPunk, label: "Punk", value: LogoStyle.PUNK },
+  { src: LogoCartoon, label: "Cartoon", value: LogoStyle.CARTOON },
+  { src: LogoMono, label: "Mono", value: LogoStyle.MONO },
 ];
 
 const LogoPage: React.FC = () => {
@@ -27,6 +31,57 @@ const LogoPage: React.FC = () => {
   const [style, setStyle] = useState<LogoStyle>(LogoStyle.SIMPLE);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const { mutate: generateLogo, data, isPending, error } = useCreateLogo();
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [logoId, setLogoId] = useState<number | null>(null);
+  const [showLoader, setShowLoader] = useState(false);
+  // const minDelayRef = useRef<number | null>(null);
+  const [styleInfoOpen, setStyleInfoOpen] = useState(false);
+  const [styleInfo, setStyleInfo] = useState<{imageSrc: string; title: string; description: string; tips: string[]; origin: { left: number; top: number; width: number; height: number } | null}>({
+    imageSrc: "",
+    title: "",
+    description: "",
+    tips: [],
+    origin: null,
+  });
+
+  const styleMeta = {
+    [LogoStyle.SIMPLE]: {
+      title: "Simple / Minimal",
+      description: "불필요한 요소를 덜어낸 간결한 형태. 다양한 매체에서 명확하게 읽히고, 장기 사용에 유리합니다.",
+      tips: [
+        "명확한 형태와 대비를 유지하세요.",
+        "단색 또는 2-색 조합을 추천합니다.",
+        "아이콘과 텍스트의 비율을 간단히.",
+      ],
+    },
+    [LogoStyle.PUNK]: {
+      title: "Punk",
+      description: "강렬한 컬러와 거친 질감, 파격적인 구성이 특징. 공격적인 개성이나 실험적인 브랜드에 적합합니다.",
+      tips: [
+        "고대비 네온 컬러 조합을 활용하세요.",
+        "난형/비대칭 레이아웃, 왜곡된 타이포 시도.",
+        "텍스처(그런지/노이즈)로 빈티지 무드 강화.",
+      ],
+    },
+    [LogoStyle.CARTOON]: {
+      title: "Cartoon",
+      description: "친근하고 발랄한 톤의 일러스트/도형 기반. 캐릭터성, 유머 코드를 녹인 브랜드에 어울립니다.",
+      tips: [
+        "둥근 코너와 두툼한 라인으로 가독성 확보.",
+        "선명한 원색 위주의 팔레트 추천.",
+        "과한 디테일보다는 형태의 명확함에 집중.",
+      ],
+    },
+    [LogoStyle.MONO]: {
+      title: "Monochrome",
+      description: "흑백 중심의 모던한 톤. 인쇄/각인 등 현실 매체에 강하며, 세련된 이미지를 전달합니다.",
+      tips: [
+        "선 굵기와 여백을 넉넉히.",
+        "그라디언트 대신 명암 대비 활용.",
+        "어두운 배경/밝은 배경 버전을 함께 고려.",
+      ],
+    },
+  } as const;
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const { mutate: downloadLogo } = useLogoDownload();
@@ -40,7 +95,13 @@ const LogoPage: React.FC = () => {
       alert("프롬프트를 입력해주세요.");
       return;
     }
-    generateLogo(
+    setShowLoader(true);
+    setImageUrl(null);
+    setLogoId(null);
+    // 요청 전 인위적 딜레이(요청 지연 10초)
+    const preDelayMs = 10000;
+    window.setTimeout(() => {
+      generateLogo(
       {
         title,
         content,
@@ -51,20 +112,24 @@ const LogoPage: React.FC = () => {
         onSuccess: (res) => {
           if (res?.code == "S0000") {
             console.log("로고 생성 성공", res);
-            setTimeout(() => {
-              setIsSaveModalOpen(true);
-            }, 7000);
+            setImageUrl(res.data.imgUrl ?? null);
+            setLogoId(res.data.logoId ?? null);
+            setShowLoader(false);
+            setIsSaveModalOpen(true);
           } else {
             console.log("로고 생성 실패");
             alert("로고 생성 중 오류가 발생했습니다.");
+            setShowLoader(false);
           }
         },
         onError: (err) => {
           console.error("로고 생성 실패:", err);
           alert("로고 생성 중 오류가 발생했습니다.");
+          setShowLoader(false);
         },
       }
     );
+    }, preDelayMs);
   };
 
   const handleDownload = (ext: string) => {
@@ -134,23 +199,33 @@ const LogoPage: React.FC = () => {
         {/* 로고 추천, 캔버스 영역 */}
         <section className="mt-6 grid grid-cols-1 md:grid-cols-[160px,1fr] gap-6">
           {/* 로고 추천 영역 */}
-          <aside className="w-full border-2 border-dotted border-primary rounded-xl p-3 md:p-4 flex flex-col items-center">
+          <aside className="w-full rounded-xl p-3 md:p-4 flex flex-col items-center bg-white/5 border border-white/10 backdrop-blur">
             <h2 className="text-lg font-jamsil text-text-color text-center">
               Recommend
             </h2>
 
             <div className="mt-3 grid grid-cols-2 md:grid-cols-1 gap-4 w-full">
               {recommends.map((item, idx) => (
-                <div
+                <TiltCard
                   key={idx}
                   className={`w-full cursor-pointer rounded-[50px] overflow-hidden ${
                     selectedIdx === idx
                       ? "border-[5px] border-primary"
                       : "border border-transparent"
                   }`}
-                  onClick={() => {
+                  onClick={(e) => {
                     setSelectedIdx(idx);
                     setStyle(item.value);
+                    const meta = styleMeta[item.value] ?? { title: item.label, description: "", tips: [] } as any;
+                    const r = (e.currentTarget.querySelector('img') as HTMLImageElement)?.getBoundingClientRect?.() || (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                    setStyleInfo({
+                      imageSrc: item.src,
+                      title: meta.title,
+                      description: meta.description,
+                      tips: [...(meta.tips ?? [])],
+                      origin: r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null,
+                    });
+                    setStyleInfoOpen(true);
                   }}
                 >
                   <img
@@ -159,19 +234,19 @@ const LogoPage: React.FC = () => {
                     className="w-full aspect-square h-auto rounded-2xl object-contain ring-1 ring-white/10"
                     loading="lazy"
                   />
-                </div>
+                </TiltCard>
               ))}
             </div>
           </aside>
 
           {/* Canvas */}
           <main className="relative">
-            <div className="h-[360px] md:h-[520px] lg:h-[560px] w-full flex items-center justify-center rounded-2xl border-2 border-dotted border-primary">
-              {isPending && <p className="opacity-70">로고 생성 중...</p>}
+            <div className="h-[360px] md:h-[520px] lg:h-[560px] w-full flex items-center justify-center rounded-2xl overflow-hidden relative bg-white/5 border border-white/10">
+              <AdPlanetLoaderOverlay show={isPending || showLoader} tip="로고를 멋지게 만드는 중..." />
               {error && <p className="text-red-500 text-sm">{error.message}</p>}
-              {data ? (
+              {imageUrl ? (
                 <img
-                  src={data.data.imgUrl}
+                  src={imageUrl}
                   alt="Generated Logo"
                   className="max-h-full max-w-full rounded-xl"
                 />
@@ -226,26 +301,33 @@ const LogoPage: React.FC = () => {
         </section>
 
         {/* 버튼 */}
-        <Button
-          text={isPending ? "생성 중..." : "로고 생성하기"}
-          variant="fill"
-          onClick={handleGenerate}
-          disabled={isPending}
-        />
+        <GenerateButton onClick={handleGenerate} disabled={isPending} loading={isPending}>
+          {isPending ? "생성 중..." : "로고 생성하기"}
+        </GenerateButton>
       </aside>
 
-      {data?.data.logoId && (
+      {logoId && (
         <LogoSaveModal
           isOpen={isSaveModalOpen}
-          logoId={data.data.logoId}
+          logoId={logoId}
           onClose={() => setIsSaveModalOpen(false)}
           onSave={(category) => console.log("저장된 카테고리:", category)}
         />
       )}
+      <StylePreviewOverlay
+        open={styleInfoOpen}
+        onClose={() => setStyleInfoOpen(false)}
+        onConfirm={() => setStyleInfoOpen(false)}
+        imageSrc={styleInfo.imageSrc}
+        title={styleInfo.title}
+        description={styleInfo.description}
+        tips={styleInfo.tips}
+        origin={styleInfo.origin}
+      />
       <DownloadModal
         isOpen={isDownloadModalOpen}
         onClose={() => setIsDownloadModalOpen(false)}
-        imageUrl={data?.data.imgUrl ?? ""}
+        imageUrl={imageUrl ?? ""}
         onDownload={handleDownload}
       />
     </div>
