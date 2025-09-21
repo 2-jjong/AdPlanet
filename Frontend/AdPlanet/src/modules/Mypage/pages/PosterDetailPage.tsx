@@ -7,6 +7,7 @@ import { getPosterGroupDetail, getPoster } from "../../../services/posterService
 import type { PosterGroupDetail, PosterDetail as PosterDetailDto } from "../../../services/dto/poster.dto";
 import { toAbsolute } from "../../../utils/posterParser"; 
 
+
 // Fullpage
 'use client';
 import { FullpageContainer, FullpageSection } from '@shinyongjun/react-fullpage';

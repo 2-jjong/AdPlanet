@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+// LogoCardList.tsx
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Mousewheel, Scrollbar } from "swiper/modules";
@@ -8,7 +9,7 @@ import type { LogoListItem as LogoCardType, LogoListQuery } from "../../../servi
 
 /** 정렬 */
 function parseOrder(v: string | null): LogoListQuery["order"] {
-  return v === "OLDEST" ? "OLDEST" : "NEWEST"; // 기본값 NEWEST
+  return v === "OLDEST" ? "OLDEST" : "NEWEST"; // 기본값 NEWEST (기존 그대로 유지)
 }
 
 /** 태그 ID */
@@ -128,7 +129,7 @@ export default function LogoCardList() {
       </div>
     );
     if (error) return (
-      <div className="absolute inset-0 z-30 flex items-center justify-center">
+      <div className="absolute inset-0 z-30 flex	items-center justify-center">
         <div className="text-red-300 text-sm bg-red-900/30 px-3 py-2 rounded-lg border border-red-800">{error}</div>
       </div>
     );
@@ -147,9 +148,29 @@ export default function LogoCardList() {
     navigate(`/archive/logo/${it.logoId}`);
   };
 
+  // 휠 이벤트를 직접 받아서 Swiper 제어
+  const swiperRef = useRef<any>(null);
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    const sw = swiperRef.current;
+    if (!sw) return;
+
+    // 세로 스크롤만 처리
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (e.deltaY > 0) sw.slideNext();
+    else sw.slidePrev();
+  };
+
   return (
     <div className="space-y-4">
-      <div className="relative overflow-visible" style={{ width: WRAP_W, height: WRAP_H }}>
+      <div
+        className="relative overflow-visible"
+        style={{ width: WRAP_W, height: WRAP_H }}
+        onWheel={handleWheel}         // 휠 이벤트 포워딩
+      >
         <Overlay />
 
         <div className="absolute inset-0 z-20 pointer-events-none">
@@ -195,13 +216,14 @@ export default function LogoCardList() {
           slidesPerView={1}
           speed={380}
           onSlideChangeTransitionStart={(sw) => handleSlideChangeStart(sw.activeIndex)}
+          onSwiper={(sw) => (swiperRef.current = sw)}   // Swiper 인스턴스 보관
           className="absolute top-0 left-0 h-full w-full z-10"
           style={
             {
               "--swiper-scrollbar-size": "10px",
               "--swiper-scrollbar-right": "0.75rem",
               "--swiper-scrollbar-bg-color": "rgba(255,255,255,0.10)",
-              "--swiper-scrollbar-drag-bg-color": "#87DEDA",
+              "--swiper-scrollbar-drag-bg-color": "primary",
               "--swiper-scrollbar-sides-offset": "0.5rem",
             } as React.CSSProperties
           }
@@ -216,4 +238,3 @@ export default function LogoCardList() {
     </div>
   );
 }
-
