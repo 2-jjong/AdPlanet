@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
 
+import java.util.List;
+
 @Schema(description = "로고 생성 요청")
 public record CreateLogoRequest(
         @NotBlank
@@ -24,5 +26,8 @@ public record CreateLogoRequest(
 
         @NotNull
         @Schema(description = "로고 스타일", example = "SIMPLE")
-        LogoStyle style
+        LogoStyle style,
+
+        @Schema(description = "로고 태그")
+        List<Long> tagIds
 ) {}

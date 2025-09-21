@@ -40,4 +40,13 @@ public interface S3Service {
 
     String presignFromUri(String s3Uri);
     String presignFromUri(String s3Uri, Duration duration);
+
+    default String toHttpUrl(String stored) {
+        if (stored == null || stored.isBlank()) return stored;
+        try {
+            return stored.startsWith("s3://") ? presignFromUri(stored) : stored;
+        } catch (Exception e) {
+            return stored;
+        }
+    }
 }

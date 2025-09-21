@@ -4,6 +4,8 @@ import com.ssafy.adplanet.dto.auth.LoginTokens;
 import com.ssafy.adplanet.dto.auth.oauth.SSAFYOAuthTokenResponse;
 import com.ssafy.adplanet.dto.auth.oauth.SSAFYUserInfoResponse;
 import com.ssafy.adplanet.entity.User;
+import com.ssafy.adplanet.exception.BusinessException;
+import com.ssafy.adplanet.exception.ErrorCode;
 import com.ssafy.adplanet.repository.UserRepository;
 import com.ssafy.adplanet.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -20,108 +22,123 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
     private final RefreshTokenService refreshTokenService;
 
-
     @Override
     public LoginTokens login(String authCode) {
-        // SSAFY OAuth 토큰 발급
-        SSAFYOAuthTokenResponse oauthToken = ssafyOAuthService.getOAuthToken(authCode);
+        try {
+            // SSAFY OAuth 토큰 발급
+            SSAFYOAuthTokenResponse oauthToken = ssafyOAuthService.getOAuthToken(authCode);
 
-        // SSAFY 사용자 정보 조회
-        SSAFYUserInfoResponse userInfo = ssafyOAuthService.getUserInfo(oauthToken.accessToken());
+            // SSAFY 사용자 정보 조회
+            SSAFYUserInfoResponse userInfo = ssafyOAuthService.getUserInfo(oauthToken.accessToken());
 
-        // 이메일로 사용자 조회 또는 신규 등록
-        User user = userRepository.findByEmail(userInfo.email())
-                .orElseGet(() -> {
-                    log.info("새로운 사용자 등록: {}", userInfo.email());
-                    User newUser = User.builder()
-                            .name(userInfo.name())
-                            .email(userInfo.email())
-                            .build();
-                    return userRepository.save(newUser);
-                });
+            // 이메일로 사용자 조회 또는 신규 등록
+            User user = userRepository.findByEmail(userInfo.email())
+                    .orElseGet(() -> {
+                        log.info("새로운 사용자 등록: {}", userInfo.email());
+                        User newUser = User.builder()
+                                .name(userInfo.name())
+                                .email(userInfo.email())
+                                .build();
+                        return userRepository.save(newUser);
+                    });
 
-        // JWT 토큰 생성
-        String accessToken = jwtUtil.generateAccessToken(user.getUserId());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getUserId());
+            // JWT 토큰 생성
+            String accessToken = jwtUtil.generateAccessToken(user.getUserId(), user.getEmail());
+            String refreshToken = jwtUtil.generateRefreshToken(user.getUserId(), user.getEmail());
 
-        // RefreshToken을 Redis에 저장
-        refreshTokenService.saveRefreshToken(user.getUserId(), refreshToken);
+            // RefreshToken을 Redis에 저장
+            refreshTokenService.saveRefreshToken(user.getUserId(), refreshToken);
 
-        return new LoginTokens(accessToken, refreshToken);
+            return new LoginTokens(accessToken, refreshToken);
+
+        } catch (BusinessException e) {
+            log.error("로그인 실패: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("로그인 시스템 오류: {}", e.getMessage());
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e);
+        }
     }
 
     @Override
     public LoginTokens loginForTest(String authCode) {
-        // SSAFY OAuth 토큰 발급 (여러 redirect URI 자동 시도)
-        SSAFYOAuthTokenResponse oauthToken = ssafyOAuthService.getOAuthTokenForTest(authCode);
+        try {
+            // SSAFY OAuth 토큰 발급 (여러 redirect URI 자동 시도)
+            SSAFYOAuthTokenResponse oauthToken = ssafyOAuthService.getOAuthTokenForTest(authCode);
 
-        // SSAFY 사용자 정보 조회
-        SSAFYUserInfoResponse userInfo = ssafyOAuthService.getUserInfo(oauthToken.accessToken());
+            // SSAFY 사용자 정보 조회
+            SSAFYUserInfoResponse userInfo = ssafyOAuthService.getUserInfo(oauthToken.accessToken());
 
-        // 이메일로 사용자 조회 또는 신규 등록
-        User user = userRepository.findByEmail(userInfo.email())
-                .orElseGet(() -> {
-                    log.info("새로운 사용자 등록: {}", userInfo.email());
-                    User newUser = User.builder()
-                            .name(userInfo.name())
-                            .email(userInfo.email())
-                            .build();
-                    return userRepository.save(newUser);
-                });
+            // 이메일로 사용자 조회 또는 신규 등록
+            User user = userRepository.findByEmail(userInfo.email())
+                    .orElseGet(() -> {
+                        log.info("새로운 사용자 등록: {}", userInfo.email());
+                        User newUser = User.builder()
+                                .name(userInfo.name())
+                                .email(userInfo.email())
+                                .build();
+                        return userRepository.save(newUser);
+                    });
 
-        // JWT 토큰 생성
-        String accessToken = jwtUtil.generateAccessToken(user.getUserId());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getUserId());
+            // JWT 토큰 생성
+            String accessToken = jwtUtil.generateAccessToken(user.getUserId(), user.getEmail());
+            String refreshToken = jwtUtil.generateRefreshToken(user.getUserId(), user.getEmail());
 
-        // RefreshToken을 Redis에 저장
-        refreshTokenService.saveRefreshToken(user.getUserId(), refreshToken);
+            // RefreshToken을 Redis에 저장
+            refreshTokenService.saveRefreshToken(user.getUserId(), refreshToken);
 
-        return new LoginTokens(accessToken, refreshToken);
+            return new LoginTokens(accessToken, refreshToken);
+
+        } catch (BusinessException e) {
+            log.error("로그인 실패 (테스트): {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("로그인 시스템 오류 (테스트): {}", e.getMessage());
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e);
+        }
     }
 
     @Override
     public LoginTokens reissueTokens(String refreshToken) {
         try {
-            // RefreshToken에서 userId 추출
-            if (!jwtUtil.validateToken(refreshToken)) {
-                throw new RuntimeException("유효하지 않은 RefreshToken");
-            }
-
-            if (jwtUtil.isTokenExpired(refreshToken)) {
-                throw new RuntimeException("만료된 RefreshToken");
-            }
-
-            if (!"REFRESH".equals(jwtUtil.getTokenType(refreshToken))) {
-                throw new RuntimeException("RefreshToken이 아닙니다");
-            }
-
+            // RefreshToken에서 userId 추출 (기본 파싱만)
             Long userId = jwtUtil.getUserIdFromToken(refreshToken);
 
-            // Redis에서 저장된 RefreshToken과 비교
-            if (!refreshTokenService.isValidRefreshToken(userId, refreshToken)) {
-                throw new RuntimeException("유효하지 않은 RefreshToken");
-            }
+            // RefreshToken 유효성 검증
+            refreshTokenService.validateRefreshToken(userId, refreshToken);
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
             // 새로운 토큰 생성
-            String newAccessToken = jwtUtil.generateAccessToken(userId);
-            String newRefreshToken = jwtUtil.generateRefreshToken(userId);
+            String newAccessToken = jwtUtil.generateAccessToken(userId, user.getEmail());
+            String newRefreshToken = jwtUtil.generateRefreshToken(userId, user.getEmail());
 
             // 새로운 RefreshToken을 Redis에 저장
             refreshTokenService.saveRefreshToken(userId, newRefreshToken);
 
             return new LoginTokens(newAccessToken, newRefreshToken);
 
-        } catch (Exception e) {
+        } catch (BusinessException e) {
             log.error("토큰 갱신 실패: {}", e.getMessage());
-            throw new RuntimeException("토큰 갱신 실패: " + e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("토큰 갱신 시스템 오류: {}", e.getMessage());
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e);
         }
     }
 
     @Override
     public void logout(Long userId) {
-        // Redis에서 RefreshToken 삭제
-        refreshTokenService.deleteRefreshToken(userId);
+        try {
+            // Redis에서 RefreshToken 삭제
+            refreshTokenService.deleteRefreshToken(userId);
 
-        log.info("로그아웃 완료 - UserId: {}", userId);
+            log.info("로그아웃 완료 - UserId: {}", userId);
+
+        } catch (Exception e) {
+            log.error("로그아웃 시스템 오류 - UserId: {}, Error: {}", userId, e.getMessage());
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e);
+        }
     }
 }

@@ -6,6 +6,9 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @NoArgsConstructor
@@ -19,8 +22,9 @@ public class Logo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(name = "name", nullable = false, length = 100)
     private String name;
@@ -42,6 +46,20 @@ public class Logo {
     @Enumerated(EnumType.STRING)
     @Column(name = "style", length = 20, nullable = false)
     private LogoStyle style;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable (
+            name = "logo_tag",
+            joinColumns = @JoinColumn(name = "logo_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    @Builder.Default
+    private Set<Tag> tags = new HashSet<>();
+
+    public void setTags(Collection<Tag> newTags) {
+        this.tags.clear();
+        this.tags.addAll(newTags);
+    }
 
     public void changeImgUrl(String newUrl) {
         this.imgUrl = newUrl;
