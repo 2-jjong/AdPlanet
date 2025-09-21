@@ -1,10 +1,12 @@
 package com.ssafy.adplanet.dto.auth;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 
 @Schema(description = "로그인 요청")
 public record LoginRequest(
         @Schema(description = "SSAFY 로그인 인가 코드", example = "abc123def456")
+        @NotBlank(message = "인증 코드는 필수입니다")
         String code
 ) {
 }
