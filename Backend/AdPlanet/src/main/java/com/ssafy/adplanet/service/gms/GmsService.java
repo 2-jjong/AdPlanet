@@ -4,6 +4,7 @@ import lombok.Data;
 
 public interface GmsService {
     PalettePayload generatePaletteByImage(String brandName, String slogan, String imageUrl);
+    String refineLogoPrompt(String brandName, String slogan, String userPrompt, String style);
 
     @Data
     class PalettePayload {

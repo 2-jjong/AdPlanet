@@ -9,8 +9,10 @@ import com.ssafy.adplanet.enums.LogoStyle;
 import com.ssafy.adplanet.repository.LogoRepository;
 import com.ssafy.adplanet.repository.UserRepository;
 import com.ssafy.adplanet.service.ai.AiService;
+import com.ssafy.adplanet.service.gms.GmsService;
 import com.ssafy.adplanet.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+@Slf4j
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -35,6 +38,7 @@ public class LogoServiceImpl implements LogoService {
     private final UserRepository userRepository;
     private final S3Service s3Service;
     private final AiService aiService;
+    private final GmsService gmsService;
 
     @Override
     @Transactional
@@ -46,7 +50,6 @@ public class LogoServiceImpl implements LogoService {
         String slogan = (req.content() == null) ? "" : req.content().trim();
         User userRef = userRepository.getReferenceById(userId);
 
-        // 1) pending 상태로 먼저 저장 (id 확보)
         Logo logo = Logo.builder()
                 .user(userRef)
                 .name(req.title())
@@ -58,11 +61,25 @@ public class LogoServiceImpl implements LogoService {
         logoRepository.saveAndFlush(logo);
 
         try {
-            // 2) Python 서버 호출 → 바이트 수신
+            String refinedPrompt;
+            try {
+                String styleStr = (style == null ? null : style.name()); // SIMPLE→"simple"
+                refinedPrompt = gmsService.refineLogoPrompt(req.title(), slogan, req.prompt(), styleStr);
+                if (log.isInfoEnabled()) {
+                    log.info("[LOGO] refined prompt: {}", refinedPrompt);
+                }
+            } catch (Exception ex) {
+                if (log.isWarnEnabled()) {
+                    log.warn("[LOGO] refineLogoPrompt 실패. 원문 프롬프트 사용: {}", ex.toString());
+                }
+                refinedPrompt = req.prompt();
+            }
+
+            // 2) Python 서버 호출 → 바이트 수신 (정제된 프롬프트 사용)
             var genReq = new LogoGenerateRequest(
                     req.title(),
                     slogan,
-                    req.prompt(),
+                    refinedPrompt,     // ★ 변경: 정제 프롬프트로 교체
                     DEFAULT_W, DEFAULT_H,
                     style
             );

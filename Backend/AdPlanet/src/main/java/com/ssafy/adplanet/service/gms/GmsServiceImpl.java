@@ -89,6 +89,78 @@ public class GmsServiceImpl implements GmsService {
         }
     }
 
+    @Override
+    public String refineLogoPrompt(String brandName, String slogan, String userPrompt, String style) {
+        try {
+            String brand = n(brandName);
+            String slog  = n(slogan);
+            String raw   = (userPrompt == null) ? "" : userPrompt.trim();
+            if (raw.length() > 2000) raw = raw.substring(0, 2000);  // 과도한 길이 방지
+            String sty   = (style == null) ? "-" : style;
+
+            // 1) 요청 바디 구성 (텍스트 출력)
+            ObjectNode root = om.createObjectNode();
+            root.put("model", "gpt-5-nano");
+
+            ArrayNode input = root.putArray("input");
+            ObjectNode user = input.addObject().put("role", "user");
+            ArrayNode content = user.putArray("content");
+
+            // 지시문 (영문화 + 로고용으로 구조화)
+            String instruction = """
+            You are a professional brand identity prompt engineer.
+            Rewrite the user's Korean prompt into a concise, production-ready ENGLISH prompt specialized for LOGO generation.
+
+            Rules:
+            - Write in natural, clear English.
+            - Keep it 1–4 sentences, no markdown, no quotes.
+            - Include the brand name and slogan contextually (do NOT output labels).
+            - Include style hints if provided (e.g., "simple", "mono", "minimal", "flat", "geometric").
+            - Focus on composition, shapes, negative space, typography preferences, color hints (optional), and constraints (no photo).
+            - Avoid camera/photo terms, storytelling, or long backgrounds.
+            - Prefer vector-friendly wording (e.g., "clean lines", "high contrast", "scalable", "SVG-friendly").
+            - Output ONLY the refined prompt text, nothing else.
+
+            Brand: %s
+            Slogan: %s
+            Requested style: %s
+            Original (user) prompt (Korean allowed): %s
+            """.formatted(brand, slog, sty, raw);
+
+            content.addObject()
+                    .put("type", "input_text")
+                    .put("text", instruction);
+
+            // 2) 호출
+            String refined = gmsWebClient.post()
+                    .uri("/responses") // baseUrl: https://api.openai.com/v1
+                    .headers(h -> h.setBearerAuth(apiKey))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON)
+                    .bodyValue(root)
+                    .retrieve()
+                    .onStatus(s -> !s.is2xxSuccessful(), res ->
+                            res.bodyToMono(String.class).defaultIfEmpty("")
+                                    .flatMap(b -> Mono.error(new IllegalStateException(
+                                            "GMS 오류 " + res.statusCode().value() + ": " + trim(b)))))
+                    .bodyToMono(String.class)
+                    .timeout(requestTimeout)
+                    .block();
+
+            if (refined == null || refined.isBlank()) {
+                throw new IllegalStateException("GMS 빈 응답(프롬프트 정제)");
+            }
+
+            // 3) 코드펜스/잡텍스트 제거 & 길이 보정
+            String out = stripCodeFence(refined).trim();
+            if (out.length() > 800) out = out.substring(0, 800); // 너무 길면 컷
+            return out;
+
+        } catch (Exception e) {
+            throw new IllegalStateException("GMS 프롬프트 정제 실패: " + e.getMessage(), e);
+        }
+    }
+
     private PalettePayload postProcess(String json) throws Exception {
         PalettePayload p = om.readValue(stripCodeFence(json), PalettePayload.class);
         normalize(p);
