@@ -18,8 +18,8 @@ export interface LogoDetail {
 
 // 태그 목록
 export interface LogoTag {
-  tagId: number;
-  tagName: string;
+  id: number;
+  name: string;
 }
 
 export interface AssignedLogoTag {
