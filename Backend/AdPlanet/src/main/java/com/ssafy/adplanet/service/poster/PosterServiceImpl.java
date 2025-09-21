@@ -10,6 +10,8 @@ import com.ssafy.adplanet.entity.PosterGroup;
 import com.ssafy.adplanet.entity.User;
 import com.ssafy.adplanet.enums.JobStatus;
 import com.ssafy.adplanet.enums.PosterStyle;
+import com.ssafy.adplanet.exception.BusinessException;
+import com.ssafy.adplanet.exception.ErrorCode;
 import com.ssafy.adplanet.repository.ImageJobRepository;
 import com.ssafy.adplanet.repository.PosterGroupRepository;
 import com.ssafy.adplanet.repository.PosterRepository;
@@ -64,6 +66,10 @@ public class PosterServiceImpl implements PosterService {
         LocalDateTime now = LocalDateTime.now();
 
         // 1. 시나리오 별로 요청값 검증
+        if (request.groupId() != null) {
+            posterGroupRepository.findById(request.groupId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
+        }
 
         // 2. 이미지 S3 저장 & Key 발급
         String sketchKey = uploadIfExists(sketchImage, "sketch", jobId);
@@ -103,8 +109,8 @@ public class PosterServiceImpl implements PosterService {
         // 5. DTO 변환 및 반환
         return new ImageJobResponse(
                 jobId,
-                JobStatus.QUEUED,
-                message.createdAt()
+                job.getStatus(),
+                job.getCreatedAt()
         );
     }
 
@@ -117,7 +123,7 @@ public class PosterServiceImpl implements PosterService {
         try (InputStream inputStream = multipartFile.getInputStream()) {
             s3Service.upload(key, inputStream, "image/png");
         } catch (IOException e) {
-            throw new RuntimeException("파일 업로드 실패", e);
+            throw new BusinessException(ErrorCode.IMAGE_UPLOAD_FAILED);
         }
 
         return key;
@@ -148,7 +154,7 @@ public class PosterServiceImpl implements PosterService {
         Thread.sleep(100);
 
         // 5. 이미지 처리 시도
-        boolean success = processImageGeneration(message, imageJob);
+        boolean success = processImageGeneration(message);
 
         // 6. 상태 업데이트: COMPLETED/FAILED
         if (success) {
@@ -163,7 +169,7 @@ public class PosterServiceImpl implements PosterService {
         imageJobRepository.save(imageJob);
     }
 
-    private boolean processImageGeneration(ImageJobMessage message, ImageJob imageJob) {
+    private boolean processImageGeneration(ImageJobMessage message) {
         String jobId = message.jobId();
 
         for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
@@ -194,8 +200,7 @@ public class PosterServiceImpl implements PosterService {
                 return false;
 
             } catch (Exception e) {
-                log.error("❌ 이미지 생성 시도 {}/{} 실패: {} - {}",
-                        attempt, MAX_RETRY, jobId, e.getMessage());
+                log.error("❌ 이미지 생성 시도 {}/{} 실패: {} - {}", attempt, MAX_RETRY, jobId, e.getMessage());
 
                 if (attempt == MAX_RETRY) {
                     log.error("❌ 최대 재시도 횟수 도달: {}", jobId, e);
@@ -215,33 +220,28 @@ public class PosterServiceImpl implements PosterService {
         return false;
     }
 
-    private MultiValueMap<String, Object> prepareRequestBody(ImageJobMessage message) throws Exception {
+    private MultiValueMap<String, Object> prepareRequestBody(ImageJobMessage message) {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 
         if (message.sketchKey() != null) {
             File sketchFile = s3Service.downloadFile(message.sketchKey());
             body.add("sketchImage", new FileSystemResource(sketchFile));
-            log.debug("sketchFile: {}", sketchFile.getName());
         }
         if (message.productKey() != null) {
             File productFile = s3Service.downloadFile(message.productKey());
             body.add("productImage", new FileSystemResource(productFile));
-            log.debug("productFile: {}", productFile.getName());
         }
         if (message.modelKey() != null) {
             File modelFile = s3Service.downloadFile(message.modelKey());
             body.add("modelImage", new FileSystemResource(modelFile));
-            log.debug("modelFile: {}", modelFile.getName());
         }
         if (message.skeletonKey() != null) {
             File skeletonFile = s3Service.downloadFile(message.skeletonKey());
             body.add("skeletonImage", new FileSystemResource(skeletonFile));
-            log.debug("skeletonFile: {}", skeletonFile.getName());
         }
         if (message.previousKey() != null) {
             File previousFile = s3Service.downloadFile(message.previousKey());
             body.add("previousImage", new FileSystemResource(previousFile));
-            log.debug("previousFile: {}", previousFile.getName());
         }
 
         body.add("prompt", message.prompt());
@@ -249,7 +249,7 @@ public class PosterServiceImpl implements PosterService {
     }
 
     @Transactional
-    protected void saveGenerationResult(ImageJobMessage message, ImageJob imageJob) throws Exception {
+    protected void saveGenerationResult(ImageJobMessage message, ImageJob imageJob) {
         String jobId = message.jobId();
 
         // PosterGroup 생성 or 조회
@@ -335,7 +335,7 @@ public class PosterServiceImpl implements PosterService {
 
         // 1. Job DB 조회
         ImageJob job = imageJobRepository.findById(jobId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 JobId가 존재하지 않습니다: " + jobId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.JOB_NOT_FOUND));
 
         // 2. 상태에 따른 분기 처리
         return switch (job.getStatus()) {

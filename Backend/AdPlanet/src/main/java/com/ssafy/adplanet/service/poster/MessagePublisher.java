@@ -2,6 +2,8 @@ package com.ssafy.adplanet.service.poster;
 
 import com.ssafy.adplanet.config.RabbitConsumerReadyChecker;
 import com.ssafy.adplanet.dto.poster.request.ImageJobMessage;
+import com.ssafy.adplanet.exception.BusinessException;
+import com.ssafy.adplanet.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -12,9 +14,6 @@ import org.slf4j.LoggerFactory;
 @Service
 @RequiredArgsConstructor
 public class MessagePublisher {
-
-    @Value("${app.queue.poster}")
-    private String queue;
 
     private final RabbitTemplate rabbitTemplate;
     private final RabbitConsumerReadyChecker readyChecker;
@@ -34,7 +33,7 @@ public class MessagePublisher {
 
         } catch (Exception e) {
             log.error("❌ [MQ-SEND] 메시지 발송 실패: {}", message.jobId(), e);
-            throw new RuntimeException("메시지 발송 실패", e);
+            throw new BusinessException(ErrorCode.IMAGE_PROCESSING_FAILED);
         }
     }
 }
