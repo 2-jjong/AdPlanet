@@ -16,8 +16,8 @@ public enum ErrorCode {
     INVALID_REFRESH_TOKEN("AT4014", "유효하지 않은 Refresh 토큰입니다"),
     EXPIRED_REFRESH_TOKEN("AT4015", "만료된 Refresh 토큰입니다"),
     INVALID_TOKEN_TYPE("AT4016", "Refresh 토큰이 아닙니다"),
-    USER_NOT_FOUND("AT4017", "사용자를 찾을 수 없습니다"),
-    REFRESH_TOKEN_NOT_FOUND("AT4018", "Refresh 토큰이 없습니다");
+    REFRESH_TOKEN_NOT_FOUND("AT4017", "Refresh 토큰이 없습니다"),
+    USER_NOT_FOUND("AT4018", "사용자를 찾을 수 없습니다");
 
     private final String code;
     private final String message;
