@@ -6,34 +6,93 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+
+import java.time.Duration;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class GmsServiceImpl implements GmsService {
 
-    @Value("${adplanet.gms.responses-url}") private String responsesUrl; // 절대 URI
+    private final @Qualifier("gmsWebClient") WebClient gmsWebClient;
+
     private final ObjectMapper om;
-    private final WebClient gmsWebClient;
+
+    @Value("${adplanet.gms.api-key}") private String apiKey;
+
+    @Value("${adplanet.gms.request-timeout:PT30S}")
+    private Duration requestTimeout;
 
     @Override
     public PalettePayload generatePaletteByImage(String brandName, String slogan, String imageUrl) {
         try {
             ObjectNode body = buildRequestBody(brandName, slogan, imageUrl, true);
-            String json = sendAndParseOnce(body, "v0:image");
-            if (json == null) throw new IllegalStateException("GMS 응답 파싱 실패");
 
-            PalettePayload p = om.readValue(stripCodeFence(json), PalettePayload.class);
-            normalize(p);
-            return p;
+            // Bean에 baseUrl이 있으므로 상대 경로만 사용
+            String respBody = gmsWebClient.post()
+                    .uri("/responses")
+                    .headers(h -> h.setBearerAuth(apiKey))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .bodyValue(body)
+                    .retrieve()
+                    .onStatus(s -> !s.is2xxSuccessful(), res ->
+                            res.bodyToMono(String.class).defaultIfEmpty("")
+                                    .flatMap(b -> {
+                                        log.warn("[GMS/responses] status={} body={}", res.statusCode(), b);
+                                        return Mono.error(new IllegalStateException(
+                                                "GMS 오류 " + res.statusCode().value() + ": " + trim(b)));
+                                    }))
+                    .bodyToMono(String.class)
+                    .timeout(requestTimeout)
+                    .block();
+
+            if (respBody == null || respBody.isBlank()) {
+                throw new IllegalStateException("GMS 빈 응답");
+            }
+
+            // ----- 응답 파싱 -----
+            JsonNode root = om.readTree(respBody);
+
+            // (1) output_text 우선
+            String out = root.path("output_text").asText(null);
+            if (out != null && !out.isBlank()) {
+                return postProcess(out);
+            }
+
+            // (2) output 배열 내부 content에서 text/json/parsed 추출
+            JsonNode output = root.path("output");
+            if (output.isArray()) {
+                for (JsonNode msg : output) {
+                    JsonNode contents = msg.path("content");
+                    if (!contents.isArray()) continue;
+                    for (JsonNode c : contents) {
+                        if (c.hasNonNull("text"))  return postProcess(c.get("text").asText());
+                        if (c.has("json"))          return postProcess(om.writeValueAsString(c.get("json")));
+                        if (c.has("parsed"))        return postProcess(om.writeValueAsString(c.get("parsed")));
+                        if ("output_json".equals(c.path("type").asText()) && c.has("json")) {
+                            return postProcess(om.writeValueAsString(c.get("json")));
+                        }
+                    }
+                }
+            }
+            throw new IllegalStateException("GMS 응답 파싱 실패");
 
         } catch (Exception e) {
             throw new IllegalStateException("GMS 호출/파싱 오류: " + e.getMessage(), e);
         }
+    }
+
+    private PalettePayload postProcess(String json) throws Exception {
+        PalettePayload p = om.readValue(stripCodeFence(json), PalettePayload.class);
+        normalize(p);
+        return p;
     }
 
     private ObjectNode buildRequestBody(String brand, String slogan, String imageUrl, boolean withImage) {
@@ -86,58 +145,6 @@ public class GmsServiceImpl implements GmsService {
         schema.putArray("required")
                 .add("primaryColor").add("secondaryColor").add("neutralColor")
                 .add("primaryGuide").add("secondaryGuide").add("neutralGuide");
-    }
-
-    private String sendAndParseOnce(ObjectNode body, String tag) {
-        try {
-            String payload = om.writeValueAsString(body);
-
-            String respBody = gmsWebClient.post()
-                    .uri(responsesUrl)
-                    .bodyValue(payload)
-                    .retrieve()
-                    .onStatus(s -> !s.is2xxSuccessful(), res ->
-                            res.bodyToMono(String.class)
-                                    .defaultIfEmpty("")
-                                    .flatMap(b -> {
-                                        log.warn("[GMS/responses:{}] status={} body={}", tag, res.statusCode(), b);
-                                        return Mono.error(new IllegalStateException(
-                                                "GMS 오류 " + res.statusCode().value() + ": " +
-                                                        (b.length() > 512 ? b.substring(0,512) : b)));
-                                    }))
-                    .bodyToMono(String.class)
-                    .block();
-
-            if (respBody == null || respBody.isBlank()) {
-                log.warn("[GMS/responses:{}] 빈 응답", tag);
-                return null;
-            }
-
-            JsonNode root = om.readTree(respBody);
-
-            String out = root.path("output_text").asText(null);
-            if (out != null && !out.isBlank()) return out;
-
-            JsonNode output = root.path("output");
-            if (output.isArray()) {
-                for (JsonNode msg : output) {
-                    JsonNode contents = msg.path("content");
-                    if (!contents.isArray()) continue;
-                    for (JsonNode c : contents) {
-                        if (c.hasNonNull("text")) return c.get("text").asText();
-                        if (c.has("json"))        return om.writeValueAsString(c.get("json"));
-                        if (c.has("parsed"))      return om.writeValueAsString(c.get("parsed"));
-                        if ("output_json".equals(c.path("type").asText()) && c.has("json")) {
-                            return om.writeValueAsString(c.get("json"));
-                        }
-                    }
-                }
-            }
-            return null;
-
-        } catch (Exception e) {
-            throw new IllegalStateException("GMS 전송/파싱 실패: " + e.getMessage(), e);
-        }
     }
 
     private static String stripCodeFence(String s) {
@@ -195,4 +202,9 @@ public class GmsServiceImpl implements GmsService {
     }
 
     private static String n(String s) { return (s == null || s.isBlank()) ? "-" : s; }
+
+    private static String trim(String s) {
+        if (s == null) return "";
+        return s.length() > 512 ? s.substring(0, 512) : s;
+    }
 }
