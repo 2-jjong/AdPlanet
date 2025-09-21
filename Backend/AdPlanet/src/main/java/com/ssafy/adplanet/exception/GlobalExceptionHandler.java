@@ -3,6 +3,8 @@ package com.ssafy.adplanet.exception;
 import com.ssafy.adplanet.dto.ResponseDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -21,6 +23,21 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(httpStatus)
                 .body(ResponseDto.error(errorCode.getCode(), errorCode.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ResponseDto<Void>> handleValidationException(MethodArgumentNotValidException e) {
+        String validationMessage = e.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(FieldError::getDefaultMessage)
+                .findFirst()
+                .orElse("");
+
+        String errorMessage = ErrorCode.INVALID_REQUEST_PARAMETER.getMessage() + ": " + validationMessage;
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseDto.error(ErrorCode.INVALID_REQUEST_PARAMETER.getCode(), errorMessage));
     }
 
     @ExceptionHandler(Exception.class)

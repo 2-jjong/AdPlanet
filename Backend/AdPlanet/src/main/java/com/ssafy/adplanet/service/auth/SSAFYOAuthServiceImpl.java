@@ -2,6 +2,8 @@ package com.ssafy.adplanet.service.auth;
 
 import com.ssafy.adplanet.dto.auth.oauth.SSAFYOAuthTokenResponse;
 import com.ssafy.adplanet.dto.auth.oauth.SSAFYUserInfoResponse;
+import com.ssafy.adplanet.exception.BusinessException;
+import com.ssafy.adplanet.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,7 +54,7 @@ public class SSAFYOAuthServiceImpl implements SSAFYOAuthService {
                     .block();
         } catch (WebClientResponseException e) {
             log.error("OAuth 토큰 요청 실패: {}", e.getMessage());
-            throw new RuntimeException("OAuth 토큰 발급 실패", e);
+            throw new BusinessException(ErrorCode.OAUTH_TOKEN_REQUEST_FAILED, e);
         }
     }
 
@@ -94,7 +96,7 @@ public class SSAFYOAuthServiceImpl implements SSAFYOAuthService {
         }
 
         log.error("모든 redirect URI로 OAuth 토큰 요청 실패 (테스트)");
-        throw new RuntimeException("OAuth 토큰 발급 실패 (테스트) - 모든 redirect URI 시도 실패", lastException);
+        throw new BusinessException(ErrorCode.OAUTH_TOKEN_REQUEST_FAILED, lastException);
     }
 
     @Override
@@ -108,7 +110,7 @@ public class SSAFYOAuthServiceImpl implements SSAFYOAuthService {
                     .block();
         } catch (WebClientResponseException e) {
             log.error("SSAFY 사용자 정보 조회 실패: {}", e.getMessage());
-            throw new RuntimeException("사용자 정보 조회 실패", e);
+            throw new BusinessException(ErrorCode.OAUTH_USER_INFO_REQUEST_FAILED, e);
         }
     }
 }
