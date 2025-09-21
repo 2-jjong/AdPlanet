@@ -1,5 +1,7 @@
 package com.ssafy.adplanet.util;
 
+import com.ssafy.adplanet.exception.BusinessException;
+import com.ssafy.adplanet.exception.ErrorCode;
 import com.ssafy.adplanet.security.JwtUserPrincipal;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -11,7 +13,7 @@ public class SecurityUtil {
         if (authentication != null && authentication.getPrincipal() instanceof JwtUserPrincipal principal) {
             return principal.userId();
         }
-        throw new RuntimeException("인증되지 않은 사용자입니다.");
+        throw new BusinessException(ErrorCode.UNAUTHORIZED);
     }
 
     public static String getCurrentUserEmail() {
@@ -19,7 +21,7 @@ public class SecurityUtil {
         if (authentication != null && authentication.getPrincipal() instanceof JwtUserPrincipal principal) {
             return principal.email();
         }
-        throw new RuntimeException("인증되지 않은 사용자입니다.");
+        throw new BusinessException(ErrorCode.UNAUTHORIZED);
     }
 
     public static JwtUserPrincipal getCurrentUser() {
@@ -27,6 +29,6 @@ public class SecurityUtil {
         if (authentication != null && authentication.getPrincipal() instanceof JwtUserPrincipal principal) {
             return principal;
         }
-        throw new RuntimeException("인증되지 않은 사용자입니다.");
+        throw new BusinessException(ErrorCode.UNAUTHORIZED);
     }
 }

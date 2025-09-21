@@ -1,6 +1,7 @@
 package com.ssafy.adplanet.config;
 
 import com.ssafy.adplanet.filter.JwtAuthenticationFilter;
+import com.ssafy.adplanet.security.CustomAuthenticationEntryPoint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +24,7 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -77,7 +79,11 @@ public class SecurityConfig {
                 )
 
                 // JWT 필터를 Spring Security 필터 체인에 추가
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+
+                // 인증 실패 시 처리
+                .exceptionHandling(exception ->
+                        exception.authenticationEntryPoint(customAuthenticationEntryPoint));
 
         return http.build();
     }
