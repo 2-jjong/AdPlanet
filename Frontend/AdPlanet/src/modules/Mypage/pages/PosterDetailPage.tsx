@@ -5,6 +5,7 @@ import Navigation from "../../../components/Layout/Navigation";
 import { RoundButton } from "../../../components/UI/Button/RoundButton";
 import { getPosterGroupDetail, getPoster } from "../../../services/posterService";
 import type { PosterGroupDetail, PosterDetail as PosterDetailDto } from "../../../services/dto/poster.dto";
+import { toAbsolute } from "../../../utils/posterParser"; 
 
 // Fullpage
 'use client';
@@ -15,12 +16,6 @@ import '@shinyongjun/react-fullpage/css'
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation as SwNav, Keyboard, Mousewheel } from "swiper/modules";
 
-// 로컬 보조: 상대경로 이미지를 절대경로로 보정
-const toAbsolute = (url?: string | null) => {
-  if (!url) return "";
-  if (/^(https?:)?\/\//.test(url) || url.startsWith("data:")) return url;
-  return url.startsWith("/") ? url : `/${url}`;
-};
 
 export default function PosterDetailPage() {
   const { id } = useParams();
