@@ -1,19 +1,21 @@
 import apiClient from "./apiClient";
 import type { ApiResponse } from "../types/api";
 import type { CreatePosterRequest, AssignPosterTagsRequest, PosterGroupListQuery } from "./dto/poster.request";
-import type { Poster, PosterTag, PosterDetail, PosterCopy, PosterGroupItem, PosterJobStatus, PosterGroupDetail } from "./dto/poster.response";
+import type { PosterTag, PosterDetail, PosterCopy, PosterGroupItem, PosterJobStatus, PosterGroupDetail } from "./dto/poster.response";
 
 /** 포스터 생성 (multipart/form-data) */
-export async function createPoster(req: CreatePosterRequest): Promise<ApiResponse<Poster>> {
+export async function createPoster(req: CreatePosterRequest): Promise<ApiResponse<PosterJobStatus>> {
   const form = new FormData();
-  form.append("request", JSON.stringify(req.request));
+  // 서버 스펙: request 파트는 application/json 이어야 함
+  const requestBlob = new Blob([JSON.stringify(req.request)], { type: 'application/json' });
+  form.append('request', requestBlob, 'request.json');
   if (req.sketchImage) form.append("sketchImage", req.sketchImage);
   if (req.productImage) form.append("productImage", req.productImage);
   if (req.modelImage) form.append("modelImage", req.modelImage);
   if (req.skeletonImage) form.append("skeletonImage", req.skeletonImage);
   if (req.previousImage) form.append("previousImage", req.previousImage);
 
-  const { data } = await apiClient.post<ApiResponse<Poster>>(
+  const { data } = await apiClient.post<ApiResponse<PosterJobStatus>>(
     "/api/posters",
     form,
     {

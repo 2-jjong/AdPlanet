@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { createPoster } from '../../../services/posterService';
 import type { CreatePosterRequest, PosterStyle } from '../../../services/dto/poster.request';
 import type { ApiResponse } from '../../../types/api';
-import type { Poster } from '../../../services/dto/poster.response';
+import type { PosterJobStatus } from '../../../services/dto/poster.response';
 
 export type UiPosterStyle = 'clean' | 'punk' | 'cartoon' | 'monochrome' | undefined;
 
@@ -32,7 +32,7 @@ export interface CreatePosterParams {
 }
 
 export function useCreatePosterMutation() {
-  return useMutation<ApiResponse<Poster>, unknown, CreatePosterParams>({
+  return useMutation<ApiResponse<PosterJobStatus>, unknown, CreatePosterParams>({
     mutationFn: async (params: CreatePosterParams) => {
       const req: CreatePosterRequest = {
         style: mapUiStyleToPosterStyle(params.style),

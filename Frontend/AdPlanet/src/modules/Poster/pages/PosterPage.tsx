@@ -14,8 +14,9 @@ import PosterSidebar from "../components/PosterSidebar";
 import type { UploadedImage, PosterGenerationState, SkeletonPose, TextOverlay, GenerationRecord } from "../../../types/poster";
 import { PATHS } from "../../../constants/paths";
 import { useCreatePosterMutation } from "../hooks/usePosterMutations";
+import { usePosterGroups, usePosterGroupDetail, usePosterJob, posterKeys } from "../hooks/usePosterQueries";
+import { useQueryClient } from "@tanstack/react-query";
 import { defaultSkeletonPose } from "../components/defaultPose";
-import { usePosterGroups, usePosterGroupDetail } from "../hooks/usePosterQueries";
 
 const PosterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -44,6 +45,7 @@ const PosterPage: React.FC = () => {
   // 그룹 목록 사이드바 상태
   const [isGroupListOpen, setIsGroupListOpen] = useState(false);
   const groupsQuery = usePosterGroups({});
+  const queryClient = useQueryClient();
 
   // 파일 첨부 아코디언 자동 닫기 핸들러
   const handleOutsideClick = useCallback(() => {
@@ -70,6 +72,7 @@ const PosterPage: React.FC = () => {
   }, [isImagePreviewOpen]);
   const [selectedRecordId, setSelectedRecordId] = useState<string | undefined>();
   const [currentGroupId, setCurrentGroupId] = useState<number | undefined>(undefined);
+  const [currentJobId, setCurrentJobId] = useState<string | undefined>(undefined);
 
   // 생성 히스토리 (그룹 선택 시 서버 데이터로 갱신)
   const [generationRecords, setGenerationRecords] = useState<GenerationRecord[]>([]);
@@ -113,13 +116,28 @@ const PosterPage: React.FC = () => {
   }, []);
 
   const handleGenerate = useCallback(async () => {
-    if (!personImage && !productImage && !sketchImage && !state.prompt.trim()) {
+    // 첫 생성은 업로드/프롬프트 중 하나가 있어야 하고,
+    // 구도 조정(이미 생성본 존재)일 때는 previousImage 로만 생성 허용
+    if (!personImage && !productImage && !sketchImage && !state.prompt.trim() && !state.generatedPoster) {
       return;
     }
 
     setState((prev) => ({ ...prev, isGenerating: true }));
 
     try {
+      // 구도 조정일 때 캔버스에 보이는 이미지를 previousImage 로 첨부
+      let previousFile: File | null = null;
+      if (state.generatedPoster) {
+        try {
+          const res = await fetch(state.generatedPoster, { mode: 'cors' });
+          const blob = await res.blob();
+          const ext = blob.type.includes('jpeg') ? 'jpg' : blob.type.split('/')[1] || 'png';
+          previousFile = new File([blob], `previous.${ext}`, { type: blob.type || 'image/png' });
+        } catch (_) {
+          previousFile = null;
+        }
+      }
+
       const res = await createPosterMutation.mutateAsync({
         groupId: currentGroupId, // 없으면 생략되어 서버가 새 그룹을 생성
         title: state.title || 'Untitled',
@@ -131,26 +149,54 @@ const PosterPage: React.FC = () => {
           product: productImage?.file ?? null,
           sketch: sketchImage?.file ?? null,
           skeleton: null,
-          previous: null,
+          // 첫 생성이면 null, 구도 조정이면 현재 캔버스 이미지를 첨부
+          previous: previousFile,
         },
       });
 
-      const url = res.data?.imgUrl || null;
-      const newGroupId = (res.data as any)?.groupId as number | undefined;
-      setState((prev) => ({
-        ...prev,
-        step: url ? 'edit' : prev.step,
-        generatedPoster: url,
-        currentPose: prev.currentPose ?? defaultSkeletonPose,
-        isGenerating: false,
-      }));
-      if (typeof newGroupId === 'number' && Number.isFinite(newGroupId)) {
-        setCurrentGroupId(newGroupId);
+      const jobId = res.data?.jobId;
+      if (jobId) {
+        setCurrentJobId(jobId);
+      } else {
+        setState((prev) => ({ ...prev, isGenerating: false }));
       }
     } catch (e) {
       setState((prev) => ({ ...prev, isGenerating: false }));
     }
   }, [createPosterMutation, personImage, productImage, sketchImage, state.title, state.content, state.prompt]);
+
+  // 10초 간격으로 생성 작업 상태 폴링
+  const jobQuery = usePosterJob(currentJobId as string, { enabled: !!currentJobId, interval: 10000 });
+
+  React.useEffect(() => {
+    if (!currentJobId) return;
+    const job = jobQuery.data;
+    const status = job?.status?.toString().toUpperCase();
+    if (!status) return;
+    if (status === 'COMPLETED' && job?.result) {
+      const finalUrl = job.result.imgUrl;
+      const finalGroupId = job.result.groupId;
+      setState((prev) => ({
+        ...prev,
+        step: 'edit',
+        generatedPoster: finalUrl ?? prev.generatedPoster,
+        currentPose: prev.currentPose ?? defaultSkeletonPose,
+        isGenerating: false,
+      }));
+      if (typeof finalGroupId === 'number' && Number.isFinite(finalGroupId)) {
+        setCurrentGroupId(finalGroupId);
+        // 그룹/히스토리 데이터 동기화
+        queryClient.invalidateQueries({ queryKey: posterKeys.groups() });
+        queryClient.invalidateQueries({ queryKey: posterKeys.groupDetail(finalGroupId) });
+      } else {
+        queryClient.invalidateQueries({ queryKey: posterKeys.groups() });
+      }
+      setCurrentJobId(undefined);
+    } else if (status === 'FAILED') {
+      setState((prev) => ({ ...prev, isGenerating: false }));
+      setCurrentJobId(undefined);
+    }
+  }, [currentJobId, jobQuery.data, queryClient]);
 
   const handlePoseChange = useCallback((pose: SkeletonPose) => {
     setState((prev) => ({ ...prev, currentPose: pose }));
@@ -196,11 +242,33 @@ const PosterPage: React.FC = () => {
   const handleSelectGroup = useCallback((groupId: number) => {
     setCurrentGroupId(groupId);
     setIsGroupListOpen(false);
+    setSelectedRecordId(undefined);
+    setState((prev) => ({
+      ...prev,
+      step: 'edit',
+      currentPose: prev.currentPose ?? defaultSkeletonPose,
+    }));
   }, []);
 
   const handleNewGroup = useCallback(() => {
     setCurrentGroupId(undefined);
     setIsGroupListOpen(false);
+    setGenerationRecords([]);
+    setSelectedRecordId(undefined);
+    setPersonImage(null);
+    setProductImage(null);
+    setSketchImage(null);
+    setState({
+      step: 'upload',
+      uploadedImages: [],
+      generatedPoster: null,
+      currentPose: null,
+      prompt: '',
+      isGenerating: false,
+      textOverlays: [],
+      title: '',
+      content: '',
+    });
   }, []);
 
   // 현재 그룹 상세를 불러와 히스토리와 캔버스를 동기화
@@ -209,26 +277,42 @@ const PosterPage: React.FC = () => {
   React.useEffect(() => {
     const detail = groupDetailQuery.data;
     if (!detail) return;
-    // 히스토리 변환: 서버 포스터 목록을 UI 레코드로 맵핑
-    const mapped = (detail.posters || []).map((p, idx) => ({
-      id: String(p.posterId),
+    // 히스토리 변환: 서버 포스터 목록(history 또는 posters)을 UI 레코드로 맵핑
+    const historyItems = (detail as any).history ?? (detail as any).posters ?? [];
+    const mapped = historyItems.map((p: any, idx: number) => ({
+      id: String(p.posterId ?? idx),
       timestamp: new Date(),
       thumbnail: p.imgUrl,
-      prompt: detail.title || `생성 ${idx + 1}`,
+      prompt: p.prompt ?? detail.title ?? `생성 ${idx + 1}`,
       step: 'generate' as const,
       status: 'completed' as const,
     }));
-    // 마지막 이미지로 캔버스 업데이트
-    const last = detail.posters && detail.posters.length > 0 ? detail.posters[detail.posters.length - 1] : undefined;
+    // 최신 이미지로 캔버스 업데이트: history 마지막
+    const last = historyItems.length > 0 ? historyItems[historyItems.length - 1] : undefined;
     setState((prev) => ({
       ...prev,
       generatedPoster: last?.imgUrl ?? prev.generatedPoster,
+      step: 'edit',
+      currentPose: prev.currentPose ?? defaultSkeletonPose,
     }));
+    setGenerationRecords(mapped);
+    setSelectedRecordId(undefined);
     // 히스토리는 로컬 상태가 아니라 props로 넘기므로 여기선 필요 시 확장 가능
     // 현재 컴포넌트의 generationRecords는 로컬 상태이므로 동기화
     // 간단히 replace (최초 로드/그룹 변경 시 갱신)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupDetailQuery.data]);
+
+  // 히스토리 선택에 따라 캔버스 이미지 동기화 (선택 없으면 마지막 항목)
+  React.useEffect(() => {
+    const selected = generationRecords.find((r) => r.id === selectedRecordId);
+    const last = generationRecords.length > 0 ? generationRecords[generationRecords.length - 1] : undefined;
+    if (!selected && !last) return;
+    setState((prev) => ({
+      ...prev,
+      generatedPoster: selected?.thumbnail ?? last?.thumbnail ?? prev.generatedPoster,
+    }));
+  }, [selectedRecordId, generationRecords]);
 
   const handleSelectRecord = useCallback(
     (recordId: string) => {
