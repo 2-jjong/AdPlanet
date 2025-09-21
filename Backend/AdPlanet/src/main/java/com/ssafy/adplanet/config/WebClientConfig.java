@@ -4,11 +4,9 @@ import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
-import org.springframework.web.reactive.function.client.ExchangeFilterFunctions;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import reactor.netty.http.client.HttpClient;
@@ -51,4 +49,27 @@ public class WebClientConfig {
                 .codecs(c -> c.defaultCodecs().maxInMemorySize(25 * 1024 * 1024))
                 .build();
     }
+
+    @Bean
+    public WebClient gmsWebClient(
+            @Value("${adplanet.gms.responses-url}") String responsesUrl,
+            @Value("${adplanet.gms.api-key}") String apiKey,
+            @Value("${adplanet.gms.timeout:PT60S}") Duration timeout
+    ) {
+        long readTimeoutSec = Math.max(1, timeout.getSeconds());
+        HttpClient http = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10_000)
+                .responseTimeout(Duration.ofSeconds(readTimeoutSec))
+                .doOnConnected(c -> c
+                        .addHandlerLast(new ReadTimeoutHandler(readTimeoutSec, TimeUnit.SECONDS))
+                        .addHandlerLast(new WriteTimeoutHandler(readTimeoutSec, TimeUnit.SECONDS)));
+
+        return WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(http))
+                .defaultHeader("Authorization", "Bearer " + apiKey)
+                .defaultHeader("Content-Type", "application/json")
+                .codecs(c -> c.defaultCodecs().maxInMemorySize(5 * 1024 * 1024))
+                .build();
+    }
+
 }

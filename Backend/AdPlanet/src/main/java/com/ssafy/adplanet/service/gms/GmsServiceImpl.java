@@ -8,23 +8,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class GmsServiceImpl implements GmsService {
 
-    @Value("${adplanet.gms.responses-url}") private String responsesUrl;
-    @Value("${adplanet.gms.api-key}")       private String apiKey;
-    @Value("${adplanet.gms.timeout:60s}")   private Duration timeout; // ⬅ 타임아웃 여유
-
+    @Value("${adplanet.gms.responses-url}") private String responsesUrl; // 절대 URI
     private final ObjectMapper om;
+    private final WebClient gmsWebClient;
 
     @Override
     public PalettePayload generatePaletteByImage(String brandName, String slogan, String imageUrl) {
@@ -41,8 +35,6 @@ public class GmsServiceImpl implements GmsService {
             throw new IllegalStateException("GMS 호출/파싱 오류: " + e.getMessage(), e);
         }
     }
-
-    // ---------- 내부 유틸 ----------
 
     private ObjectNode buildRequestBody(String brand, String slogan, String imageUrl, boolean withImage) {
         ObjectNode root = om.createObjectNode();
@@ -78,7 +70,6 @@ public class GmsServiceImpl implements GmsService {
         props.putObject("secondaryColor").put("type", "string").put("pattern", "^#[0-9A-Fa-f]{6}$");
         props.putObject("neutralColor").put("type", "string").put("pattern", "^#[0-9A-Fa-f]{6}$");
 
-        // 객체 스키마
         ObjectNode colorGuide = om.createObjectNode();
         colorGuide.put("type", "object").put("additionalProperties", false);
         ObjectNode cgProps = colorGuide.putObject("properties");
@@ -90,8 +81,6 @@ public class GmsServiceImpl implements GmsService {
 
         props.set("primaryGuide", colorGuide.deepCopy());
         props.set("secondaryGuide", colorGuide.deepCopy());
-
-        // neutralGuide는 문자열 블록 유지
         props.putObject("neutralGuide").put("type", "string");
 
         schema.putArray("required")
@@ -99,42 +88,56 @@ public class GmsServiceImpl implements GmsService {
                 .add("primaryGuide").add("secondaryGuide").add("neutralGuide");
     }
 
-    private String sendAndParseOnce(ObjectNode body, String tag) throws Exception {
-        var req = HttpRequest.newBuilder(URI.create(responsesUrl))
-                .timeout(timeout)
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
-                .POST(HttpRequest.BodyPublishers.ofString(om.writeValueAsString(body)))
-                .build();
-        var http = HttpClient.newBuilder().connectTimeout(timeout).build();
-        var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+    private String sendAndParseOnce(ObjectNode body, String tag) {
+        try {
+            String payload = om.writeValueAsString(body);
 
-        if (resp.statusCode() / 100 != 2) {
-            log.warn("[GMS/responses:{}] status={} body={}", tag, resp.statusCode(), resp.body());
-            return null;
-        }
+            String respBody = gmsWebClient.post()
+                    .uri(responsesUrl)
+                    .bodyValue(payload)
+                    .retrieve()
+                    .onStatus(s -> !s.is2xxSuccessful(), res ->
+                            res.bodyToMono(String.class)
+                                    .defaultIfEmpty("")
+                                    .flatMap(b -> {
+                                        log.warn("[GMS/responses:{}] status={} body={}", tag, res.statusCode(), b);
+                                        return Mono.error(new IllegalStateException(
+                                                "GMS 오류 " + res.statusCode().value() + ": " +
+                                                        (b.length() > 512 ? b.substring(0,512) : b)));
+                                    }))
+                    .bodyToMono(String.class)
+                    .block();
 
-        JsonNode root = om.readTree(resp.body());
+            if (respBody == null || respBody.isBlank()) {
+                log.warn("[GMS/responses:{}] 빈 응답", tag);
+                return null;
+            }
 
-        String out = root.path("output_text").asText(null);
-        if (out != null && !out.isBlank()) return out;
+            JsonNode root = om.readTree(respBody);
 
-        JsonNode output = root.path("output");
-        if (output.isArray()) {
-            for (JsonNode msg : output) {
-                JsonNode contents = msg.path("content");
-                if (!contents.isArray()) continue;
-                for (JsonNode c : contents) {
-                    if (c.hasNonNull("text")) return c.get("text").asText();
-                    if (c.has("json"))        return om.writeValueAsString(c.get("json"));
-                    if (c.has("parsed"))      return om.writeValueAsString(c.get("parsed"));
-                    if ("output_json".equals(c.path("type").asText()) && c.has("json")) {
-                        return om.writeValueAsString(c.get("json"));
+            String out = root.path("output_text").asText(null);
+            if (out != null && !out.isBlank()) return out;
+
+            JsonNode output = root.path("output");
+            if (output.isArray()) {
+                for (JsonNode msg : output) {
+                    JsonNode contents = msg.path("content");
+                    if (!contents.isArray()) continue;
+                    for (JsonNode c : contents) {
+                        if (c.hasNonNull("text")) return c.get("text").asText();
+                        if (c.has("json"))        return om.writeValueAsString(c.get("json"));
+                        if (c.has("parsed"))      return om.writeValueAsString(c.get("parsed"));
+                        if ("output_json".equals(c.path("type").asText()) && c.has("json")) {
+                            return om.writeValueAsString(c.get("json"));
+                        }
                     }
                 }
             }
+            return null;
+
+        } catch (Exception e) {
+            throw new IllegalStateException("GMS 전송/파싱 실패: " + e.getMessage(), e);
         }
-        return null;
     }
 
     private static String stripCodeFence(String s) {
@@ -153,7 +156,6 @@ public class GmsServiceImpl implements GmsService {
         p.setSecondaryColor(fixHex(p.getSecondaryColor()));
         p.setNeutralColor(fixHex(p.getNeutralColor()));
 
-        // 가이드 객체의 hex 보정
         if (p.getPrimaryGuide() != null) {
             p.getPrimaryGuide().setHex(fixHex(p.getPrimaryGuide().getHex()));
         }
