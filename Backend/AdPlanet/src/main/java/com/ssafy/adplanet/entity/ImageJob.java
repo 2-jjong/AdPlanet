@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 public class ImageJob {
 
     @Id
-    @Column(name = "id")
+    @Column(name = "id", unique = true, nullable = false)
     String id;
 
     @Column(name = "status", nullable = false)

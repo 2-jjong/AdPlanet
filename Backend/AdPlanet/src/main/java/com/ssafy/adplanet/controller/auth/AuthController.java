@@ -3,9 +3,11 @@ package com.ssafy.adplanet.controller.auth;
 import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.auth.LoginRequest;
 import com.ssafy.adplanet.dto.auth.LoginTokens;
-import com.ssafy.adplanet.dto.auth.oauth.SSAFYLoginResponseDto;
+import com.ssafy.adplanet.exception.BusinessException;
+import com.ssafy.adplanet.exception.ErrorCode;
 import com.ssafy.adplanet.service.auth.AuthService;
 import com.ssafy.adplanet.util.SecurityUtil;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -15,7 +17,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,32 +40,27 @@ public class AuthController {
     })
     public ResponseEntity<ResponseDto<Void>> login(
             @Parameter(description = "OAuth 인가 코드", required = true)
-            @RequestBody LoginRequest request) {
+            @Valid @RequestBody LoginRequest request) {
 
-        try {
-            // SSAFY OAuth 로그인 처리 및 JWT 토큰 발급
-//            LoginTokens tokens = authService.login(request.code());
+        // SSAFY OAuth 로그인 처리 및 JWT 토큰 발급
+//        LoginTokens tokens = authService.login(request.code());
 
-            // SSAFY OAuth 로그인이 Redirect 이중 검증을 하기 때문에 개발 단계에서 사용하는 메소드
-            LoginTokens tokens = authService.loginForTest(request.code());
-            
-            // 리프레시 토큰을 쿠키에 설정
-            ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", tokens.refreshToken())
-                    .httpOnly(true)
-                    .secure(true)
-                    .sameSite("Strict")
-                    .path("/")
-                    .maxAge(7 * 24 * 60 * 60) // 7일
-                    .build();
+        // SSAFY OAuth 로그인이 Redirect 이중 검증을 하기 때문에 개발 단계에서 사용하는 메소드
+        LoginTokens tokens = authService.loginForTest(request.code());
 
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.accessToken())
-                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                    .body(ResponseDto.ok(null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ResponseDto.error("A4010", "로그인 실패"));
-        }
+        // 리프레시 토큰을 쿠키에 설정
+        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", tokens.refreshToken())
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(7 * 24 * 60 * 60) // 7일
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.accessToken())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(ResponseDto.ok());
     }
 
     @PostMapping("/reissue")
@@ -78,44 +74,37 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "유효하지 않은 리프레시 토큰")
     })
     public ResponseEntity<ResponseDto<Void>> reissue(HttpServletRequest request) {
-        try {
-            // 쿠키에서 RefreshToken 추출
-            String refreshToken = null;
-            if (request.getCookies() != null) {
-                for (var cookie : request.getCookies()) {
-                    if ("refresh_token".equals(cookie.getName())) {
-                        refreshToken = cookie.getValue();
-                        break;
-                    }
+        // 쿠키에서 RefreshToken 추출
+        String refreshToken = null;
+        if (request.getCookies() != null) {
+            for (var cookie : request.getCookies()) {
+                if ("refresh_token".equals(cookie.getName())) {
+                    refreshToken = cookie.getValue();
+                    break;
                 }
             }
-
-            if (refreshToken == null) {
-                return ResponseEntity.status(401)
-                        .body(ResponseDto.error("A4011", "RefreshToken이 없습니다"));
-            }
-
-            // 토큰 갱신
-            LoginTokens tokens = authService.reissueTokens(refreshToken);
-
-            // 새 리프레시 토큰을 쿠키에 설정
-            ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", tokens.refreshToken())
-                    .httpOnly(true)
-                    .secure(true)
-                    .sameSite("Strict")
-                    .path("/")
-                    .maxAge(7 * 24 * 60 * 60) // 7일
-                    .build();
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.accessToken())
-                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                    .body(ResponseDto.ok(null));
-
-        } catch (Exception e) {
-            return ResponseEntity.status(401)
-                    .body(ResponseDto.error("A4012", "토큰 갱신 실패: " + e.getMessage()));
         }
+
+        if (refreshToken == null) {
+            throw new BusinessException(ErrorCode.REFRESH_TOKEN_NOT_FOUND);
+        }
+
+        // 토큰 갱신
+        LoginTokens tokens = authService.reissueTokens(refreshToken);
+
+        // 새 리프레시 토큰을 쿠키에 설정
+        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", tokens.refreshToken())
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(7 * 24 * 60 * 60) // 7일
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.accessToken())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(ResponseDto.ok());
     }
 
     @PostMapping("/logout")
@@ -128,27 +117,20 @@ public class AuthController {
             @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
     public ResponseEntity<ResponseDto<Void>> logout() {
-        try {
+        Long userId = SecurityUtil.getCurrentUserId();
+        authService.logout(userId);
 
-            Long userId = SecurityUtil.getCurrentUserId();
-            authService.logout(userId);
+        // 리프레시 토큰 쿠키 삭제
+        ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(0) // 즉시 만료
+                .build();
 
-            // 리프레시 토큰 쿠키 삭제
-            ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
-                    .httpOnly(true)
-                    .secure(true)
-                    .sameSite("Strict")
-                    .path("/")
-                    .maxAge(0) // 즉시 만료
-                    .build();
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
-                    .body(ResponseDto.ok(null));
-
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ResponseDto.error("A4013", "로그아웃 실패"));
-        }
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .body(ResponseDto.ok());
     }
 }
