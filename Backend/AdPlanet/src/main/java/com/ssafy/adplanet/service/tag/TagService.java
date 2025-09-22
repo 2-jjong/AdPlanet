@@ -12,4 +12,5 @@ public interface TagService {
     List<TagDto> getLogoTags(Long logoId);
     TagDto createPosterTag(Long userId, String tagName);
     void setPosterTags(Long groupId, List<Long> tagIds);
+    List<TagDto> getPosterTags(Long userId);
 }

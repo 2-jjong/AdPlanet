@@ -9,7 +9,10 @@ import com.ssafy.adplanet.exception.ErrorCode;
 import com.ssafy.adplanet.repository.LogoRepository;
 import com.ssafy.adplanet.repository.PosterGroupRepository;
 import com.ssafy.adplanet.repository.TagRepository;
+import com.ssafy.adplanet.service.poster.MessageListener;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +25,8 @@ public class TagServiceImpl implements TagService {
     private final TagRepository tagRepository;
     private final LogoRepository logoRepository;
     private final PosterGroupRepository posterGroupRepository;
+
+    private static final Logger log = LoggerFactory.getLogger(MessageListener.class);
 
     @Override
     @Transactional
@@ -100,6 +105,8 @@ public class TagServiceImpl implements TagService {
 
         // 0. 태그명 정규화
         String name = normalize(tagName);
+        if (name.isEmpty()) throw new IllegalArgumentException("태그명을 입력하세요.");
+        log.info("[TAG-CREATE] 태그명 정규화: {}", name);
 
         // 1. 유저의 포스터 그룹 중 해당 태그 존재 여부 확인
         boolean tagExistsForUser = posterGroupRepository.existsByUser_UserIdAndTags_NameIgnoreCase(userId, name);
@@ -109,9 +116,13 @@ public class TagServiceImpl implements TagService {
 
         // 2. 전체 태그 중 동일 이름 존재 여부 확인
         return tagRepository.findByNameIgnoreCase(name)
-                .map(tag -> new TagDto(tag.getId(), tag.getName()))
+                .map(tag -> {
+                    log.info("[TAG-CREATE] 기존 태그 존재: {}", tag.getId());
+                    return new TagDto(tag.getId(), tag.getName());
+                })
                 .orElseGet(() -> {
                     Tag newTag = tagRepository.save(Tag.builder().name(name).build());
+                    log.info("[TAG-CREATE] 새 태그 생성: {}", newTag.getId());
                     return new TagDto(newTag.getId(), newTag.getName());
                 });
     }
@@ -137,5 +148,17 @@ public class TagServiceImpl implements TagService {
         }
 
         posterGroup.setTags(tags);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TagDto> getPosterTags(Long userId) {
+
+        Set<Tag> tags = posterGroupRepository.findDistinctTagsByUserId(userId);
+
+        return tags
+                .stream()
+                .map(tag -> new TagDto(tag.getId(), tag.getName()))
+                .toList();
     }
 }

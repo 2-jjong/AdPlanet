@@ -13,7 +13,6 @@ import com.ssafy.adplanet.service.poster.PosterService;
 import com.ssafy.adplanet.service.tag.TagService;
 import com.ssafy.adplanet.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.media.Encoding;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -48,7 +47,7 @@ public class PosterController {
 
     @PostMapping(consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
     @Operation(summary = "포스터 생성 요청", description = "포스터 생성을 요청합니다.")
-    @RequestBody(content = @Content(
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(
             encoding = @Encoding(name = "request", contentType = MediaType.APPLICATION_JSON_VALUE)))
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "요청 성공"),
@@ -256,17 +255,12 @@ public class PosterController {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
-    public ResponseEntity<ResponseDto<List<PosterTagResponse>>> getPosterTag(
+    public ResponseEntity<ResponseDto<List<TagDto>>> getPosterTag(
     ) {
 
-        List<PosterTagResponse> response = new ArrayList<>();
-        for (long i = 1; i <= 15; i++) {
-            PosterTagResponse tag = new PosterTagResponse(
-                    i,
-                    "태그 " + i
-            );
-            response.add(tag);
-        }
+        Long userId = SecurityUtil.getCurrentUserId();
+
+        List<TagDto> response = tagService.getPosterTags(userId);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
