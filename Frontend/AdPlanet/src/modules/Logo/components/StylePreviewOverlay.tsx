@@ -22,7 +22,7 @@ const StylePreviewOverlay: React.FC<StylePreviewOverlayProps> = ({ open, onClose
     const targetW = Math.min(420, Math.floor(viewportW * 0.45));
     const targetH = targetW;
     const targetLeft = (viewportW - targetW) / 2;
-    const targetTop = (viewportH - targetH) / 2 - 20;
+    const targetTop = (viewportH - targetH) / 2 - 130;
 
     // FLIP: 최종 위치/크기에 고정 + 변환으로 원점에서 시작
     if (origin) {
@@ -98,7 +98,7 @@ const StylePreviewOverlay: React.FC<StylePreviewOverlayProps> = ({ open, onClose
         <img src={imageSrc} alt={title} className="w-full h-full object-contain" />
       </div>
 
-      <div className={"fixed left-1/2 top-[70%] -translate-x-1/2 w-[92vw] max-w-[720px] px-6 " + (contentReady ? "opacity-100 translate-y-0 transition-all duration-500" : "opacity-0 translate-y-2")}
+      <div className={"fixed left-1/2 top-[60%] -translate-x-1/2 w-[92vw] max-w-[720px] px-6 " + (contentReady ? "opacity-100 translate-y-0 transition-all duration-500" : "opacity-0 translate-y-2")}
       >
         <div className="rounded-2xl border border-white/10 bg-[#0f1121]/95 p-6 md:p-7 shadow-xl">
           <div className="flex items-start justify-between">

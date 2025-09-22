@@ -174,8 +174,8 @@ const LogoPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-row w-full min-h-screen">
-      <div className="flex-1 flex flex-col md:p-6">
+    <div className="flex flex-row w-full h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col md:p-6 overflow-hidden">
         {/* Header */}
         <header className="flex items-start justify-between">
           {/* <h1 className='text-4xl md:text-5xl font-bold text-primary'>AdPlanet</h1> */}
@@ -197,7 +197,7 @@ const LogoPage: React.FC = () => {
         </header>
 
         {/* 로고 추천, 캔버스 영역 */}
-        <section className="mt-6 grid grid-cols-1 md:grid-cols-[160px,1fr] gap-6">
+        <section className="mt-4 grid grid-cols-1 md:grid-cols-[160px,1fr] gap-5 overflow-hidden">
           {/* 로고 추천 영역 */}
           <aside className="w-full rounded-xl p-3 md:p-4 flex flex-col items-center bg-white/5 border border-white/10 backdrop-blur">
             <h2 className="text-lg font-jamsil text-text-color text-center">
@@ -240,8 +240,8 @@ const LogoPage: React.FC = () => {
           </aside>
 
           {/* Canvas */}
-          <main className="relative">
-            <div className="h-[360px] md:h-[520px] lg:h-[560px] w-full flex items-center justify-center rounded-2xl overflow-hidden relative bg-white/5 border border-white/10">
+          <main className="relative overflow-hidden">
+            <div className="h-[340px] md:h-[500px] lg:h-[520px] w-full flex items-center justify-center rounded-2xl overflow-hidden relative bg-white/5 border border-white/10">
               <AdPlanetLoaderOverlay show={isPending || showLoader} tip="로고를 멋지게 만드는 중..." />
               {error && <p className="text-red-500 text-sm">{error.message}</p>}
               {imageUrl && (
@@ -257,9 +257,9 @@ const LogoPage: React.FC = () => {
       </div>
 
       {/* 오른쪽 프롬프트 영역 */}
-      <aside className="w-[320px] md:w-[360px] bg-[#12131F] border-l border-white/10 p-4 flex flex-col gap-6">
+      <aside className="w-[320px] md:w-[360px] bg-[#12131F] border-l border-white/10 p-4 flex flex-col gap-5 overflow-auto">
         {/* 기본 정보 */}
-        <section className="flex flex-col gap-3 mt-10">
+        <section className="flex flex-col gap-3 mt-6">
           <h3 className="text-lg font-semibold border-b border-white/20 pb-1">
             기본 정보
           </h3>
