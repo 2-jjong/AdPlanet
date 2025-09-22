@@ -1,5 +1,7 @@
 package com.ssafy.adplanet.service.s3;
 
+import java.io.File;
+import java.io.InputStream;
 import java.time.Duration;
 
 public interface S3Service {
@@ -9,6 +11,11 @@ public interface S3Service {
 
     // 바이트 업로드 (기본 private)
     void upload(String key, byte[] bytes, String contentType);
+
+    // 파일 업로드
+    void upload(String key, File file, String contentType);
+
+    void upload(String key, InputStream inputStream, String contentType);
 
     // 프리사인 GET (yml의 presign-minutes 기본값 사용)
     String presignGet(String key);
@@ -21,6 +28,9 @@ public interface S3Service {
 
     // 다운로드
     byte[] download(String key);
+
+    // 다운로드 (파일)
+    File downloadFile(String key);
 
     // 삭제
     void delete(String key);

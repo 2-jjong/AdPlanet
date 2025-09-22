@@ -17,7 +17,13 @@ public enum ErrorCode {
     EXPIRED_REFRESH_TOKEN("AT4015", "만료된 Refresh 토큰입니다"),
     INVALID_TOKEN_TYPE("AT4016", "Refresh 토큰이 아닙니다"),
     REFRESH_TOKEN_NOT_FOUND("AT4017", "Refresh 토큰이 없습니다"),
-    USER_NOT_FOUND("AT4018", "사용자를 찾을 수 없습니다");
+    USER_NOT_FOUND("AT4018", "사용자를 찾을 수 없습니다"),
+
+    // Poster
+    JOB_NOT_FOUND("PA4001", "작업을 찾을 수 없습니다"),
+    POSTER_GROUP_NOT_FOUND("PA4002", "포스터 그룹을 찾을 수 없습니다"),
+    IMAGE_UPLOAD_FAILED("PA5001", "이미지 업로드에 실패했습니다"),
+    IMAGE_PROCESSING_FAILED("PA5002", "이미지 생성 작업에 실패했습니다");
 
     private final String code;
     private final String message;

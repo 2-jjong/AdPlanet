@@ -10,7 +10,11 @@ import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +40,31 @@ public class S3ServiceImpl implements S3Service {
                 .contentType(contentType)
                 .build();
         s3.putObject(req, RequestBody.fromBytes(bytes));
+    }
+
+    @Override
+    public void upload(String key, File file, String contentType) {
+        PutObjectRequest req = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .contentType(contentType)
+                .build();
+        s3.putObject(req, RequestBody.fromFile(file));
+    }
+
+    @Override
+    public void upload(String key, InputStream inputStream, String contentType) {
+        try {
+            PutObjectRequest req = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .contentType(contentType)
+                    .build();
+
+            s3.putObject(req, RequestBody.fromInputStream(inputStream, inputStream.available()));
+        } catch (Exception e) {
+            throw new RuntimeException("S3 업로드 실패", e);
+        }
     }
 
     @Override
@@ -69,6 +98,21 @@ public class S3ServiceImpl implements S3Service {
         GetObjectRequest get = GetObjectRequest.builder().bucket(bucket).key(key).build();
         ResponseBytes<GetObjectResponse> bytes = s3.getObjectAsBytes(get);
         return bytes.asByteArray();
+    }
+
+    @Override
+    public File downloadFile(String key) {
+        GetObjectRequest get = GetObjectRequest.builder().bucket(bucket).key(key).build();
+
+        String tmpDir = System.getProperty("java.io.tmpdir");
+        File dir = new File(tmpDir, "s3downloads");
+        if (!dir.exists()) dir.mkdirs(); // 디렉터리 없으면 생성
+
+        String filename = "download_" + UUID.randomUUID() + ".png";
+        File tempFile = new File(dir, filename);
+
+        s3.getObject(get, tempFile.toPath());
+        return tempFile;
     }
 
     @Override

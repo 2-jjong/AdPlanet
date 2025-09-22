@@ -4,11 +4,11 @@ import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
 import com.ssafy.adplanet.dto.poster.request.PosterTagRequest;
 import com.ssafy.adplanet.dto.poster.response.*;
-import com.ssafy.adplanet.enums.JobStatus;
 import com.ssafy.adplanet.enums.PosterDownloadFormat;
 import com.ssafy.adplanet.enums.PosterListOrder;
 import com.ssafy.adplanet.enums.PosterStyle;
 import com.ssafy.adplanet.service.poster.PosterService;
+import com.ssafy.adplanet.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.media.Encoding;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +22,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -32,7 +33,6 @@ import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -48,10 +48,10 @@ public class PosterController {
             encoding = @Encoding(name = "request", contentType = MediaType.APPLICATION_JSON_VALUE)))
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "요청 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<ImageJobResponse>> createPoster(
-//            Authentication auth,
             @Parameter(description = "포스터 스타일")
             @RequestParam(value = "style", required = false) PosterStyle style,
             @Parameter(description = "요청 정보", required = true)
@@ -68,16 +68,9 @@ public class PosterController {
             @RequestPart(value = "previousImage", required = false) MultipartFile previousImage
     ) {
 
-//        Long userId = (Long) auth.getPrincipal();
+        Long userId = SecurityUtil.getCurrentUserId();
 
-        posterService.create(1L, style, request, sketchImage, productImage, modelImage, skeletonImage, previousImage);
-
-        // Skeleton Code
-        ImageJobResponse response = new ImageJobResponse(
-                UUID.randomUUID().toString(),
-                JobStatus.QUEUED,
-                LocalDateTime.now()
-        );
+        ImageJobResponse response = posterService.create(userId, style, request, sketchImage, productImage, modelImage, skeletonImage, previousImage);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
@@ -86,23 +79,16 @@ public class PosterController {
     @Operation(summary = "포스터 생성 상태 조회", description = "포스터 생성 상태를 조회합니다. 생성 완료 시 결과를 함께 반환합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<ImageJobResponse>> getStatus(
             @Parameter(description = "작업 id", required = true)
             @PathVariable("jobId") String jobId
     ) {
-        PosterResponse poster = new PosterResponse(
-                1L,
-                1L,
-                "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
-        );
-        ImageJobResponse response = new ImageJobResponse(
-                UUID.randomUUID().toString(),
-                JobStatus.COMPLETED,
-                LocalDateTime.now(),
-                poster
-        );
+
+        ImageJobResponse response = posterService.getStatus(jobId);
+
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 
