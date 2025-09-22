@@ -8,6 +8,8 @@ export interface LogoListQuery {
 
 export const LogoStyle = {
   SIMPLE: "SIMPLE",
+  PUNK: "PUNK",
+  CARTOON: "CARTOON",
   MONO: "MONO",
 } as const;
 
