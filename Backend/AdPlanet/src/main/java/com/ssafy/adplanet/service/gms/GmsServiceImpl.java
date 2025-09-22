@@ -92,8 +92,8 @@ public class GmsServiceImpl implements GmsService {
     @Override
     public String refineLogoPrompt(String brandName, String slogan, String userPrompt, String style) {
         try {
-            String brand = n(brandName);
-            String slog  = n(slogan);
+            String brand = orEmptyIfBlank(brandName);
+            String slog  = orEmptyIfBlank(slogan);
             String raw   = (userPrompt == null) ? "" : userPrompt.trim();
             if (raw.length() > 2000) raw = raw.substring(0, 2000);  // 과도한 길이 방지
             String sty   = (style == null) ? "-" : style;
@@ -270,10 +270,10 @@ public class GmsServiceImpl implements GmsService {
 
             브랜드명: %s
             슬로건: %s
-            """.formatted(n(brandName), n(slogan));
+            """.formatted(orEmptyIfBlank(brandName), orEmptyIfBlank(slogan));
     }
 
-    private static String n(String s) { return (s == null || s.isBlank()) ? "-" : s; }
+    private static String orEmptyIfBlank(String s) { return (s == null || s.isBlank()) ? "" : s; }
 
     private static String trim(String s) {
         if (s == null) return "";
