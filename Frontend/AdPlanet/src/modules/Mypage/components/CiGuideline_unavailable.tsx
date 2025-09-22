@@ -1,6 +1,6 @@
 import { RoundButton } from "../../../components/UI/Button/RoundButton";
 import type { CiGuideline } from "../../../services/dto/logo.dto";
-import astronautSearching from "../assets/astronaut_searching.png";
+import astronautSearching from "../../../assets/images/astronaut_searching.png";
 
 type Props = {
   data?: CiGuideline;

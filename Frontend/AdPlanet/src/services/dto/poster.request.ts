@@ -8,7 +8,7 @@ export const PosterStyle = {
 export type PosterStyle = (typeof PosterStyle)[keyof typeof PosterStyle];
 
 export interface PosterGroupListQuery {
-  order?: 'LATEST' | 'OLDEST';
+  order?: 'NEWEST' | 'OLDEST';
   tagId?: number;
 }
 

@@ -21,9 +21,10 @@ export interface PosterCopy {
   content: string;
 }
 
+/** 포스터 그룹 목록 아이템 */
 export interface PosterGroupItem {
   posterGroupId: number;
-  imageUrl: string;
+  imgUrl: string;
   title: string;
   content: string;
   createdAt: string; // ISO date string
@@ -32,15 +33,17 @@ export interface PosterGroupItem {
 export interface PosterGroupDetailPosterItem {
   posterId: number;
   imgUrl: string;
+  prompt?: string; 
+
 }
 
 export interface PosterGroupDetail {
   posterGroupId: number;
-  imageUrl: string;
+  imgUrl: string;
   title: string;
   content: string;
   createdAt: string; // ISO date string
-  posters: PosterGroupDetailPosterItem[];
+  history: PosterGroupDetailPosterItem[];
 }
 
 export interface PosterJobResult {

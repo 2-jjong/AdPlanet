@@ -1,24 +1,48 @@
-// Logos and Posters toggle component
-import { useSearchParams } from "react-router-dom";   // 쿼리 파라미터 훅
+// src/modules/Mypage/components/ArchiveToolbar/ArchiveTypeToggle.tsx
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 type View = "logo" | "poster";
 
 export default function ArchiveTypeToggle() {
-  const [params, setParams] = useSearchParams();
-  const view = (params.get("view") as View) || "logo";
+  const navigate = useNavigate();
+  const { kind: kindParam } = useParams();
+  const [sp] = useSearchParams();
 
-  const setView = (v: View) => {
-    params.set("view", v);
-    setParams(params, { replace: true }); // 히스토리 오염 방지
+  // 현재 경로 기준으로 상태 계산
+  const currentKind: View = (kindParam === "poster" ? "poster" : "logo");
+
+  // order / tags 보존
+  const buildQuerySuffix = () => {
+    const next = new URLSearchParams();
+    if (sp.get("order") === "OLDEST") next.set("order", "OLDEST");
+    const tags = sp.getAll("tags");
+    tags.forEach(t => next.append("tags", t));
+    if (tags.length > 0 || sp.get("mode") === "tags") next.set("mode", "tags");
+    const qs = next.toString();
+    return qs ? `?${qs}` : "";
+  };
+
+  // 경로 이동: 선택된 태그/정렬을 유지한 채 대상 kind로 이동
+  const go = (kind: View) => {
+    const path = `/archive/${kind}`;
+    // tags 모드를 유지
+    const next = new URLSearchParams(buildQuerySuffix().slice(1));
+    if (sp.getAll("tags").length > 0 || sp.get("mode") === "tags") {
+      next.set("mode", "tags");
+    } else {
+      next.delete("mode");
+    }
+    const qs = next.toString();
+    navigate(qs ? `${path}?${qs}` : path, { replace: false });
   };
 
   const Tab = ({ v, label }: { v: View; label: string }) => {
-    const active = view === v;
+    const active = currentKind === v;
     return (
       <button
         type="button"
         aria-pressed={active}
-        onClick={() => setView(v)}
+        onClick={() => go(v)}
         className={[
           "px-6 py-2 text-sm rounded-full transition",
           active

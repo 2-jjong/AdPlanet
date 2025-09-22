@@ -1,6 +1,5 @@
-// Newest, Oldest, Tags 버튼 컴포넌트
 import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 type SortKey = "newest" | "oldest" | "tags";
 
@@ -11,18 +10,38 @@ const OPTIONS: { key: SortKey; label: string }[] = [
 ];
 
 export default function SortBar() {
-  const [params, setParams] = useSearchParams();
-  const value: SortKey = (params.get("sort") as SortKey) || "newest";
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { kind: kindParam } = useParams();
+  const [sp] = useSearchParams();
+
+  const kind = (kindParam === "poster" ? "poster" : "logo") as "logo" | "poster";
+  const isTagsMode = sp.get("mode") === "tags" || sp.getAll("tags").length > 0;
+  const value: SortKey = isTagsMode ? "tags" : (sp.get("order") === "OLDEST" ? "oldest" : "newest");
 
   const setValue = (v: SortKey) => {
-    params.set("sort", v);
-    setParams(params, { replace: true });
+    if (v === "tags") {
+      const next = new URLSearchParams(location.search);
+      next.set("mode", "tags");
+      const base = `/archive/${kind}`;
+      const qs = next.toString();
+      navigate(qs ? `${base}?${qs}` : base, { replace: true });
+      return;
+    }
+
+    // 목록 화면으로 (경로를 /archive/{kind} 로 되돌리고, 정렬만 쿼리로)
+    const next = new URLSearchParams(location.search);
+    if (v === "newest") next.delete("order"); else next.set("order", "OLDEST");
+    // 태그 모드 아님: 태그/모드 관련 쿼리 제거
+    next.delete("mode");
+    next.delete("tags");
+
+    const base = `/archive/${kind}`;
+    const qs = next.toString();
+    navigate(qs ? `${base}?${qs}` : base, { replace: true });
   };
 
-  const Divider = () => (
-    <span aria-hidden className="mx-6 h-6 w-px bg-white/30" />
-  );
-
+  const Divider = () => <span aria-hidden className="mx-6 h-6 w-px bg-white/30" />;
   const items = useMemo(() => OPTIONS, []);
 
   return (
@@ -35,9 +54,7 @@ export default function SortBar() {
             onClick={() => setValue(opt.key)}
             className={[
               "text-lg md:text-xl transition-colors",
-              value === opt.key
-                ? "text-primary font-semibold"
-                : "text-white/90 hover:text-white"
+              value === opt.key ? "text-primary font-semibold" : "text-white/90 hover:text-white",
             ].join(" ")}
           >
             {opt.label}
