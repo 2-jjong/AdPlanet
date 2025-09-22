@@ -420,4 +420,18 @@ public class PosterServiceImpl implements PosterService {
                 history
         );
     }
+
+    @Override
+    public PosterResponse getPoster(Long posterId) {
+
+        Poster poster = posterRepository.findById(posterId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
+
+        return new PosterResponse(
+                poster.getId(),
+                poster.getPosterGroup().getId(),
+                s3Service.toHttpUrl(poster.getImgUrl()),
+                poster.getPrompt()
+        );
+    }
 }

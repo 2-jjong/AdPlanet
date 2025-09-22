@@ -105,12 +105,8 @@ public class PosterController {
             @Parameter(description = "포스터 id", required = true)
             @PathVariable("posterId") Long posterId
     ) {
-        PosterResponse poster = new PosterResponse(
-                1L,
-                1L,
-                "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png",
-                "아삭아삭한 배추 이미지, 싱싱한 초록색 활용"
-        );
+        PosterResponse poster = posterService.getPoster(posterId);
+
         return ResponseEntity.ok(ResponseDto.ok(poster));
     }
 
