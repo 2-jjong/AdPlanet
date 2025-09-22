@@ -269,7 +269,7 @@ public class PosterController {
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 
-    @PostMapping("/group/{groupId}/tags")
+    @PutMapping("/group/{groupId}/tags")
     @Operation(summary = "포스터 태그 지정", description = "포스터 그룹에 대한 태그를 지정합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "지정 성공"),
