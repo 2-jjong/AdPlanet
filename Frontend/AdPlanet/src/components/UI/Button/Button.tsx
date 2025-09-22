@@ -17,7 +17,7 @@ const variants = {
   danger: "bg-red-500 text-white hover:bg-red-600 focus:ring-red-400",
   fill: "bg-primary text-white hover:bg-[#6fc7c3] focus:ring-primary",
   outline:
-    "border-2 border-dotted border-primary text-text-color bg-transparent hover:bg-primary hover:text-white focus:ring-primary",
+    "border border-white/20 text-white hover:bg-white/10 focus:ring-cyan-500",
 };
 
 interface ButtonProps {

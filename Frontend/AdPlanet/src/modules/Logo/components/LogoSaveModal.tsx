@@ -3,6 +3,7 @@ import { Button } from "../../../components/UI/Button/Button";
 import { useGetTags } from "../hooks/query/useGetTags";
 import { useAddTag } from "../hooks/mutation/useAddTag";
 import { useTagSave } from "../hooks/mutation/useTagSave";
+import Chip from "../../../components/UI/Chip/Chip";
 
 interface LogoSaveModalProps {
   isOpen: boolean;
@@ -99,60 +100,62 @@ const LogoSaveModal: React.FC<LogoSaveModalProps> = ({
   if (!isOpen) return null; // 닫혀있으면 렌더링 안 함
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 text-white rounded-xl shadow-xl p-8 w-[480px] relative">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="relative w-[520px] max-w-[92vw] rounded-2xl overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-fuchsia-500/10 to-indigo-600/20" />
+        <div className="relative bg-[#0f1121]/95 text-white rounded-2xl shadow-2xl p-7">
         {/* 닫기 버튼 */}
-        <button className="absolute top-3 right-3 text-xl" onClick={onClose}>
-          ✕
-        </button>
+          <button className="absolute top-3 right-3 text-xl text-white/70 hover:text-white" onClick={onClose}>
+            ✕
+          </button>
 
         {/* 타이틀 */}
-        <h2 className="text-2xl font-bold text-center mb-2">자동 저장 완료!</h2>
-        <p className="text-center text-sm mb-6">
-          저장된 로고의 카테고리를 설정해 주세요.
-        </p>
+          <h2 className="text-2xl font-bold text-center mb-1">자동 저장 완료!</h2>
+          <p className="text-center text-sm mb-6 text-white/70">
+            저장된 로고의 카테고리를 설정해 주세요.
+          </p>
 
         {/* 카테고리 버튼 */}
-        <div className="flex flex-wrap justify-center gap-3 mb-6">
-          {tags?.data.map((cat) => (
-            <Button
-              key={cat.id}
-              text={cat.name}
-              size="xs"
-              variant={selectedCategories.includes(cat.id) ? "fill" : "outline"}
-              onClick={() => handleCategoryClick(cat.id)}
-            />
-          ))}
-        </div>
+          <div className="flex flex-wrap justify-center gap-2.5 mb-6">
+            {tags?.data.map((cat) => (
+              <Chip
+                key={cat.id}
+                label={cat.name}
+                selected={selectedCategories.includes(cat.id)}
+                onClick={() => handleCategoryClick(cat.id)}
+              />
+            ))}
+          </div>
 
         {/* 직접 카테고리 */}
-        <div className="flex flex-col gap-2">
-          <label className="text-sm">직접 카테고리 설정</label>
-          <div className="flex flex-row gap-2">
-            <input
-              type="text"
-              placeholder="예: 아름다운"
-              value={customeCategory}
-              onChange={handleInputChange}
-              className="w-full rounded-md bg-transparent border border-primary px-3 py-2 text-sm"
-            />
-            <Button
-              text="추가하기"
-              variant="fill"
-              size="xs"
-              onClick={() => handleTagAdd()}
-            />
+          <div className="flex flex-col gap-2">
+            <label className="text-sm text-white/80">직접 카테고리 추가</label>
+            <div className="flex flex-row gap-2">
+              <input
+                type="text"
+                placeholder="예: 아름다운"
+                value={customeCategory}
+                onChange={handleInputChange}
+                className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+              <Button
+                text="추가"
+                variant="fill"
+                size="xs"
+                onClick={() => handleTagAdd()}
+              />
+            </div>
           </div>
-        </div>
 
         {/* Save 버튼 */}
-        <div className="mt-6 flex justify-end">
-          <Button
-            text="카테고리 저장"
-            size="sm"
-            variant="fill"
-            onClick={handleSave}
-          />
+          <div className="mt-6 flex justify-end">
+            <Button
+              text="카테고리 저장"
+              size="sm"
+              variant="fill"
+              onClick={handleSave}
+            />
+          </div>
         </div>
       </div>
     </div>

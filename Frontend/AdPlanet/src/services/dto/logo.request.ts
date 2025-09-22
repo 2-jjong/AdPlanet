@@ -2,12 +2,14 @@
 
 // 목록 조회 쿼리
 export interface LogoListQuery {
-  order?: "LATEST" | "OLDEST";
-  tagId?: number;
+  order?: "NEWEST" | "OLDEST";
+  tagIds?: number[]; // 다중 태그 지원
 }
 
 export const LogoStyle = {
   SIMPLE: "SIMPLE",
+  PUNK: "PUNK",
+  CARTOON: "CARTOON",
   MONO: "MONO",
 } as const;
 

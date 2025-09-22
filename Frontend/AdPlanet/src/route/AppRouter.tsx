@@ -1,15 +1,14 @@
 import { createBrowserRouter, type RouteObject, RouterProvider, Navigate } from "react-router-dom";
 import HomePage from "../modules/Home/pages/HomePage";
 import LogoDetailPage from "../modules/Mypage/pages/LogoDetailPage";
-// import PosterDetailPage from '../pages/PosterDetailPage';
+import PosterDetailPage from '../modules/Mypage/pages/PosterDetailPage';
 import WatermarkDetectionPage from "../modules/Watermark/pages/WatermarkDetectionPage";
 import ArchivePage from "../modules/Mypage/pages/ArchivePage";
-// import PosterCardList from "../components/PosterCardList";
 import { PATHS } from "../constants/paths";
 import LogoPage from "../modules/Logo/pages/LogoPage";
 import PosterPage from "../modules/Poster/pages/PosterPage";
-import LogoCardList from "../modules/Mypage/components/LogoCardList";
 import AuthCallbackPage from "../modules/Auth/pages/AuthCallbackPage";
+
 
 const routeConfig = [
   {
@@ -30,21 +29,21 @@ const routeConfig = [
   },
   {
     path: PATHS.ARCHIVE,
-    element: <ArchivePage />,
-    children: [
-      { index: true, element: <Navigate to='logo' replace /> }, // 기본 진입 /archive/logo
-      { path: "logo", element: <LogoCardList /> },
-      // { path: "poster", element: <PosterCardList /> },
-    ],
+    element: <Navigate to="/archive/logo" replace />,
   },
+  {
+    path: "/archive/:kind",
+    element: <ArchivePage />,
+  },
+  // 상세 페이지
   {
     path: "/archive/logo/:id",
     element: <LogoDetailPage />,
   },
-  // {
-  //   path: "/archive/poster/:id",
-  //   element: <PosterDetailPage />
-  // },
+  {
+    path: "/archive/poster/:id",
+    element: <PosterDetailPage />
+  },
 
   {
     path: PATHS.AUTH_CALLBACK,
