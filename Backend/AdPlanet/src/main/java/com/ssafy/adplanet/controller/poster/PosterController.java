@@ -218,25 +218,7 @@ public class PosterController {
             @PathVariable(value = "groupId") Long groupId
     ) {
 
-        List<PosterResponse> history = new ArrayList<>();
-        for (long i = 1; i <= 15; i++) {
-            PosterResponse poster = new PosterResponse(
-                    i,
-                    "https://dummyimage.com/600x400/000/fff&text=Poster+" + i,
-                    "시들시들한, 연두색 배추 이미지"
-            );
-            history.add(poster);
-        }
-
-        PosterGroupResponse response = new PosterGroupResponse(
-                groupId,
-                "https://dummyimage.com/600x400/000/fff&text=Poster+0",
-                "싸피컴퍼니",
-                "포기는 배추 셀 때나 하는 말",
-                "아삭아삭한 배추 이미지, 싱싱한 초록색 활용",
-                LocalDateTime.now(),
-                history
-        );
+        PosterGroupResponse response = posterService.getPosterGroupDetail(groupId);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }

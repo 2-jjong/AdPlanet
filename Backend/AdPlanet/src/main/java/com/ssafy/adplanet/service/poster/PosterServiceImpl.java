@@ -7,7 +7,6 @@ import com.ssafy.adplanet.dto.poster.response.PosterGroupResponse;
 import com.ssafy.adplanet.dto.poster.response.PosterResponse;
 import com.ssafy.adplanet.entity.*;
 import com.ssafy.adplanet.enums.JobStatus;
-import com.ssafy.adplanet.enums.LogoListOrder;
 import com.ssafy.adplanet.enums.PosterListOrder;
 import com.ssafy.adplanet.enums.PosterStyle;
 import com.ssafy.adplanet.exception.BusinessException;
@@ -395,5 +394,30 @@ public class PosterServiceImpl implements PosterService {
                         group.getCreatedAt()
                 ))
                 .toList();
+    }
+
+    @Override
+    public PosterGroupResponse getPosterGroupDetail(Long groupId) {
+
+        PosterGroup group = posterGroupRepository.findByIdWithMainPosterAndTags(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
+
+        List<PosterResponse> history = posterRepository.findByGroupId(groupId).stream()
+                .map(poster -> new PosterResponse(
+                        poster.getId(),
+                        s3Service.toHttpUrl(poster.getImgUrl()),
+                        poster.getPrompt()
+                ))
+                .toList();
+
+        return new PosterGroupResponse(
+                group.getId(),
+                s3Service.toHttpUrl(group.getMainPoster().getImgUrl()),
+                group.getTitle(),
+                group.getContent(),
+                group.getMainPoster() != null ? group.getMainPoster().getPrompt() : null,
+                group.getCreatedAt(),
+                history
+        );
     }
 }

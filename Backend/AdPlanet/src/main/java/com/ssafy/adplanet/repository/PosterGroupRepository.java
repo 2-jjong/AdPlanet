@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public interface PosterGroupRepository extends JpaRepository<PosterGroup, Long> {
@@ -46,4 +47,10 @@ public interface PosterGroupRepository extends JpaRepository<PosterGroup, Long> 
         WHERE pg.id IN :ids
         """)
     List<PosterGroup> findAllWithTagsByIdIn(@Param("ids") List<Long> ids);
+
+    @Query("SELECT pg FROM PosterGroup pg " +
+            "LEFT JOIN FETCH pg.mainPoster " +
+            "LEFT JOIN FETCH pg.tags " +
+            "WHERE pg.id = :groupId")
+    Optional<PosterGroup> findByIdWithMainPosterAndTags(@Param("groupId") Long groupId);
 }
