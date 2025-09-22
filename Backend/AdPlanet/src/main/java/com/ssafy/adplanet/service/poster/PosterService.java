@@ -25,4 +25,6 @@ public interface PosterService {
     PosterResponse getPoster(Long posterId);
 
     List<ImageJobResponse> getProgressingJobs(Long groupId);
+
+    PosterResponse saveImage(Long groupId, MultipartFile image);
 }

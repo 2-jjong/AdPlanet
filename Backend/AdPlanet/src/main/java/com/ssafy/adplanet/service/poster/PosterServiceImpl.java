@@ -437,7 +437,7 @@ public class PosterServiceImpl implements PosterService {
     @Override
     public List<ImageJobResponse> getProgressingJobs(Long groupId) {
 
-        posterGroupRepository.findByIdWithMainPosterAndTags(groupId)
+        posterGroupRepository.findById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
 
         return imageJobRepository.findProgressingJobsByGroupId(groupId).stream()
@@ -447,5 +447,30 @@ public class PosterServiceImpl implements PosterService {
                         job.getCreatedAt()
                 ))
                 .toList();
+    }
+
+    @Override
+    public PosterResponse saveImage(Long groupId, MultipartFile image) {
+
+        PosterGroup posterGroup = posterGroupRepository.findById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
+
+        // Poster 엔티티 생성
+        Poster poster = Poster.builder()
+                .posterGroup(posterGroup)
+                .prompt("")
+                .imgUrl("s3:pending")
+                .createdAt(LocalDateTime.now())
+                .build();
+        posterRepository.saveAndFlush(poster);
+
+        // 이미지 S3 업로드
+        String key = uploadIfExists(image, "poster", poster.getId().toString());
+        poster.setImgUrl(s3Service.toS3Uri(key));
+
+        return new PosterResponse(
+                poster.getId(),
+                s3Service.toHttpUrl(poster.getImgUrl())
+        );
     }
 }

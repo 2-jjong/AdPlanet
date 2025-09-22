@@ -22,7 +22,7 @@ public class Poster {
     @JoinColumn(name = "group_id", nullable = false)
     private PosterGroup posterGroup;
 
-    @Column(name = "prompt", nullable = false)
+    @Column(name = "prompt")
     private String prompt;
 
     @Column(name = "img_url", nullable = false)
@@ -30,8 +30,4 @@ public class Poster {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
-
-    public void changeImgUrl(String newUrl) {
-        this.imgUrl = newUrl;
-    }
 }
