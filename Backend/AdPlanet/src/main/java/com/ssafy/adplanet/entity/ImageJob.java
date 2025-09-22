@@ -28,7 +28,7 @@ public class ImageJob {
     LocalDateTime updatedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id")
+    @JoinColumn(name = "group_id", nullable = false, foreignKey = @ForeignKey(name = "fk_imagejob_poster"))
     PosterGroup posterGroup;
 
     @OneToOne

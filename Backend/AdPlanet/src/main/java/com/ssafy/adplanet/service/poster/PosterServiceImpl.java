@@ -65,12 +65,24 @@ public class PosterServiceImpl implements PosterService {
 
         String jobId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
-        PosterGroup posterGroup = null;
 
-        // 1. 시나리오 별로 요청값 검증
+        // 1. PosterGroup 생성 or 조회
+        User userRef = userRepository.getReferenceById(userId);
+        PosterGroup posterGroup;
+
         if (request.groupId() != null) {
             posterGroup = posterGroupRepository.findById(request.groupId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
+            log.info("[POSTER-GEN] 포스터 그룹 조회: {}", request.groupId());
+        } else {
+            posterGroup = PosterGroup.builder()
+                    .user(userRef)
+                    .title(request.title())
+                    .content(request.content())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            posterGroupRepository.saveAndFlush(posterGroup);
+            log.info("[POSTER-GEN] 포스터 그룹 생성: {}", posterGroup.getId());
         }
 
         // 2. 이미지 S3 저장 & Key 발급
@@ -97,7 +109,7 @@ public class PosterServiceImpl implements PosterService {
                 JobStatus.QUEUED,
                 now,
                 now,
-                request.groupId(),
+                posterGroup.getId(),
                 request.title(),
                 request.content(),
                 request.prompt(),
@@ -255,24 +267,9 @@ public class PosterServiceImpl implements PosterService {
     protected void saveGenerationResult(ImageJobMessage message, ImageJob imageJob) {
         String jobId = message.jobId();
 
-        // PosterGroup 생성 or 조회
-        User userRef = userRepository.getReferenceById(message.userId());
-        PosterGroup posterGroup;
-
-        if (message.groupId() != null) {
-            posterGroup = posterGroupRepository.findById(message.groupId())
-                    .orElseThrow(() -> new RuntimeException("PosterGroup not found: " + jobId));
-            log.info("[POSTER-GEN] 포스터 그룹 조회: {}", message.groupId());
-        } else {
-            posterGroup = PosterGroup.builder()
-                    .user(userRef)
-                    .title(message.title())
-                    .content(message.content())
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            posterGroupRepository.saveAndFlush(posterGroup);
-            log.info("[POSTER-GEN] 포스터 그룹 생성: {}", posterGroup.getId());
-        }
+        // PosterGroup 조회
+        PosterGroup posterGroup = posterGroupRepository.findById(message.groupId())
+                .orElseThrow(() -> new RuntimeException("PosterGroup not found: " + jobId));
 
         // Poster 엔티티 생성
         Poster poster = Poster.builder()
