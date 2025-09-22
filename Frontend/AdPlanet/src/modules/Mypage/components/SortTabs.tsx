@@ -16,9 +16,8 @@ export default function SortBar() {
   const [sp] = useSearchParams();
 
   const kind = (kindParam === "poster" ? "poster" : "logo") as "logo" | "poster";
-  const value: SortKey = sp.getAll("tags").length > 0
-    ? "tags"
-    : sp.get("order") === "OLDEST" ? "oldest" : "newest";
+  const isTagsMode = sp.get("mode") === "tags" || sp.getAll("tags").length > 0;
+  const value: SortKey = isTagsMode ? "tags" : (sp.get("order") === "OLDEST" ? "oldest" : "newest");
 
   const setValue = (v: SortKey) => {
     if (v === "tags") {
