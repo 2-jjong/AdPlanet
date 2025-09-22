@@ -93,7 +93,7 @@ public class GmsServiceImpl implements GmsService {
     public String refineLogoPrompt(String brandName, String slogan, String userPrompt, String style) {
         try {
             String brand = orEmptyIfBlank(brandName);
-            String slog  = orEmptyIfBlank(slogan);
+            slogan  = orEmptyIfBlank(slogan);
             String raw   = (userPrompt == null) ? "" : userPrompt.trim();
             if (raw.length() > 2000) raw = raw.substring(0, 2000);  // 과도한 길이 방지
             String sty   = (style == null) ? "-" : style;
@@ -125,7 +125,7 @@ public class GmsServiceImpl implements GmsService {
             Slogan: %s
             Requested style: %s
             Original (user) prompt (Korean allowed): %s
-            """.formatted(brand, slog, sty, raw);
+            """.formatted(brand, slogan, sty, raw);
 
             content.addObject()
                     .put("type", "input_text")
