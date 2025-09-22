@@ -68,8 +68,7 @@ public class PosterController {
             @RequestPart(value = "previousImage", required = false) MultipartFile previousImage
     ) {
 
-        Long userId = 4L;
-//        Long userId = SecurityUtil.getCurrentUserId();
+        Long userId = SecurityUtil.getCurrentUserId();
 
         ImageJobResponse response = posterService.create(userId, style, request, sketchImage, productImage, modelImage, skeletonImage, previousImage);
 
