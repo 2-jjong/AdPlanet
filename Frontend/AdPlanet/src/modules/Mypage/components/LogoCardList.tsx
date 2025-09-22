@@ -4,17 +4,17 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Mousewheel, Scrollbar } from "swiper/modules";
 import { LogoCard } from "./LogoCard";
-import { getLogoList, getLogoDetail } from "../../../services/logoService"; // ✅ 상세 API 임포트
+import { getLogoList, getLogoDetail } from "../../../services/logoService"; 
 import type {
   LogoListItem as LogoCardType,
   LogoListQuery,
-  LogoDetail as DetailDto, // ✅ 상세 DTO 타입
+  LogoDetail as DetailDto, // 상세 DTO 타입
 } from "../../../services/dto/logo.dto";
-import FlipCard from "./FlipCard"; // ✅ 플립 래퍼
+import FlipCard from "./FlipCard";
 
 /** 정렬 */
 function parseOrder(v: string | null): LogoListQuery["order"] {
-  return v === "OLDEST" ? "OLDEST" : "NEWEST"; // 기본값 NEWEST (기존 그대로 유지)
+  return v === "OLDEST" ? "OLDEST" : "NEWEST"; 
 }
 
 /** 태그 ID */
@@ -125,11 +125,11 @@ export default function LogoCardList() {
     zIndex: 150 - layer,
     opacity: Math.max(1 - layer * OP_STEP, 0.25),
     transition: "transform 280ms ease, opacity 280ms ease",
-    pointerEvents: layer === 0 ? "auto" : "none", // ✅ top 카드만 상호작용 허용
+    pointerEvents: layer === 0 ? "auto" : "none", // top 카드만 상호작용 허용
   });
 
   // ---------------------------
-  // ✅ 상세 프리페치/캐시
+  // 상세 프리페치/캐시
   // ---------------------------
   const [detailCache, setDetailCache] = useState<Record<number, DetailDto>>({});
   const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
@@ -183,7 +183,7 @@ export default function LogoCardList() {
           {detail?.prompt && (
             <>
               <p className="text-xs uppercase tracking-widest text-primary mb-2">Prompt</p>
-              <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-wrap line-clamp-6">
+              <p className="text-sm leading-relaxed text-gray-800 whitespace-pre-wrap line-clamp-6">
                 {detail.prompt}
               </p>
             </>
