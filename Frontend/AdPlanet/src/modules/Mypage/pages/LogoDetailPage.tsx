@@ -9,7 +9,6 @@ import { RoundButton } from "../../../components/UI/Button/RoundButton";
 
 import { getLogoDetail, getCiGuideline, createCiGuideline } from "../../../services/logoService";
 import type { LogoDetail as DetailDto, CiGuideline as CiDto } from "../../../services/dto/logo.dto";
-import { toAbsolute } from "../../../utils/logoParser";
 
 // Fullpage
 ("use client");
@@ -139,7 +138,7 @@ export default function LogoDetailPage() {
               <section className="col-span-12 lg:col-span-6">
                 <div className="rounded-[36px] bg-slate-900/40 border border-slate-800 p-6">
                   <div className="aspect-square w-full overflow-hidden rounded-[28px] bg-slate-950">
-                    <LogoCard imgUrl={toAbsolute(detail.imgUrl)} title={detail.name} isActive />
+                    <LogoCard imgUrl={detail.imgUrl} title={detail.name} isActive />
                   </div>
                 </div>
               </section>

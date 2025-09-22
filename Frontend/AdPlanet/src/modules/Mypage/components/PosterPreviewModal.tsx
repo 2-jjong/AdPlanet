@@ -2,7 +2,7 @@
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { RoundButton } from "../../../components/UI/Button/RoundButton";
-import { toAbsolute } from "../../../utils/logoParser";
+// 절대 경로(imgUrl) 그대로 사용
 
 type Props = {
   open: boolean;
@@ -74,7 +74,7 @@ const PosterPreviewModal: React.FC<Props> = ({
               <div className="aspect-[3/4] w-full overflow-hidden rounded-lg bg-gray-700">
                 {imageUrl ? (
                   <img
-                    src={toAbsolute(imageUrl)}
+                    src={imageUrl}
                     alt={title ?? "포스터"}
                     className="w-full h-full object-cover"
                   />

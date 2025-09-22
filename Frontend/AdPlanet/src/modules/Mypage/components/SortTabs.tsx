@@ -21,11 +21,21 @@ export default function SortBar() {
     : sp.get("order") === "OLDEST" ? "oldest" : "newest";
 
   const setValue = (v: SortKey) => {
-    if (v === "tags") return; // 쿼리 기반에서는 외부 토글에서 처리
+    if (v === "tags") {
+      const next = new URLSearchParams(location.search);
+      next.set("mode", "tags");
+      const base = `/archive/${kind}`;
+      const qs = next.toString();
+      navigate(qs ? `${base}?${qs}` : base, { replace: true });
+      return;
+    }
 
     // 목록 화면으로 (경로를 /archive/{kind} 로 되돌리고, 정렬만 쿼리로)
     const next = new URLSearchParams(location.search);
     if (v === "newest") next.delete("order"); else next.set("order", "OLDEST");
+    // 태그 모드 아님: 태그/모드 관련 쿼리 제거
+    next.delete("mode");
+    next.delete("tags");
 
     const base = `/archive/${kind}`;
     const qs = next.toString();

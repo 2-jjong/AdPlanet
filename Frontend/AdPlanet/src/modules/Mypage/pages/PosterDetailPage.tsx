@@ -15,8 +15,6 @@ import '@shinyongjun/react-fullpage/css'
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation as SwNav, Keyboard, Mousewheel } from "swiper/modules";
 
-// 유틸
-import { toAbsolute } from "../../../utils/logoParser";
 
 // 모달
 import PosterPreviewModal from "../components/PosterPreviewModal";
@@ -59,7 +57,7 @@ export default function PosterDetailPage() {
         const d = res.data;
         setData(d);
 
-        setHeroUrl(toAbsolute(d.imgUrl));
+        setHeroUrl(d.imgUrl);
         const first = d.history?.[0];
         setSelectedPosterId(first ? first.posterId : null);
       } catch (e: any) {
@@ -127,7 +125,7 @@ export default function PosterDetailPage() {
   const openPosterModal = async (posterId: number, imgUrl: string) => {
     setModalOpen(true);
     setModalLoading(true);
-    setModalImageUrl(imgUrl ? toAbsolute(imgUrl) : null);
+    setModalImageUrl(imgUrl || null);
     setModalPrompt(null);
 
     try {
@@ -242,7 +240,7 @@ export default function PosterDetailPage() {
                         >
                         <div className="relative rounded-2xl overflow-hidden border border-slate-800 group-hover:border-primary/60 transition-colors">
                           <img
-                            src={toAbsolute(p.imgUrl)}
+                            src={p.imgUrl}
                             alt={`${data.title}-${p.posterId}`}
                             className="w-full aspect-[3/4] object-cover"
                             loading="lazy"

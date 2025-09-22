@@ -6,7 +6,7 @@ import { Scrollbar, Mousewheel } from "swiper/modules";
 import { getPosterGroups } from "../../../services/posterService";
 import type { PosterGroupItem } from "../../../services/dto/poster.dto";
 import { PosterCard } from "./PosterCard";
-import { toAbsolute } from "../../../utils/posterParser"; 
+
 
 
 
@@ -109,7 +109,7 @@ export default function PosterCardList() {
                 >
                   <PosterCard
                     title={it.title}
-                    imgUrl={toAbsolute(it.imgUrl)} 
+                    imgUrl={it.imgUrl}
                   />
                 </button>
               </SwiperSlide>

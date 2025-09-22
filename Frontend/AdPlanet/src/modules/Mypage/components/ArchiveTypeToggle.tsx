@@ -17,6 +17,7 @@ export default function ArchiveTypeToggle() {
     if (sp.get("order") === "OLDEST") next.set("order", "OLDEST");
     const tags = sp.getAll("tags");
     tags.forEach(t => next.append("tags", t));
+    if (tags.length > 0 || sp.get("mode") === "tags") next.set("mode", "tags");
     const qs = next.toString();
     return qs ? `?${qs}` : "";
   };
@@ -24,7 +25,15 @@ export default function ArchiveTypeToggle() {
   // 경로 이동: 선택된 태그/정렬을 유지한 채 대상 kind로 이동
   const go = (kind: View) => {
     const path = `/archive/${kind}`;
-    navigate(path + buildQuerySuffix(), { replace: false });
+    // tags 모드를 유지
+    const next = new URLSearchParams(buildQuerySuffix().slice(1));
+    if (sp.getAll("tags").length > 0 || sp.get("mode") === "tags") {
+      next.set("mode", "tags");
+    } else {
+      next.delete("mode");
+    }
+    const qs = next.toString();
+    navigate(qs ? `${path}?${qs}` : path, { replace: false });
   };
 
   const Tab = ({ v, label }: { v: View; label: string }) => {

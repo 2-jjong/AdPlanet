@@ -25,7 +25,7 @@ const ArchivePage: React.FC = () => {
     const all = sp.getAll("tags");
     return [...new Set(all.map(Number).filter(n => Number.isFinite(n) && n > 0))];
   }, [sp]);
-  const tagsMode = selectedTagIds.length > 0;
+  const tagsMode = (sp.get("mode") === "tags") || selectedTagIds.length > 0;
 
   // LogoTagBar용 태그 상태
   const [tags, setTags] = useState<LogoTagItem[]>([]);
@@ -90,7 +90,12 @@ const ArchivePage: React.FC = () => {
     setSp(next, { replace: false });
   };
   const onToggleTag = (id: number) => goWithIds(toggleId(selectedTagIds, id));
-  const onClearTags = () => goWithIds([]);
+  const onClearTags = () => {
+    const next = new URLSearchParams(sp);
+    next.delete("tags");
+    next.set("mode", "tags"); // 태그 모드 유지
+    setSp(next, { replace: false });
+  };
 
   return (
     <div className="min-h-screen bg-background items-center justify-center">
