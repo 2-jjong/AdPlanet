@@ -121,7 +121,7 @@ const StylePreviewOverlay: React.FC<StylePreviewOverlayProps> = ({ open, onClose
               닫기
             </button>
             <button
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white font-semibold hover:opacity-95"
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#CFF5F3] to-[#87DEDA] text-[#0c0d16] font-semibold hover:opacity-95"
               onClick={onConfirm ?? onClose}
             >
               선택하기
