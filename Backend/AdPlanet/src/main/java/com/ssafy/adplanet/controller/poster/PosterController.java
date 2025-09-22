@@ -4,6 +4,8 @@ import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
 import com.ssafy.adplanet.dto.tag.AssignPosterTagsRequest;
 import com.ssafy.adplanet.dto.poster.response.*;
+import com.ssafy.adplanet.dto.tag.CreateTagRequest;
+import com.ssafy.adplanet.dto.tag.TagDto;
 import com.ssafy.adplanet.enums.PosterDownloadFormat;
 import com.ssafy.adplanet.enums.PosterListOrder;
 import com.ssafy.adplanet.enums.PosterStyle;
@@ -265,6 +267,24 @@ public class PosterController {
             );
             response.add(tag);
         }
+
+        return ResponseEntity.ok(ResponseDto.ok(response));
+    }
+
+    @PostMapping("/tags")
+    @Operation(summary = "포스터 태그 생성", description = "포스터 태그를 생성합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<TagDto>> getTag(
+            @Parameter(description = "포스터 태그 생성", required = true)
+            @Valid @RequestBody CreateTagRequest request
+    ) {
+
+        Long userId = SecurityUtil.getCurrentUserId();
+
+        TagDto response = tagService.createPosterTag(userId, request.name());
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }

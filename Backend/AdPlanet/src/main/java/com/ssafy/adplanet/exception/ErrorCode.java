@@ -26,8 +26,9 @@ public enum ErrorCode {
     IMAGE_PROCESSING_FAILED("PA5002", "이미지 생성 요청에 실패했습니다"),
     
     // Tag
-    TAG_LIST_EMPTY("TG4001", "태그 목록이 비어 있습니다"),
-    TAG_NOT_FOUND("TG4002", "태그를 찾을 수 없습니다");
+    TAG_ALREADY_EXISTS("TG4001", "이미 존재하는 태그입니다"),
+    TAG_LIST_EMPTY("TG4002", "태그 목록이 비어 있습니다"),
+    TAG_NOT_FOUND("TG4003", "태그를 찾을 수 없습니다");
 
     private final String code;
     private final String message;

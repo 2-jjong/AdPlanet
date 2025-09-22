@@ -21,7 +21,7 @@ public class TagServiceImpl implements TagService {
 
     private final TagRepository tagRepository;
     private final LogoRepository logoRepository;
-    private final PosterGroupRepository posterRepository;
+    private final PosterGroupRepository posterGroupRepository;
 
     @Override
     @Transactional
@@ -96,12 +96,34 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional
+    public TagDto createPosterTag(Long userId, String tagName) {
+
+        // 0. 태그명 정규화
+        String name = normalize(tagName);
+
+        // 1. 유저의 포스터 그룹 중 해당 태그 존재 여부 확인
+        boolean tagExistsForUser = posterGroupRepository.existsByUser_UserIdAndTags_NameIgnoreCase(userId, name);
+        if (tagExistsForUser) {
+            throw new BusinessException(ErrorCode.TAG_ALREADY_EXISTS);
+        }
+
+        // 2. 전체 태그 중 동일 이름 존재 여부 확인
+        return tagRepository.findByNameIgnoreCase(name)
+                .map(tag -> new TagDto(tag.getId(), tag.getName()))
+                .orElseGet(() -> {
+                    Tag newTag = tagRepository.save(Tag.builder().name(name).build());
+                    return new TagDto(newTag.getId(), newTag.getName());
+                });
+    }
+
+    @Override
+    @Transactional
     public void setPosterTags(Long groupId, List<Long> tagIds) {
         if (tagIds == null) {
             throw new BusinessException(ErrorCode.TAG_LIST_EMPTY);
         }
 
-        PosterGroup posterGroup = posterRepository.findById(groupId)
+        PosterGroup posterGroup = posterGroupRepository.findById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
 
         Set<Long> uniqueIds = new HashSet<>(tagIds);
