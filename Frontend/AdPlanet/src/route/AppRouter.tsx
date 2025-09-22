@@ -3,6 +3,7 @@ import HomePage from "../modules/Home/pages/HomePage";
 import LogoDetailPage from "../modules/Mypage/pages/LogoDetailPage";
 import PosterDetailPage from '../modules/Mypage/pages/PosterDetailPage';
 import WatermarkDetectionPage from "../modules/Watermark/pages/WatermarkDetectionPage";
+import GalleryPage from "../modules/Gallery/pages/GalleryPage";
 import ArchivePage from "../modules/Mypage/pages/ArchivePage";
 import { PATHS } from "../constants/paths";
 import LogoPage from "../modules/Logo/pages/LogoPage";
@@ -26,6 +27,10 @@ const routeConfig = [
   {
     path: PATHS.WATERMARK_DETECTION,
     element: <WatermarkDetectionPage />,
+  },
+  {
+    path: PATHS.GALLERY,
+    element: <GalleryPage />,
   },
   {
     path: PATHS.ARCHIVE,

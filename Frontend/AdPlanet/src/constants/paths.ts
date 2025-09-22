@@ -4,6 +4,7 @@ export const PATHS = {
   LOGO: '/logo',
   POSTER: '/poster',
   WATERMARK_DETECTION: '/watermark-detection',
+  GALLERY: '/gallery',
   ARCHIVE: '/archive',
   AUTH_CALLBACK: '/auth/callback',
 } as const;

@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import Navigation from "../../../components/Layout/Navigation";
-import Gallery3D from "../components/Gallery3D";
 
 import { Model } from "../components/Model";
 import { Canvas } from "@react-three/fiber";
