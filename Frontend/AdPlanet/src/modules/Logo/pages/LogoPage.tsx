@@ -98,10 +98,7 @@ const LogoPage: React.FC = () => {
     setShowLoader(true);
     setImageUrl(null);
     setLogoId(null);
-    // 요청 전 인위적 딜레이(요청 지연 10초)
-    const preDelayMs = 10000;
-    window.setTimeout(() => {
-      generateLogo(
+    generateLogo(
       {
         title,
         content,
@@ -129,7 +126,6 @@ const LogoPage: React.FC = () => {
         },
       }
     );
-    }, preDelayMs);
   };
 
   const handleDownload = (ext: string) => {
