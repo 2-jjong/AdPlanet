@@ -352,7 +352,7 @@ public class PosterServiceImpl implements PosterService {
                 PosterResponse posterResponse = new PosterResponse(
                         poster.getId(),
                         poster.getPosterGroup().getId(),
-                        poster.getImgUrl()
+                        s3Service.toHttpUrl(poster.getImgUrl())
                 );
                 yield new ImageJobResponse(
                         job.getId(),
