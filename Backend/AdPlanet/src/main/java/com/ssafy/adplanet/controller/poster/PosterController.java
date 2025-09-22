@@ -32,8 +32,6 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -99,18 +97,15 @@ public class PosterController {
     @Operation(summary = "포스터 단건 조회", description = "포스터를 단건 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<PosterResponse>> getPoster(
             @Parameter(description = "포스터 id", required = true)
             @PathVariable("posterId") Long posterId
     ) {
-        PosterResponse poster = new PosterResponse(
-                1L,
-                1L,
-                "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png",
-                "아삭아삭한 배추 이미지, 싱싱한 초록색 활용"
-        );
+        PosterResponse poster = posterService.getPoster(posterId);
+
         return ResponseEntity.ok(ResponseDto.ok(poster));
     }
 
@@ -198,19 +193,11 @@ public class PosterController {
             @Parameter(description = "정렬")
             @RequestParam(value = "order", required = false) PosterListOrder order,
             @Parameter(description = "태그 id")
-            @RequestParam(value = "tagId", required = false) Long tagId
+            @RequestParam(value = "tagIds", required = false) List<Long> tagIds
     ) {
-        List<PosterGroupResponse> list = new ArrayList<>();
-        for (long i = 1; i <= 15; i++) {
-            PosterGroupResponse group = new PosterGroupResponse(
-                    i,
-                    "https://dummyimage.com/600x400/000/fff&text=Poster+" + i,
-                    "싸피컴퍼니 " + i,
-                    "포기는 배추 셀 때나 하는 말" + i,
-                    LocalDateTime.now().minusDays(15 - i) // 생성일 임의로 설정
-            );
-            list.add(group);
-        }
+        Long userId = SecurityUtil.getCurrentUserId();
+
+        List<PosterGroupResponse> list = posterService.getPosterGroup(userId, order, tagIds);
 
         return ResponseEntity.ok(ResponseDto.ok(list));
     }
@@ -219,6 +206,7 @@ public class PosterController {
     @Operation(summary = "특정 포스터 그룹 조회", description = "특정 포스터 그룹을 상세 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<PosterGroupResponse>> getPosterGroupDetail(
@@ -226,25 +214,23 @@ public class PosterController {
             @PathVariable(value = "groupId") Long groupId
     ) {
 
-        List<PosterResponse> history = new ArrayList<>();
-        for (long i = 1; i <= 15; i++) {
-            PosterResponse poster = new PosterResponse(
-                    i,
-                    "https://dummyimage.com/600x400/000/fff&text=Poster+" + i,
-                    "시들시들한, 연두색 배추 이미지"
-            );
-            history.add(poster);
-        }
+        PosterGroupResponse response = posterService.getPosterGroupDetail(groupId);
 
-        PosterGroupResponse response = new PosterGroupResponse(
-                groupId,
-                "https://dummyimage.com/600x400/000/fff&text=Poster+0",
-                "싸피컴퍼니",
-                "포기는 배추 셀 때나 하는 말",
-                "아삭아삭한 배추 이미지, 싱싱한 초록색 활용",
-                LocalDateTime.now(),
-                history
-        );
+        return ResponseEntity.ok(ResponseDto.ok(response));
+    }
+
+    @GetMapping("/group/{groupId}/processing")
+    @Operation(summary = "진행 중인 작업 조회", description = "특정 포스터 그룹 내에 진행 중인 작업을 조회합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<List<ImageJobResponse>>> getProcessingJobs(
+            @Parameter(description = "포스터 그룹 id", required = true)
+            @PathVariable(value = "groupId") Long groupId
+    ) {
+        List<ImageJobResponse> response = posterService.getProgressingJobs(groupId);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
@@ -257,7 +243,6 @@ public class PosterController {
     })
     public ResponseEntity<ResponseDto<List<TagDto>>> getPosterTag(
     ) {
-
         Long userId = SecurityUtil.getCurrentUserId();
 
         List<TagDto> response = tagService.getPosterTags(userId);
@@ -269,6 +254,7 @@ public class PosterController {
     @Operation(summary = "포스터 태그 생성", description = "포스터 태그를 생성합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<TagDto>> getTag(
@@ -287,6 +273,7 @@ public class PosterController {
     @Operation(summary = "포스터 태그 지정", description = "포스터 그룹에 대한 태그를 지정합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "지정 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<Void>> createPosterTag(
