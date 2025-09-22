@@ -4,11 +4,9 @@ import LogoDetailPage from "../modules/Mypage/pages/LogoDetailPage";
 import PosterDetailPage from '../modules/Mypage/pages/PosterDetailPage';
 import WatermarkDetectionPage from "../modules/Watermark/pages/WatermarkDetectionPage";
 import ArchivePage from "../modules/Mypage/pages/ArchivePage";
-import PosterCardList from "../modules/Mypage/components/PosterCardList";
 import { PATHS } from "../constants/paths";
 import LogoPage from "../modules/Logo/pages/LogoPage";
 import PosterPage from "../modules/Poster/pages/PosterPage";
-import LogoCardList from "../modules/Mypage/components/LogoCardList";
 import AuthCallbackPage from "../modules/Auth/pages/AuthCallbackPage";
 
 
@@ -31,34 +29,11 @@ const routeConfig = [
   },
   {
     path: PATHS.ARCHIVE,
+    element: <Navigate to="/archive/logo" replace />,
+  },
+  {
+    path: "/archive/:kind",
     element: <ArchivePage />,
-    children: [
-      { index: true, element: <Navigate to='logo' replace /> }, // 기본 진입 /archive/logo
-      { path: "logo", element: <LogoCardList /> },
-      { path: "poster", element: <PosterCardList /> },
-
-    ],
-  },
-  // 태그 경로들
-  { 
-    path: "/archive/logo/tags",         
-    element: <ArchivePage /> 
-
-  },
-  { 
-    path: "/archive/logo/tags/:tagIds", 
-    element: <ArchivePage /> 
-
-  },
-  { 
-    path: "/archive/poster/tags",         
-    element: <ArchivePage /> 
-
-  },
-  { 
-    path: "/archive/poster/tags/:tagIds", 
-    element: <ArchivePage /> 
-
   },
   // 상세 페이지
   {

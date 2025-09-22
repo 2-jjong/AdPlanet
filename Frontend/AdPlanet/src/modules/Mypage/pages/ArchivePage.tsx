@@ -1,13 +1,13 @@
 // src/modules/Mypage/pages/ArchivePage.tsx
 import React, { useState, useMemo, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import Navigation from "../../../components/Layout/Navigation";
 import ArchiveToolbar from "../components/ArchiveToolbar";
 import LogoCardList from "../components/LogoCardList";
 import PosterCardList from "../components/PosterCardList";
 import LogoTagBar from "../components/LogoTagBar";
 import type { LogoTagItem } from "../components/LogoTagBar";
-import { parseKindFromPath, isTagsRoute, getPathTagCsv, csvToIds, buildTagsPath, toggleId } from "../../../utils/archiveRouteParser";
+import { toggleId, type ArchiveKind } from "../../../utils/archiveRouteParser";
 import LogoTagGrid from "../components/LogoTagGrid";
 import { getAllLogoTags } from "../../../services/logoService";
 import PosterTagBar from "../components/PosterTagBar";
@@ -16,16 +16,16 @@ import PosterTagGrid from "../components/PosterTagGrid";
 import { getAllPosterTags } from "../../../services/posterService";
 
 const ArchivePage: React.FC = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const { kind: kindParam } = useParams();
+  const [sp, setSp] = useSearchParams();
 
-  // 경로만을 단일 소스로 사용
-  const kind = parseKindFromPath(location.pathname) || "logo"; // "logo" | "poster"
-  const tagsMode = isTagsRoute(location.pathname);             // /tags 경로 여부
+  // URL 파라미터/쿼리를 단일 소스로 사용
+  const kind = (kindParam === "poster" ? "poster" : "logo") as ArchiveKind;
   const selectedTagIds = useMemo(() => {
-    const csv = getPathTagCsv(location.pathname);
-    return csvToIds(csv); // 항상 [] 또는 [number...]
-  }, [location.pathname]);
+    const all = sp.getAll("tags");
+    return [...new Set(all.map(Number).filter(n => Number.isFinite(n) && n > 0))];
+  }, [sp]);
+  const tagsMode = selectedTagIds.length > 0;
 
   // LogoTagBar용 태그 상태
   const [tags, setTags] = useState<LogoTagItem[]>([]);
@@ -82,10 +82,12 @@ const ArchivePage: React.FC = () => {
     return () => { alive = false; };
   }, [kind]);
 
-  // 태그 토글 시 경로만 바꿔줌 (쿼리는 그대로 유지)
+  // 태그 토글 시 쿼리만 업데이트
   const goWithIds = (ids: number[]) => {
-    const path = buildTagsPath(kind, ids);
-    navigate(path + location.search, { replace: false });
+    const next = new URLSearchParams(sp);
+    next.delete("tags");
+    ids.forEach(id => next.append("tags", String(id)));
+    setSp(next, { replace: false });
   };
   const onToggleTag = (id: number) => goWithIds(toggleId(selectedTagIds, id));
   const onClearTags = () => goWithIds([]);

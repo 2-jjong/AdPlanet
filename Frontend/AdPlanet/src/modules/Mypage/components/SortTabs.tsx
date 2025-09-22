@@ -1,6 +1,5 @@
 import { useMemo } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { inferKind, isTagsRoute, buildTagsPath } from "../../../utils/archiveRouteParser";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 type SortKey = "newest" | "oldest" | "tags";
 
@@ -13,25 +12,20 @@ const OPTIONS: { key: SortKey; label: string }[] = [
 export default function SortBar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { kind: kindParam } = useParams();
   const [sp] = useSearchParams();
 
-  const kind = (sp.get("view") as "logo" | "poster") ?? inferKind(location.pathname);
-  const value: SortKey = isTagsRoute(location.pathname)
+  const kind = (kindParam === "poster" ? "poster" : "logo") as "logo" | "poster";
+  const value: SortKey = sp.getAll("tags").length > 0
     ? "tags"
     : sp.get("order") === "OLDEST" ? "oldest" : "newest";
 
   const setValue = (v: SortKey) => {
-    if (v === "tags") {
-      // ✅ 태그 화면으로 (경로를 /archive/{kind}/tags 로 전환)
-      navigate(buildTagsPath(kind) + location.search);
-      return;
-    }
+    if (v === "tags") return; // 쿼리 기반에서는 외부 토글에서 처리
 
     // 목록 화면으로 (경로를 /archive/{kind} 로 되돌리고, 정렬만 쿼리로)
     const next = new URLSearchParams(location.search);
     if (v === "newest") next.delete("order"); else next.set("order", "OLDEST");
-    next.delete("mode");    // 태그 모드 끄기
-    next.delete("tagIds");  // 태그 선택 제거
 
     const base = `/archive/${kind}`;
     const qs = next.toString();
