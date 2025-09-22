@@ -44,7 +44,7 @@ const PosterPage: React.FC = () => {
 
   // 그룹 목록 사이드바 상태
   const [isGroupListOpen, setIsGroupListOpen] = useState(false);
-  const groupsQuery = usePosterGroups({});
+  const groupsQuery = usePosterGroups({ order: 'NEWEST' });
   const queryClient = useQueryClient();
 
   // 파일 첨부 아코디언 자동 닫기 핸들러
@@ -123,6 +123,19 @@ const PosterPage: React.FC = () => {
     }
 
     setState((prev) => ({ ...prev, isGenerating: true }));
+    // 로컬 히스토리에 generating 항목 추가 (플레이스홀더)
+    const pendingId = `pending-${Date.now()}`;
+    setGenerationRecords((prev) => [
+      ...prev,
+      {
+        id: pendingId,
+        timestamp: new Date(),
+        thumbnail: prev.length > 0 ? (prev[prev.length - 1].thumbnail) : (state.generatedPoster ?? ''),
+        prompt: state.prompt || '생성 요청',
+        step: 'generate',
+        status: 'generating',
+      },
+    ]);
 
     try {
       // 구도 조정일 때 캔버스에 보이는 이미지를 previousImage 로 첨부
@@ -162,6 +175,10 @@ const PosterPage: React.FC = () => {
       }
     } catch (e) {
       setState((prev) => ({ ...prev, isGenerating: false }));
+      // 실패로 표시
+      setGenerationRecords((prev) =>
+        prev.map((r) => (r.id.startsWith('pending-') ? { ...r, status: 'failed' } : r))
+      );
     }
   }, [createPosterMutation, personImage, productImage, sketchImage, state.title, state.content, state.prompt]);
 
@@ -191,9 +208,28 @@ const PosterPage: React.FC = () => {
       } else {
         queryClient.invalidateQueries({ queryKey: posterKeys.groups() });
       }
+      // 마지막 pending 항목을 completed로 교체/업데이트
+      setGenerationRecords((prev) => {
+        const updated = [...prev];
+        for (let i = updated.length - 1; i >= 0; i--) {
+          if (updated[i].status === 'generating') {
+            updated[i] = {
+              ...updated[i],
+              status: 'completed',
+              thumbnail: finalUrl || updated[i].thumbnail,
+              timestamp: new Date(),
+            };
+            break;
+          }
+        }
+        return updated;
+      });
       setCurrentJobId(undefined);
     } else if (status === 'FAILED') {
       setState((prev) => ({ ...prev, isGenerating: false }));
+      setGenerationRecords((prev) =>
+        prev.map((r) => (r.status === 'generating' ? { ...r, status: 'failed' } : r))
+      );
       setCurrentJobId(undefined);
     }
   }, [currentJobId, jobQuery.data, queryClient]);
@@ -372,7 +408,7 @@ const PosterPage: React.FC = () => {
           >
             {/* 가운데: Canvas + 프롬프트 */}
             <main className='relative flex flex-col items-center w-full max-w-[500px] mx-auto flex-1 min-h-0'>
-              <PosterCanvasView generatedPoster={state.generatedPoster} onOpenPreview={() => setIsImagePreviewOpen(true)}>
+              <PosterCanvasView generatedPoster={state.generatedPoster} onOpenPreview={() => setIsImagePreviewOpen(true)} isGenerating={state.isGenerating}>
                 {/* 텍스트 오버레이들 */}
                 {state.textOverlays.map((text) => (
                   <div

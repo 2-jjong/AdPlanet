@@ -29,6 +29,11 @@ const GroupList: React.FC<GroupListProps> = ({
     return d.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
   };
 
+  // 최신 생성일 순으로 정렬 (가장 최근이 위)
+  const sortedGroups = React.useMemo(() => {
+    return [...groups].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [groups]);
+
   return (
     <>
       {isOpen && <div className='fixed inset-0 bg-black/20 z-40 lg:hidden' onClick={onToggle} />}
@@ -79,7 +84,7 @@ const GroupList: React.FC<GroupListProps> = ({
 
         <div className='flex-1 min-h-0 overflow-y-auto scrollbar-hidden'>
           {isOpen ? (
-            groups.length === 0 ? (
+            sortedGroups.length === 0 ? (
               <div className='p-8 text-center text-text-color/60'>
                 <div className='w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-2xl flex items-center justify-center'>
                   <svg className='w-8 h-8 text-primary/60' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
@@ -91,7 +96,7 @@ const GroupList: React.FC<GroupListProps> = ({
               </div>
             ) : (
               <div className='p-3 space-y-2'>
-                {groups.map((g) => {
+                {sortedGroups.map((g) => {
                   const thumb = (g as any).imgUrl ?? (g as any).imageUrl;
                   return (
                   <button
@@ -126,7 +131,7 @@ const GroupList: React.FC<GroupListProps> = ({
             )
           ) : (
             <div className='hidden lg:flex flex-col p-2 space-y-2'>
-              {groups.slice(0, 6).map((g) => {
+              {sortedGroups.slice(0, 6).map((g) => {
                 const thumb = (g as any).imgUrl ?? (g as any).imageUrl;
                 return (
                 <button
@@ -150,9 +155,9 @@ const GroupList: React.FC<GroupListProps> = ({
                   )}
                 </button>
               );})}
-              {groups.length > 6 && (
+              {sortedGroups.length > 6 && (
                 <div className='w-12 h-8 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-center text-xs text-primary/60'>
-                  +{groups.length - 6}
+                  +{sortedGroups.length - 6}
                 </div>
               )}
             </div>

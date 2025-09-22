@@ -4,9 +4,10 @@ interface PosterCanvasViewProps {
   generatedPoster: string | null;
   onOpenPreview: () => void;
   children?: React.ReactNode;
+  isGenerating?: boolean;
 }
 
-const PosterCanvasView: React.FC<PosterCanvasViewProps> = ({ generatedPoster, onOpenPreview, children }) => {
+const PosterCanvasView: React.FC<PosterCanvasViewProps> = ({ generatedPoster, onOpenPreview, children, isGenerating }) => {
   return (
     <div
       className='relative w-full aspect-square max-w-[400px] max-h-[50vh] rounded-3xl border-2 border-dashed border-primary/30 hover:border-primary/50 shadow-2xl shadow-primary/5 bg-gradient-to-br from-background to-background/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 group cursor-pointer'
@@ -19,6 +20,12 @@ const PosterCanvasView: React.FC<PosterCanvasViewProps> = ({ generatedPoster, on
         <div className='relative w-full h-full'>
           <img src={generatedPoster} alt='Generated Poster' className='w-full h-full object-cover rounded-2xl' />
           {children}
+          {isGenerating && (
+            <div className='absolute inset-0 bg-black/40 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center gap-3'>
+              <div className='w-8 h-8 border-2 border-white/60 border-t-transparent rounded-full animate-spin'></div>
+              <div className='text-white text-sm font-medium'>생성중...</div>
+            </div>
+          )}
         </div>
       ) : (
         <div className='text-center text-text-color/60 group-hover:text-text-color/80 transition-colors'>
@@ -33,6 +40,12 @@ const PosterCanvasView: React.FC<PosterCanvasViewProps> = ({ generatedPoster, on
             <br />
             AI가 생성한 포스터를 확인하세요
           </p>
+          {isGenerating && (
+            <div className='absolute inset-0 flex flex-col items-center justify-center gap-3'>
+              <div className='w-8 h-8 border-2 border-primary/60 border-t-transparent rounded-full animate-spin'></div>
+              <div className='text-text-color/80 text-sm font-medium'>생성중...</div>
+            </div>
+          )}
         </div>
       )}
     </div>
