@@ -1,13 +1,14 @@
-export type TagItem = { id: number; name: string };
+// src/modules/Archive/components/PosterTagBar.tsx
+export type PosterTagItem = { id: number; name: string };
 
 type Props = {
-  items?: TagItem[];
-  selectedIds?: number[];      
+  items?: PosterTagItem[];
+  selectedIds?: number[];
   onToggle?: (id: number) => void;
   onClear?: () => void;
 };
 
-export default function TagBar({
+export default function PosterTagBar({
   items = [],
   selectedIds = [],
   onToggle = () => {},
@@ -30,7 +31,10 @@ export default function TagBar({
         );
       })}
       {selectedIds.length > 0 && (
-        <button className="text-sm text-slate-400 underline ml-2" onClick={onClear}>
+        <button
+          className="text-sm text-slate-400 underline ml-2"
+          onClick={onClear}
+        >
           clear
         </button>
       )}

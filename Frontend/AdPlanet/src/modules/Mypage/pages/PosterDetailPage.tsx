@@ -3,8 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import Navigation from "../../../components/Layout/Navigation";
 import { RoundButton } from "../../../components/UI/Button/RoundButton";
-import { getPosterGroupDetail, getPoster, getPosterJob } from "../../../services/posterService"; // ✅ prompt용
-// Import PosterGroupDetail type
+import { getPosterGroupDetail, getPoster } from "../../../services/posterService"; 
 import type { PosterGroupDetail, PosterDetail as PosterDetailDto } from "../../../services/dto/poster.dto";
 
 // Fullpage
@@ -153,9 +152,6 @@ export default function PosterDetailPage() {
                 <span className="text-primary">{data.title}</span>
                 <span className="ml-1">의 포스터</span>
               </h1>
-              <a href="/archive?view=poster" className="rounded-xl px-3 py-2 bg-slate-800 hover:bg-slate-700">
-                목록
-              </a>
             </header>
 
             <div className="grid grid-cols-12 gap-10 items-start">
@@ -278,3 +274,4 @@ export default function PosterDetailPage() {
     </div>
   );
 }
+

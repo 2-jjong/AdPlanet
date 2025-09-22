@@ -53,7 +53,7 @@ export default function PosterCardList() {
     return (
       <div className="w-full py-10 text-center">
         <p className="text-red-400 mb-3">{error}</p>
-        <button
+        {/* <button
           className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600"
           onClick={() => {
             // 간단 리트라이: 쿼리 변경 트리거가 없으니 location.reload로 간단하게 처리
@@ -61,7 +61,7 @@ export default function PosterCardList() {
           }}
         >
           다시 시도
-        </button>
+        </button> */}
       </div>
     );
   }

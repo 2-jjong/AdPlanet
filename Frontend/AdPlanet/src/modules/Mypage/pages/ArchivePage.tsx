@@ -5,11 +5,15 @@ import Navigation from "../../../components/Layout/Navigation";
 import ArchiveToolbar from "../components/ArchiveToolbar";
 import LogoCardList from "../components/LogoCardList";
 import PosterCardList from "../components/PosterCardList";
-import TagBar from "../components/TagBar";
-import type { TagItem } from "../components/TagBar";
+import LogoTagBar from "../components/LogoTagBar";
+import type { LogoTagItem } from "../components/LogoTagBar";
 import { parseKindFromPath, isTagsRoute, getPathTagCsv, csvToIds, buildTagsPath, toggleId } from "../../../utils/archiveRouteParser";
 import LogoTagGrid from "../components/LogoTagGrid";
 import { getAllLogoTags } from "../../../services/logoService";
+import PosterTagBar from "../components/PosterTagBar";
+import type { PosterTagItem } from "../components/PosterTagBar";
+import PosterTagGrid from "../components/PosterTagGrid";
+import { getAllPosterTags } from "../../../services/posterService";
 
 const ArchivePage: React.FC = () => {
   const location = useLocation();
@@ -23,45 +27,52 @@ const ArchivePage: React.FC = () => {
     return csvToIds(csv); // 항상 [] 또는 [number...]
   }, [location.pathname]);
 
-  // TagBar용 태그 상태
-  const [tags, setTags] = useState<TagItem[]>([]);
+  // LogoTagBar용 태그 상태
+  const [tags, setTags] = useState<LogoTagItem[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
   const [tagsError, setTagsError] = useState<string | null>(null);
 
-  // 실제 태그 로드
+  // 실제 태그 로드 (kind 에 따라 분기)
   useEffect(() => {
-    if (kind !== "logo") return;
-
     let alive = true;
     (async () => {
       try {
         setTagsLoading(true);
         setTagsError(null);
 
-        const res = await getAllLogoTags();  // ApiResponse<LogoTag[]>
-        const raw = res?.data ?? [];
-
-        console.debug("[Archive] /api/logos/tags raw =", raw); // 확인로그
-
-        // 서버 DTO가 { tagId, tagName } 또는 { id, name }일 수 있으니 둘 다 대응
-        const map = new Map<number, string>();
-        for (const t of raw as any[]) {
-          const id = t?.tagId ?? t?.id;
-          const name = t?.tagName ?? t?.name;
-          if (typeof id === "number" && id > 0 && typeof name === "string" && name) {
-            if (!map.has(id)) map.set(id, name);
+        if (kind === "logo") {
+          const res = await getAllLogoTags(); // ApiResponse<LogoTag[]>
+          const raw = res?.data ?? [];
+          const map = new Map<number, string>();
+          for (const t of raw as any[]) {
+            const id = t?.tagId ?? t?.id;
+            const name = t?.tagName ?? t?.name;
+            if (typeof id === "number" && id > 0 && typeof name === "string" && name) {
+              if (!map.has(id)) map.set(id, name);
+            }
           }
+          const list: LogoTagItem[] = Array.from(map, ([id, name]) => ({ id, name }));
+          if (!alive) return;
+          setTags(list);
+        } else if (kind === "poster") {
+          const res = await getAllPosterTags(); 
+          const raw = res?.data ?? [];
+          const map = new Map<number, string>();
+          for (const t of raw as any[]) {
+            const id = t?.tagId ?? t?.id;
+            const name = t?.tagName ?? t?.name;
+            if (typeof id === "number" && id > 0 && typeof name === "string" && name) {
+              if (!map.has(id)) map.set(id, name);
+            }
+          }
+          const list: PosterTagItem[] = Array.from(map, ([id, name]) => ({ id, name }));
+          if (!alive) return;
+          setTags(list);
         }
-        const list: TagItem[] = Array.from(map, ([id, name]) => ({ id, name }));
-
-        if (!alive) return;
-        setTags(list);
-        console.debug("[Archive] normalized tags =", list);
       } catch (e: any) {
         if (!alive) return;
         setTags([]);
         setTagsError(e?.message ?? "태그를 불러오지 못했습니다.");
-        console.error("[Archive] getAllLogoTags error:", e);
       } finally {
         if (!alive) return;
         setTagsLoading(false);
@@ -71,7 +82,7 @@ const ArchivePage: React.FC = () => {
     return () => { alive = false; };
   }, [kind]);
 
-  // 태그 토글 시 경로만 바꿔줌 (쿼리는 그대로 유지: order 등)
+  // 태그 토글 시 경로만 바꿔줌 (쿼리는 그대로 유지)
   const goWithIds = (ids: number[]) => {
     const path = buildTagsPath(kind, ids);
     navigate(path + location.search, { replace: false });
@@ -90,21 +101,26 @@ const ArchivePage: React.FC = () => {
         </div>
 
         {tagsMode && (
-          <div className="w-full max-w-6xl">
-            {kind === "logo" ? (
-              tagsLoading ? (
-                <div className="text-slate-400">태그 불러오는 중…</div>
-              ) : tagsError ? (
-                <div className="text-red-300">{tagsError}</div>
-              ) : (
-                <TagBar
-                  items={tags}
-                  selectedIds={selectedTagIds}
-                  onToggle={onToggleTag}
-                  onClear={onClearTags}
-                />
-              )
-            ) : null}
+          <div className="ml-12 w-full max-w-6xl">
+            {tagsLoading ? (
+              <div className="text-slate-400">태그 불러오는 중…</div>
+            ) : tagsError ? (
+              <div className="text-red-300">{tagsError}</div>
+            ) : kind === "logo" ? (
+              <LogoTagBar
+                items={tags}
+                selectedIds={selectedTagIds}
+                onToggle={onToggleTag}
+                onClear={onClearTags}
+              />
+            ) : (
+              <PosterTagBar
+                items={tags}                         
+                selectedIds={selectedTagIds}         
+                onToggle={onToggleTag}
+                onClear={onClearTags}
+              />
+            )}
           </div>
         )}
 
@@ -113,7 +129,7 @@ const ArchivePage: React.FC = () => {
             kind === "logo" ? (
               <LogoTagGrid tagIds={selectedTagIds} />
             ) : (
-              <div className="mt-10 text-slate-400">포스터 태그 결과는 준비 중입니다.</div>
+              <PosterTagGrid tagIds={selectedTagIds} />   
             )
           ) : kind === "logo" ? (
             <LogoCardList />
