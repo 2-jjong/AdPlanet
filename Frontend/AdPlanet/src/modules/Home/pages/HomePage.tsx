@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { PATHS } from "../../../constants/paths";
 import Navigation from "../../../components/Layout/Navigation";
+import Gallery3D from "../components/Gallery3D";
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -98,6 +99,8 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </main>
+
+      <Gallery3D />
     </div>
   );
 };
