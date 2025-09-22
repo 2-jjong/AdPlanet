@@ -65,10 +65,11 @@ public class PosterServiceImpl implements PosterService {
 
         String jobId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
+        PosterGroup posterGroup = null;
 
         // 1. 시나리오 별로 요청값 검증
         if (request.groupId() != null) {
-            posterGroupRepository.findById(request.groupId())
+            posterGroup = posterGroupRepository.findById(request.groupId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
         }
 
@@ -85,6 +86,7 @@ public class PosterServiceImpl implements PosterService {
                 .status(JobStatus.QUEUED)
                 .createdAt(now)
                 .updatedAt(now)
+                .posterGroup(posterGroup)
                 .build();
         imageJobRepository.save(job);
 
@@ -433,5 +435,20 @@ public class PosterServiceImpl implements PosterService {
                 s3Service.toHttpUrl(poster.getImgUrl()),
                 poster.getPrompt()
         );
+    }
+
+    @Override
+    public List<ImageJobResponse> getProgressingJobs(Long groupId) {
+
+        posterGroupRepository.findByIdWithMainPosterAndTags(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
+
+        return imageJobRepository.findProgressingJobsByGroupId(groupId).stream()
+                .map(job -> new ImageJobResponse(
+                        job.getId(),
+                        job.getStatus(),
+                        job.getCreatedAt()
+                ))
+                .toList();
     }
 }

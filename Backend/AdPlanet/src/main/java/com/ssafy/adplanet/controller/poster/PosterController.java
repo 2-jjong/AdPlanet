@@ -32,8 +32,6 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -221,6 +219,22 @@ public class PosterController {
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 
+    @GetMapping("/group/{groupId}/processing")
+    @Operation(summary = "진행 중인 작업 조회", description = "특정 포스터 그룹 내에 진행 중인 작업을 조회합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<List<ImageJobResponse>>> getProcessingJobs(
+            @Parameter(description = "포스터 그룹 id", required = true)
+            @PathVariable(value = "groupId") Long groupId
+    ) {
+        List<ImageJobResponse> response = posterService.getProgressingJobs(groupId);
+
+        return ResponseEntity.ok(ResponseDto.ok(response));
+    }
+
     @GetMapping("/tags")
     @Operation(summary = "포스터 태그 목록 조회", description = "포스터 태그 목록을 조회합니다.")
     @ApiResponses(value = {
@@ -229,7 +243,6 @@ public class PosterController {
     })
     public ResponseEntity<ResponseDto<List<TagDto>>> getPosterTag(
     ) {
-
         Long userId = SecurityUtil.getCurrentUserId();
 
         List<TagDto> response = tagService.getPosterTags(userId);

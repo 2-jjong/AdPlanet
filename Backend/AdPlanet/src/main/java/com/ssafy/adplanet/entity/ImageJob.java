@@ -27,6 +27,10 @@ public class ImageJob {
     @Column(name = "updated_at", nullable = false)
     LocalDateTime updatedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id")
+    PosterGroup posterGroup;
+
     @OneToOne
     @JoinColumn(name = "poster_id")
     Poster resultPoster;

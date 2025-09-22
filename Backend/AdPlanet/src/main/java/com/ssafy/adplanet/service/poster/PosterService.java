@@ -7,7 +7,6 @@ import com.ssafy.adplanet.dto.poster.response.PosterGroupResponse;
 import com.ssafy.adplanet.dto.poster.response.PosterResponse;
 import com.ssafy.adplanet.enums.PosterListOrder;
 import com.ssafy.adplanet.enums.PosterStyle;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -24,4 +23,6 @@ public interface PosterService {
     PosterGroupResponse getPosterGroupDetail(Long groupId);
 
     PosterResponse getPoster(Long posterId);
+
+    List<ImageJobResponse> getProgressingJobs(Long groupId);
 }
