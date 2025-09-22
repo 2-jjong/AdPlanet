@@ -198,19 +198,11 @@ public class PosterController {
             @Parameter(description = "정렬")
             @RequestParam(value = "order", required = false) PosterListOrder order,
             @Parameter(description = "태그 id")
-            @RequestParam(value = "tagId", required = false) Long tagId
+            @RequestParam(value = "tagIds", required = false) List<Long> tagIds
     ) {
-        List<PosterGroupResponse> list = new ArrayList<>();
-        for (long i = 1; i <= 15; i++) {
-            PosterGroupResponse group = new PosterGroupResponse(
-                    i,
-                    "https://dummyimage.com/600x400/000/fff&text=Poster+" + i,
-                    "싸피컴퍼니 " + i,
-                    "포기는 배추 셀 때나 하는 말" + i,
-                    LocalDateTime.now().minusDays(15 - i) // 생성일 임의로 설정
-            );
-            list.add(group);
-        }
+        Long userId = SecurityUtil.getCurrentUserId();
+
+        List<PosterGroupResponse> list = posterService.getPosterGroup(userId, order, tagIds);
 
         return ResponseEntity.ok(ResponseDto.ok(list));
     }

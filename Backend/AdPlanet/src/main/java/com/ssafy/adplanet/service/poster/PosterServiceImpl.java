@@ -3,12 +3,12 @@ package com.ssafy.adplanet.service.poster;
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
 import com.ssafy.adplanet.dto.poster.request.ImageJobMessage;
 import com.ssafy.adplanet.dto.poster.response.ImageJobResponse;
+import com.ssafy.adplanet.dto.poster.response.PosterGroupResponse;
 import com.ssafy.adplanet.dto.poster.response.PosterResponse;
-import com.ssafy.adplanet.entity.ImageJob;
-import com.ssafy.adplanet.entity.Poster;
-import com.ssafy.adplanet.entity.PosterGroup;
-import com.ssafy.adplanet.entity.User;
+import com.ssafy.adplanet.entity.*;
 import com.ssafy.adplanet.enums.JobStatus;
+import com.ssafy.adplanet.enums.LogoListOrder;
+import com.ssafy.adplanet.enums.PosterListOrder;
 import com.ssafy.adplanet.enums.PosterStyle;
 import com.ssafy.adplanet.exception.BusinessException;
 import com.ssafy.adplanet.exception.ErrorCode;
@@ -22,11 +22,11 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -40,7 +40,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.UUID;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -362,5 +364,36 @@ public class PosterServiceImpl implements PosterService {
                 );
             }
         };
+    }
+
+    @Override
+    public List<PosterGroupResponse> getPosterGroup(Long userId, PosterListOrder order, List<Long> tagIds) {
+
+        Sort sort = (order == null ? PosterListOrder.NEWEST : order).toSort();
+
+        List<PosterGroup> groups;
+
+        if (tagIds == null || tagIds.isEmpty()) {
+            groups = posterGroupRepository.findByUser_UserId(userId, sort);
+        } else {
+            List<Long> ids = posterGroupRepository.findIdsByUserIdAndAllTags(userId, tagIds, tagIds.size());
+            if (ids.isEmpty()) return List.of();
+
+            groups = posterGroupRepository.findAllWithTagsByIdIn(ids);
+
+            Comparator<PosterGroup> comparator = Comparator.comparing(PosterGroup::getCreatedAt);
+            if (order == null || order == PosterListOrder.NEWEST) comparator = comparator.reversed();
+            groups.sort(comparator);
+        }
+
+        return groups.stream()
+                .map(group -> new PosterGroupResponse(
+                        group.getId(),
+                        s3Service.toHttpUrl(group.getMainPoster().getImgUrl()),
+                        group.getTitle(),
+                        group.getContent(),
+                        group.getCreatedAt()
+                ))
+                .toList();
     }
 }
