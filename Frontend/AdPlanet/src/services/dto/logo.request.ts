@@ -20,7 +20,15 @@ export interface CreateLogoRequest {
   style?: LogoStyle;
 }
 
+export interface AddLogoTag{
+  name:string
+}
+
 export interface AssignLogoTagsRequest {
   tagIds: number[];
 }
 
+export interface LogoDownloadRequest{
+  logoId:number,
+  format:string
+}
