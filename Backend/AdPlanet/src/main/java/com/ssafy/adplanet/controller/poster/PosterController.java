@@ -2,12 +2,13 @@ package com.ssafy.adplanet.controller.poster;
 
 import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
-import com.ssafy.adplanet.dto.poster.request.PosterTagRequest;
+import com.ssafy.adplanet.dto.tag.AssignPosterTagsRequest;
 import com.ssafy.adplanet.dto.poster.response.*;
 import com.ssafy.adplanet.enums.PosterDownloadFormat;
 import com.ssafy.adplanet.enums.PosterListOrder;
 import com.ssafy.adplanet.enums.PosterStyle;
 import com.ssafy.adplanet.service.poster.PosterService;
+import com.ssafy.adplanet.service.tag.TagService;
 import com.ssafy.adplanet.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.media.Encoding;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
@@ -17,12 +18,12 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -41,6 +42,7 @@ import java.util.List;
 public class PosterController {
 
     private final PosterService posterService;
+    private final TagService tagService;
 
     @PostMapping(consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
     @Operation(summary = "포스터 생성 요청", description = "포스터 생성을 요청합니다.")
@@ -267,16 +269,19 @@ public class PosterController {
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 
-    @PostMapping("/tags")
+    @PostMapping("/group/{groupId}/tags")
     @Operation(summary = "포스터 태그 지정", description = "포스터 그룹에 대한 태그를 지정합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "지정 성공"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<Void>> createPosterTag(
+            @Parameter(description = "포스터 그룹 id", required = true)
+            @PathVariable Long groupId,
             @Parameter(description = "포스터 태그 지정", required = true)
-            @RequestBody PosterTagRequest request
+            @Valid @RequestBody AssignPosterTagsRequest request
     ) {
+        tagService.setPosterTags(groupId, request.tagIds());
         return ResponseEntity.ok(ResponseDto.ok());
     }
 }

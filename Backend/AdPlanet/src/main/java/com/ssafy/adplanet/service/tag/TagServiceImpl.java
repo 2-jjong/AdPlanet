@@ -2,8 +2,12 @@ package com.ssafy.adplanet.service.tag;
 
 import com.ssafy.adplanet.dto.tag.TagDto;
 import com.ssafy.adplanet.entity.Logo;
+import com.ssafy.adplanet.entity.PosterGroup;
 import com.ssafy.adplanet.entity.Tag;
+import com.ssafy.adplanet.exception.BusinessException;
+import com.ssafy.adplanet.exception.ErrorCode;
 import com.ssafy.adplanet.repository.LogoRepository;
+import com.ssafy.adplanet.repository.PosterGroupRepository;
 import com.ssafy.adplanet.repository.TagRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +21,7 @@ public class TagServiceImpl implements TagService {
 
     private final TagRepository tagRepository;
     private final LogoRepository logoRepository;
+    private final PosterGroupRepository posterRepository;
 
     @Override
     @Transactional
@@ -87,5 +92,28 @@ public class TagServiceImpl implements TagService {
 
     private String normalize(String s) {
         return s == null ? "" : s.trim();
+    }
+
+    @Override
+    @Transactional
+    public void setPosterTags(Long groupId, List<Long> tagIds) {
+        if (tagIds == null) {
+            throw new BusinessException(ErrorCode.TAG_LIST_EMPTY);
+        }
+
+        PosterGroup posterGroup = posterRepository.findById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
+
+        Set<Long> uniqueIds = new HashSet<>(tagIds);
+
+        List<Tag> tags = uniqueIds.isEmpty()
+                ? List.of()
+                : tagRepository.findAllById(uniqueIds);
+
+        if (tags.size() != uniqueIds.size()) {
+            throw new BusinessException(ErrorCode.TAG_NOT_FOUND);
+        }
+
+        posterGroup.setTags(tags);
     }
 }
