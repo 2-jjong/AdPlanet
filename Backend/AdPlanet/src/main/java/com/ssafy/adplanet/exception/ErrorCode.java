@@ -22,11 +22,12 @@ public enum ErrorCode {
     USER_NOT_FOUND("AT4018", "사용자를 찾을 수 없습니다"),
 
     // Poster
-    JOB_NOT_FOUND("PA4001", "작업을 찾을 수 없습니다"),
+    IMAGE_JOB_NOT_FOUND("PA4001", "작업을 찾을 수 없습니다"),
     POSTER_GROUP_NOT_FOUND("PA4002", "포스터 그룹을 찾을 수 없습니다"),
     POSTER_NOT_FOUND("PA4003", "포스터를 찾을 수 없습니다"),
-    IMAGE_UPLOAD_FAILED("PA5001", "이미지 업로드에 실패했습니다"),
-    IMAGE_PROCESSING_FAILED("PA5002", "이미지 생성 요청에 실패했습니다"),
+    POSTER_IMAGE_UPLOAD_FAILED("PA5001", "이미지 업로드에 실패했습니다"),
+    POSTER_JOB_QUEUE_FAILED("PA5002", "이미지 생성 요청에 실패했습니다"),
+    COPY_GENERATION_FAILED("PA5003", "포스터 문구 생성에 실패했습니다"),
     
     // Tag
     TAG_ALREADY_EXISTS("TG4001", "이미 존재하는 태그입니다"),

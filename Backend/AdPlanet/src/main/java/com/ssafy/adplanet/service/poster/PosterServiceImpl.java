@@ -2,6 +2,7 @@ package com.ssafy.adplanet.service.poster;
 
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
 import com.ssafy.adplanet.dto.poster.request.ImageJobMessage;
+import com.ssafy.adplanet.dto.poster.response.CopyResponse;
 import com.ssafy.adplanet.dto.poster.response.ImageJobResponse;
 import com.ssafy.adplanet.dto.poster.response.PosterGroupResponse;
 import com.ssafy.adplanet.dto.poster.response.PosterResponse;
@@ -138,7 +139,7 @@ public class PosterServiceImpl implements PosterService {
         try (InputStream inputStream = multipartFile.getInputStream()) {
             s3Service.upload(key, inputStream, "image/png");
         } catch (IOException e) {
-            throw new BusinessException(ErrorCode.IMAGE_UPLOAD_FAILED);
+            throw new BusinessException(ErrorCode.POSTER_IMAGE_UPLOAD_FAILED);
         }
 
         return key;
@@ -335,7 +336,7 @@ public class PosterServiceImpl implements PosterService {
 
         // 1. Job DB 조회
         ImageJob job = imageJobRepository.findById(jobId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.JOB_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ErrorCode.IMAGE_JOB_NOT_FOUND));
 
         // 2. 상태에 따른 분기 처리
         return switch (job.getStatus()) {
@@ -437,7 +438,7 @@ public class PosterServiceImpl implements PosterService {
     @Override
     public List<ImageJobResponse> getProgressingJobs(Long groupId) {
 
-        posterGroupRepository.findByIdWithMainPosterAndTags(groupId)
+        posterGroupRepository.findById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
 
         return imageJobRepository.findByPosterGroupIdAndStatus(groupId, JobStatus.PROCESSING).stream()
@@ -447,5 +448,42 @@ public class PosterServiceImpl implements PosterService {
                         job.getCreatedAt()
                 ))
                 .toList();
+    }
+
+    @Override
+    public CopyResponse getCopy(Long posterId) {
+
+        Poster poster = posterRepository.findById(posterId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_NOT_FOUND));
+
+        String copy = gmsService.generateCopyByImage(poster.getPosterGroup().getTitle(), poster.getPosterGroup().getContent(), s3Service.toHttpUrl(poster.getImgUrl()));
+
+        return new CopyResponse(copy);
+    }
+
+    @Override
+    @Transactional
+    public PosterResponse saveImage(Long groupId, MultipartFile image) {
+
+        PosterGroup posterGroup = posterGroupRepository.findById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
+
+        // Poster 엔티티 생성
+        Poster poster = Poster.builder()
+                .posterGroup(posterGroup)
+                .prompt("")
+                .imgUrl("s3:pending")
+                .createdAt(LocalDateTime.now())
+                .build();
+        posterRepository.saveAndFlush(poster);
+
+        // 이미지 S3 업로드
+        String key = uploadIfExists(image, "poster", poster.getId().toString());
+        poster.setImgUrl(s3Service.toS3Uri(key));
+
+        return new PosterResponse(
+                poster.getId(),
+                s3Service.toHttpUrl(poster.getImgUrl())
+        );
     }
 }

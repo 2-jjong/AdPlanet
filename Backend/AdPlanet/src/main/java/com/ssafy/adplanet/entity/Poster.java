@@ -30,8 +30,4 @@ public class Poster {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
-
-    public void changeImgUrl(String newUrl) {
-        this.imgUrl = newUrl;
-    }
 }

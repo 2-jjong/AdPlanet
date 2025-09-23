@@ -119,26 +119,26 @@ public class PosterController {
             @Parameter(description = "포스터 id", required = true)
             @PathVariable("posterId") Long posterId
     ) {
-        CopyResponse response = new CopyResponse(
-                "시원한 청정라거, 테라!"
-        );
+        CopyResponse response = posterService.getCopy(posterId);
+
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 
-    @PostMapping(value = "/save", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
+    @PostMapping(value = "/group/{groupId}/save", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
     @Operation(summary = "포스터 저장", description = "문구를 포함한 포스터 이미지를 저장합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "저장 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<PosterResponse>> createPosterCopy(
+            @Parameter(description = "포스터 그룹 id", required = true)
+            @PathVariable(value = "groupId") Long groupId,
             @Parameter(description = "이미지", required = true)
             @RequestPart("image") MultipartFile image
     ) {
-        PosterResponse response = new PosterResponse(
-                1L,
-                "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
-        );
+        PosterResponse response = posterService.saveImage(groupId, image);
+
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 

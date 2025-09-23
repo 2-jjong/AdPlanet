@@ -2,6 +2,7 @@ package com.ssafy.adplanet.service.poster;
 
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
 import com.ssafy.adplanet.dto.poster.request.ImageJobMessage;
+import com.ssafy.adplanet.dto.poster.response.CopyResponse;
 import com.ssafy.adplanet.dto.poster.response.ImageJobResponse;
 import com.ssafy.adplanet.dto.poster.response.PosterGroupResponse;
 import com.ssafy.adplanet.dto.poster.response.PosterResponse;
@@ -25,4 +26,8 @@ public interface PosterService {
     PosterResponse getPoster(Long posterId);
 
     List<ImageJobResponse> getProgressingJobs(Long groupId);
+
+    CopyResponse getCopy(Long posterId);
+
+    PosterResponse saveImage(Long groupId, MultipartFile image);
 }
