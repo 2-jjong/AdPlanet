@@ -7,6 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,6 +39,41 @@ public class WatermarkServiceImpl implements WatermarkService {
         BufferedImage originalImage = ImageIO.read(imageFile.getInputStream());
         if (originalImage == null) {
             throw new IllegalArgumentException("유효하지 않은 이미지 파일입니다.");
+        }
+
+        log.debug("이미지 로드 완료 - 크기: {}x{}, 타입: {}",
+                originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
+
+        BufferedImage watermarkedImage = insertWatermarkToImage(originalImage, watermarkText);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(watermarkedImage, "png", baos);
+        byte[] result = baos.toByteArray();
+
+        log.debug("워터마크 삽입 완료 - 결과파일크기: {}bytes", result.length);
+        return result;
+    }
+
+    @Override
+    public byte[] insertWatermark(byte[] imageBytes, String creator, String content) throws Exception {
+        if (creator == null || creator.trim().isEmpty()) {
+            throw new IllegalArgumentException("워터마크 제작자 값이 없습니다.");
+        }
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("워터마크 내용이 없습니다.");
+        }
+
+        String watermarkText = "제작자: " + creator.trim() + " 내용: " + content.trim();
+        log.debug("워터마크 삽입 시작 - 제작자: '{}', 내용: '{}', 전체텍스트길이: {}자",
+                creator, content, watermarkText.length());
+
+        if (imageBytes == null || imageBytes.length == 0) {
+            throw new IllegalArgumentException("이미지 데이터가 없습니다.");
+        }
+
+        BufferedImage originalImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
+        if (originalImage == null) {
+            throw new IllegalArgumentException("유효하지 않은 이미지 데이터입니다.");
         }
 
         log.debug("이미지 로드 완료 - 크기: {}x{}, 타입: {}",

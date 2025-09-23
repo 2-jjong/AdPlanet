@@ -7,5 +7,7 @@ public interface WatermarkService {
 
     byte[] insertWatermark(MultipartFile imageFile, String creator, String content) throws Exception;
 
+    byte[] insertWatermark(byte[] imageBytes, String creator, String content) throws Exception;
+
     WatermarkDetectionResponse detectWatermark(MultipartFile imageFile) throws Exception;
 }
