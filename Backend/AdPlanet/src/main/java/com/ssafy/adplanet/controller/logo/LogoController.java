@@ -28,7 +28,6 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -59,7 +58,7 @@ public class LogoController {
             @RequestBody CreateLogoRequest req
     ) {
         Long userId = SecurityUtil.getCurrentUserId();
-        LogoDto dto = logoService.logoCreate(userId, req, style);
+        LogoDto dto = logoService.createLogo(userId, req, style);
         return ResponseEntity.ok(ResponseDto.ok(dto));
     }
 
@@ -79,7 +78,7 @@ public class LogoController {
             List<Long> tagIds
     ) {
         Long userId = SecurityUtil.getCurrentUserId();
-        List<LogoListItem> data = logoService.logoList(userId, tagIds, order);
+        List<LogoListItem> data = logoService.getLogoList(userId, tagIds, order);
         return ResponseEntity.ok(ResponseDto.ok(data));
     }
 
@@ -94,7 +93,7 @@ public class LogoController {
             @PathVariable Long logoId
     ) {
         long userId = SecurityUtil.getCurrentUserId();
-        LogoDetail detail = logoService.logoDetail(userId, logoId);
+        LogoDetail detail = logoService.getLogoDetail(userId, logoId);
         return ResponseEntity.ok(ResponseDto.ok(detail));
     }
 

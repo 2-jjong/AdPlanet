@@ -5,7 +5,6 @@ import com.ssafy.adplanet.dto.poster.request.ImageJobMessage;
 import com.ssafy.adplanet.exception.BusinessException;
 import com.ssafy.adplanet.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
@@ -33,7 +32,7 @@ public class MessagePublisher {
 
         } catch (Exception e) {
             log.error("❌ [MQ-SEND] 메시지 발송 실패: {}", message.jobId(), e);
-            throw new BusinessException(ErrorCode.IMAGE_PROCESSING_FAILED);
+            throw new BusinessException(ErrorCode.POSTER_JOB_QUEUE_FAILED);
         }
     }
 }

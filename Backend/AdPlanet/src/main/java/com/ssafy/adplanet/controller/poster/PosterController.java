@@ -2,27 +2,29 @@ package com.ssafy.adplanet.controller.poster;
 
 import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
-import com.ssafy.adplanet.dto.poster.request.PosterTagRequest;
+import com.ssafy.adplanet.dto.tag.AssignPosterTagsRequest;
 import com.ssafy.adplanet.dto.poster.response.*;
+import com.ssafy.adplanet.dto.tag.CreateTagRequest;
+import com.ssafy.adplanet.dto.tag.TagDto;
 import com.ssafy.adplanet.enums.PosterDownloadFormat;
 import com.ssafy.adplanet.enums.PosterListOrder;
 import com.ssafy.adplanet.enums.PosterStyle;
 import com.ssafy.adplanet.service.poster.PosterService;
+import com.ssafy.adplanet.service.tag.TagService;
 import com.ssafy.adplanet.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.media.Encoding;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,8 +32,6 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -41,10 +41,11 @@ import java.util.List;
 public class PosterController {
 
     private final PosterService posterService;
+    private final TagService tagService;
 
     @PostMapping(consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
     @Operation(summary = "포스터 생성 요청", description = "포스터 생성을 요청합니다.")
-    @RequestBody(content = @Content(
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(
             encoding = @Encoding(name = "request", contentType = MediaType.APPLICATION_JSON_VALUE)))
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "요청 성공"),
@@ -96,18 +97,15 @@ public class PosterController {
     @Operation(summary = "포스터 단건 조회", description = "포스터를 단건 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<PosterResponse>> getPoster(
             @Parameter(description = "포스터 id", required = true)
             @PathVariable("posterId") Long posterId
     ) {
-        PosterResponse poster = new PosterResponse(
-                1L,
-                1L,
-                "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png",
-                "아삭아삭한 배추 이미지, 싱싱한 초록색 활용"
-        );
+        PosterResponse poster = posterService.getPoster(posterId);
+
         return ResponseEntity.ok(ResponseDto.ok(poster));
     }
 
@@ -121,26 +119,26 @@ public class PosterController {
             @Parameter(description = "포스터 id", required = true)
             @PathVariable("posterId") Long posterId
     ) {
-        CopyResponse response = new CopyResponse(
-                "시원한 청정라거, 테라!"
-        );
+        CopyResponse response = posterService.getCopy(posterId);
+
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 
-    @PostMapping(value = "/save", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
+    @PostMapping(value = "/group/{groupId}/save", consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
     @Operation(summary = "포스터 저장", description = "문구를 포함한 포스터 이미지를 저장합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "저장 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<PosterResponse>> createPosterCopy(
+            @Parameter(description = "포스터 그룹 id", required = true)
+            @PathVariable(value = "groupId") Long groupId,
             @Parameter(description = "이미지", required = true)
             @RequestPart("image") MultipartFile image
     ) {
-        PosterResponse response = new PosterResponse(
-                1L,
-                "https://my-bucket.s3.ap-northeast-2.amazonaws.com/images/2025/09/14/sample-image.png"
-        );
+        PosterResponse response = posterService.saveImage(groupId, image);
+
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 
@@ -195,19 +193,11 @@ public class PosterController {
             @Parameter(description = "정렬")
             @RequestParam(value = "order", required = false) PosterListOrder order,
             @Parameter(description = "태그 id")
-            @RequestParam(value = "tagId", required = false) Long tagId
+            @RequestParam(value = "tagIds", required = false) List<Long> tagIds
     ) {
-        List<PosterGroupResponse> list = new ArrayList<>();
-        for (long i = 1; i <= 15; i++) {
-            PosterGroupResponse group = new PosterGroupResponse(
-                    i,
-                    "https://dummyimage.com/600x400/000/fff&text=Poster+" + i,
-                    "싸피컴퍼니 " + i,
-                    "포기는 배추 셀 때나 하는 말" + i,
-                    LocalDateTime.now().minusDays(15 - i) // 생성일 임의로 설정
-            );
-            list.add(group);
-        }
+        Long userId = SecurityUtil.getCurrentUserId();
+
+        List<PosterGroupResponse> list = posterService.getPosterGroup(userId, order, tagIds);
 
         return ResponseEntity.ok(ResponseDto.ok(list));
     }
@@ -216,6 +206,7 @@ public class PosterController {
     @Operation(summary = "특정 포스터 그룹 조회", description = "특정 포스터 그룹을 상세 조회합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<PosterGroupResponse>> getPosterGroupDetail(
@@ -223,25 +214,23 @@ public class PosterController {
             @PathVariable(value = "groupId") Long groupId
     ) {
 
-        List<PosterResponse> history = new ArrayList<>();
-        for (long i = 1; i <= 15; i++) {
-            PosterResponse poster = new PosterResponse(
-                    i,
-                    "https://dummyimage.com/600x400/000/fff&text=Poster+" + i,
-                    "시들시들한, 연두색 배추 이미지"
-            );
-            history.add(poster);
-        }
+        PosterGroupResponse response = posterService.getPosterGroupDetail(groupId);
 
-        PosterGroupResponse response = new PosterGroupResponse(
-                groupId,
-                "https://dummyimage.com/600x400/000/fff&text=Poster+0",
-                "싸피컴퍼니",
-                "포기는 배추 셀 때나 하는 말",
-                "아삭아삭한 배추 이미지, 싱싱한 초록색 활용",
-                LocalDateTime.now(),
-                history
-        );
+        return ResponseEntity.ok(ResponseDto.ok(response));
+    }
+
+    @GetMapping("/group/{groupId}/processing")
+    @Operation(summary = "진행 중인 작업 조회", description = "특정 포스터 그룹 내에 진행 중인 작업을 조회합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<List<ImageJobResponse>>> getProcessingJobs(
+            @Parameter(description = "포스터 그룹 id", required = true)
+            @PathVariable(value = "groupId") Long groupId
+    ) {
+        List<ImageJobResponse> response = posterService.getProgressingJobs(groupId);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
@@ -252,31 +241,48 @@ public class PosterController {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
-    public ResponseEntity<ResponseDto<List<PosterTagResponse>>> getPosterTag(
+    public ResponseEntity<ResponseDto<List<TagDto>>> getPosterTag(
     ) {
+        Long userId = SecurityUtil.getCurrentUserId();
 
-        List<PosterTagResponse> response = new ArrayList<>();
-        for (long i = 1; i <= 15; i++) {
-            PosterTagResponse tag = new PosterTagResponse(
-                    i,
-                    "태그 " + i
-            );
-            response.add(tag);
-        }
+        List<TagDto> response = tagService.getPosterTags(userId);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 
     @PostMapping("/tags")
+    @Operation(summary = "포스터 태그 생성", description = "포스터 태그를 생성합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<TagDto>> getTag(
+            @Parameter(description = "포스터 태그 생성", required = true)
+            @Valid @RequestBody CreateTagRequest request
+    ) {
+
+        Long userId = SecurityUtil.getCurrentUserId();
+
+        TagDto response = tagService.createPosterTag(userId, request.name());
+
+        return ResponseEntity.ok(ResponseDto.ok(response));
+    }
+
+    @PutMapping("/group/{groupId}/tags")
     @Operation(summary = "포스터 태그 지정", description = "포스터 그룹에 대한 태그를 지정합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "지정 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @ApiResponse(responseCode = "500", description = "서버 에러")
     })
     public ResponseEntity<ResponseDto<Void>> createPosterTag(
+            @Parameter(description = "포스터 그룹 id", required = true)
+            @PathVariable Long groupId,
             @Parameter(description = "포스터 태그 지정", required = true)
-            @RequestBody PosterTagRequest request
+            @Valid @RequestBody AssignPosterTagsRequest request
     ) {
+        tagService.setPosterTags(groupId, request.tagIds());
         return ResponseEntity.ok(ResponseDto.ok());
     }
 }

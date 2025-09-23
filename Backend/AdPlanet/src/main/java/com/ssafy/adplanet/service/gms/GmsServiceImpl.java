@@ -23,6 +23,7 @@ import java.time.Duration;
 public class GmsServiceImpl implements GmsService {
 
     private final @Qualifier("gmsWebClient") WebClient gmsWebClient;
+
     private final ObjectMapper om;
 
     @Value("${adplanet.gms.api-key}") private String apiKey;
@@ -35,6 +36,7 @@ public class GmsServiceImpl implements GmsService {
         try {
             ObjectNode body = buildRequestBody(brandName, slogan, imageUrl, true);
 
+            // Bean에 baseUrl이 있으므로 상대 경로만 사용
             String respBody = gmsWebClient.post()
                     .uri("/responses")
                     .headers(h -> h.setBearerAuth(apiKey))
@@ -57,13 +59,16 @@ public class GmsServiceImpl implements GmsService {
                 throw new IllegalStateException("GMS 빈 응답");
             }
 
+            // ----- 응답 파싱 -----
             JsonNode root = om.readTree(respBody);
 
+            // (1) output_text 우선
             String out = root.path("output_text").asText(null);
             if (out != null && !out.isBlank()) {
                 return postProcess(out);
             }
 
+            // (2) output 배열 내부 content에서 text/json/parsed 추출
             JsonNode output = root.path("output");
             if (output.isArray()) {
                 for (JsonNode msg : output) {
@@ -95,6 +100,7 @@ public class GmsServiceImpl implements GmsService {
             if (raw.length() > 2000) raw = raw.substring(0, 2000);
             String sty   = (style == null) ? "-" : style;
 
+            // 1) 요청 바디 구성 (텍스트 출력)
             ObjectNode root = om.createObjectNode();
             root.put("model", "gpt-5-nano");
 
@@ -106,6 +112,7 @@ public class GmsServiceImpl implements GmsService {
             ObjectNode user = input.addObject().put("role", "user");
             ArrayNode content = user.putArray("content");
 
+            // 지시문 (영문화 + 로고용으로 구조화)
             String instruction = """
             You are a professional brand identity prompt engineer for Stable Diffusion.
             Rewrite the user's prompt into a concise, comma-separated KEYWORD list for a MINIMAL, VECTOR LOGO.
@@ -305,6 +312,80 @@ public class GmsServiceImpl implements GmsService {
     private static String trim(String s) {
         if (s == null) return "";
         return s.length() > 512 ? s.substring(0, 512) : s;
+    }
+
+    @Override
+    public String generateCopyByImage(String brandName, String slogan, String imageUrl) {
+        try {
+            ObjectNode root = om.createObjectNode();
+            root.put("model", "gpt-5-nano");
+
+            ArrayNode input = root.putArray("input");
+            ObjectNode user = input.addObject().put("role", "user");
+            ArrayNode content = user.putArray("content");
+
+            content.addObject().put("type", "input_image").put("image_url", imageUrl);
+            content.addObject()
+                    .put("type", "input_text")
+                    .put("text", """
+                당신은 전문 카피라이터입니다.
+                업로드된 포스터 이미지에 들어갈 카피 문구를 만들어주세요.
+                소비자에게 매력적으로 다가갈 수 있는 짧고 굵은 한 줄로 만들어주세요.
+
+                - 브랜드명: %s
+                - 슬로건: %s
+                - 결과는 한국어로, 1문장.
+                """.formatted(orEmptyIfBlank(brandName), orEmptyIfBlank(slogan)));
+
+            String respBody = gmsWebClient.post()
+                    .uri("/responses")
+                    .headers(h -> h.setBearerAuth(apiKey))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .bodyValue(root)
+                    .retrieve()
+                    .onStatus(s -> !s.is2xxSuccessful(), res ->
+                            res.bodyToMono(String.class).defaultIfEmpty("")
+                                    .flatMap(b -> Mono.error(new IllegalStateException(
+                                            "GMS 오류 " + res.statusCode().value() + ": " + trim(b)))))
+                    .bodyToMono(String.class)
+                    .timeout(requestTimeout)
+                    .block();
+
+            if (respBody == null || respBody.isBlank()) {
+                throw new IllegalStateException("GMS 빈 응답(카피)");
+            }
+            log.info("[GMS Response Raw] {}", respBody);
+
+            JsonNode rootNode = om.readTree(respBody);
+            log.info("[GMS Response Output] {}", rootNode.path("output"));
+            String text = rootNode.path("output_text").asText("생성 실패");
+
+            if (!text.equals("생성 실패")) {
+                log.info("[GMS Response Text] {}", text);
+                return text;
+            }
+
+            JsonNode output = rootNode.path("output");
+            if (output.isArray()) {
+                for (JsonNode msg : output) {
+                    JsonNode contents = msg.path("content");
+                    if (!contents.isArray()) continue;
+                    for (JsonNode c : contents) {
+                        text = c.path("text").asText();
+                        if ("output_text".equals(text)) {
+                            log.info("[GMS Response Text] {}", text);
+                            return text;
+                        }
+                    }
+                }
+            }
+
+            throw new BusinessException(ErrorCode.COPY_GENERATION_FAILED);
+
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.COPY_GENERATION_FAILED);
+        }
     }
 
     private static int countWords(String s) {
