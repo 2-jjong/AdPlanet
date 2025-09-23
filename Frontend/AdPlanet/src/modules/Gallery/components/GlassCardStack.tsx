@@ -5,7 +5,7 @@ import { ScrollControls, Environment } from "@react-three/drei";
 import * as THREE from "three/src/Three.js"
 import StackedPlanes from "./StackedPlanes";
 import ImageModal from "./ImageModal";
-import { DEFAULT_IMAGES } from "./ImageLoader.ts";
+import { DEFAULT_IMAGES } from "./imageLoader.ts";
 import { DEFAULT_DEPTH, DEFAULT_GAP, DEFAULT_TILT, OUTPUT_COLORSPACE } from "./options";
 
 export type GalleryProps = {
@@ -26,14 +26,12 @@ export default function GlassCardStack({
   const [modalSrc, setModalSrc] = useState<string | null>(null);
 
   return (
-    // ✅ 배경 컬러 제거(페이지에서만 관리)
+    // 배경 컬러는 페이지에서 관리)
     <div style={{ height, position: "relative" }}>
       <Canvas
-        gl={{ outputColorSpace: OUTPUT_COLORSPACE, alpha: false }} // ← 투명 캔버스
+        gl={{ outputColorSpace: OUTPUT_COLORSPACE, alpha: true, premultipliedAlpha: false }} // ← 투명 캔버스
         onCreated={({ gl }) => { gl.toneMapping = THREE.NoToneMapping; }}
       >
-        {/* ❌ 배경색 지정 삭제: <color attach="background" ... /> */}
-
         <Environment preset="city" />
 
         <Suspense fallback={null}>

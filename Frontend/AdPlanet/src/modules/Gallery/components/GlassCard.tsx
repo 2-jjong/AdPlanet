@@ -10,8 +10,9 @@ import GlassFrame from "./GlassFrame";
 import {
   CARD_W, CARD_H, CARD_D, MAX_ANISOTROPY,
   FADE_RADIUS, MIN_OPACITY,
-  SHOW_FRAME,
+  SHOW_FRAME,SHOW_BACKPLATE
 } from "./options";
+import Backplate from "./Backplate";
 
 type Props = {
   index: number;
@@ -30,7 +31,6 @@ export default function GlassCard({
   const tex = useTexture(src) as THREE.Texture;
 
   // 텍스처 선명도
-  // ✨ 어두워지는 이슈 고정: 셰이더에서 색변환 안 쓰므로 Linear로 취급
   tex.colorSpace = (THREE as any).LinearSRGBColorSpace ?? THREE.SRGBColorSpace;
   tex.generateMipmaps = true;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
@@ -65,31 +65,41 @@ export default function GlassCard({
     const targetRotY = hovered ? rotY + 0.05 : rotY;
     groupRef.current.rotation.y = THREE.MathUtils.damp(groupRef.current.rotation.y, targetRotY, 6, dt);
   });
-
+  
   return (
     <group ref={groupRef} position={[x, 0, z]} rotation={[0, rotY, 0]}>
-      {/* 1) 사진(앞면) — “사진 그 자체” 테두리 블러 */}
+      {/* 0) 백플레이트: 먼저 그림 */}
+      {SHOW_BACKPLATE && (
+        <group position={[0, 0, +CARD_D * 0.505]}>
+          <Backplate renderOrder={0} />
+        </group>
+      )}
+
+      {/* 1) 사진: 나중에 그림(위에 올라오게) */}
       <mesh
         ref={posterMeshRef}
         position={[0, 0, +CARD_D * 0.51]}
-        renderOrder={2}
+        renderOrder={1} // 사진이 항상 백플레이트 위에
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => setHovered(false)}
         onClick={() => onSelect(src)}
       >
         <primitive object={sharedGeom} attach="geometry" />
+        {/* EdgeBlurOverlay는 depthWrite=false라 순서가 중요 */}
         <EdgeBlurOverlay
           map={tex}
-          inner={0.85}                    // 블러 시작 반경
-          outer={1.0}                    // 블러 최대 반경
-          power={1.5}                    // 마스크 곡선
-          opacity={1.0}                  // 스크롤 페이드는 useFrame에서 uOpacity로 갱신
-          aspect={CARD_W / CARD_H}       // 안전한 값(= CARD_W / CARD_H)
+          inner={0.80}  // 테두리 투명 시작
+          outer={1.00}  // 투명 최대
+          power={1.8}   // 곡선
+          opacity={1.5} // 스크롤 페이드는 useFrame에서 uOpacity로 갱신
+          corner={0.025} // 프레임 둥근 정도에 맞추고 싶으면 0~0.3 정도 권장
+          shrink={0.006}   // 테두리 없애기
         />
+
       </mesh>
 
-      {/* 2) [선택] 프레임(뒤) — 프레임은 변경 없음 */}
-      {SHOW_FRAME && <GlassFrame />}
+      {/* 2) 프레임: 더 뒤쪽(선택) */}
+      {SHOW_FRAME && <GlassFrame /* 필요하면 renderOrder={-1} */ />}
     </group>
   );
 }
