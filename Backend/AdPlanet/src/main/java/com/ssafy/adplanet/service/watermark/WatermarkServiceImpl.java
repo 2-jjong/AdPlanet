@@ -129,13 +129,12 @@ public class WatermarkServiceImpl implements WatermarkService {
             String extractedText = detectWatermarkFromImage(image);
 
             if (extractedText == null || extractedText.equals("워터마크를 찾을 수 없습니다.")) {
-                log.debug("워터마크 검출 실패");
-                throw new BusinessException(ErrorCode.WATERMARK_NOT_DETECTED);
+                log.debug("워터마크 검출 실패 - END_MARKER 없음");
+                return new WatermarkDetectionResponse(false, null, null);
             }
 
             WatermarkDetectionResponse result = parseWatermarkText(extractedText);
-            log.debug("워터마크 검출 완료 - 제작자: '{}', 내용: '{}'",
-                    result.creator(), result.content());
+            log.debug("워터마크 검출 완료 - 제작자: '{}', 내용: '{}'", result.creator(), result.content());
 
             return result;
 
@@ -159,11 +158,11 @@ public class WatermarkServiceImpl implements WatermarkService {
             String creator = matcher.group(1).trim();
             String content = matcher.group(2).trim();
             log.debug("워터마크 파싱 성공 - 제작자: '{}', 내용: '{}'", creator, content);
-            return new WatermarkDetectionResponse(creator, content);
+            return new WatermarkDetectionResponse(true, creator, content);
         } else {
-            log.debug("워터마크 파싱 실패 - 형식이 맞지 않음");
-            // 형식이 맞지 않으면 전체 텍스트를 내용으로 처리
-            return new WatermarkDetectionResponse("알 수 없음", watermarkText);
+            log.debug("워터마크 파싱 실패 - 형식이 맞지 않음, 유효한 워터마크가 아님");
+            // 형식이 맞지 않으면 유효한 워터마크가 아니라고 판단
+            return new WatermarkDetectionResponse(false, null, null);
         }
     }
 
