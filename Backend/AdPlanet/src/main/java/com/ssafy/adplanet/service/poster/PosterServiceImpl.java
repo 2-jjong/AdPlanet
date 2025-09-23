@@ -388,7 +388,9 @@ public class PosterServiceImpl implements PosterService {
         return groups.stream()
                 .map(group -> new PosterGroupResponse(
                         group.getId(),
-                        s3Service.toHttpUrl(group.getMainPoster().getImgUrl()),
+                        group.getMainPoster() != null
+                                ? s3Service.toHttpUrl(group.getMainPoster().getImgUrl())
+                                : null,
                         group.getTitle(),
                         group.getContent(),
                         group.getCreatedAt()
@@ -412,7 +414,9 @@ public class PosterServiceImpl implements PosterService {
 
         return new PosterGroupResponse(
                 group.getId(),
-                s3Service.toHttpUrl(group.getMainPoster().getImgUrl()),
+                group.getMainPoster() != null
+                        ? s3Service.toHttpUrl(group.getMainPoster().getImgUrl())
+                        : null,
                 group.getTitle(),
                 group.getContent(),
                 group.getMainPoster() != null ? group.getMainPoster().getPrompt() : null,
