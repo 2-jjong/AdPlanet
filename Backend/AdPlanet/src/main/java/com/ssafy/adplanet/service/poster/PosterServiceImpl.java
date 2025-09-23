@@ -440,7 +440,7 @@ public class PosterServiceImpl implements PosterService {
         posterGroupRepository.findByIdWithMainPosterAndTags(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
 
-        return imageJobRepository.findProgressingJobsByGroupId(groupId).stream()
+        return imageJobRepository.findByPosterGroupIdAndStatus(groupId, JobStatus.PROCESSING).stream()
                 .map(job -> new ImageJobResponse(
                         job.getId(),
                         job.getStatus(),
