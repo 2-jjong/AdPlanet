@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ssafy.adplanet.exception.BusinessException;
+import com.ssafy.adplanet.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -14,7 +16,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.Iterator;
 
 @Slf4j
 @Service
@@ -348,10 +349,10 @@ public class GmsServiceImpl implements GmsService {
                 }
             }
 
-            return null;
+            throw new BusinessException(ErrorCode.COPY_GENERATION_FAILED);
 
         } catch (Exception e) {
-            throw new IllegalStateException("카피 문구 생성 실패: " + e.getMessage(), e);
+            throw new BusinessException(ErrorCode.COPY_GENERATION_FAILED);
         }
     }
 }

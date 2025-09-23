@@ -139,7 +139,7 @@ public class PosterServiceImpl implements PosterService {
         try (InputStream inputStream = multipartFile.getInputStream()) {
             s3Service.upload(key, inputStream, "image/png");
         } catch (IOException e) {
-            throw new BusinessException(ErrorCode.IMAGE_UPLOAD_FAILED);
+            throw new BusinessException(ErrorCode.POSTER_IMAGE_UPLOAD_FAILED);
         }
 
         return key;
@@ -336,7 +336,7 @@ public class PosterServiceImpl implements PosterService {
 
         // 1. Job DB 조회
         ImageJob job = imageJobRepository.findById(jobId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.JOB_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ErrorCode.IMAGE_JOB_NOT_FOUND));
 
         // 2. 상태에 따른 분기 처리
         return switch (job.getStatus()) {
