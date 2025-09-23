@@ -15,7 +15,7 @@ import AdPlanetLoaderOverlay from "../components/AdPlanetLoaderOverlay";
 import GenerateButton from "../components/GenerateButton";
 import TiltCard from "../components/TiltCard";
 import StylePreviewOverlay from "../components/StylePreviewOverlay";
-import Loading from "../../../components/UI/Loading/loading";
+import Loading from "../../../components/UI/Loading/Loading";
 
 const recommends: { src: string; label: string; value: LogoStyle }[] = [
   { src: LogoClean, label: "Simple", value: LogoStyle.SIMPLE },

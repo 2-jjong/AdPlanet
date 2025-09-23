@@ -27,8 +27,8 @@ const ShootingStar: React.FC<ShootingStarProps> = ({ startX = 10, startY = 5, st
 
   return (
     <mesh ref={starRef} position={[startX, startY, startZ]}>
-      <sphereGeometry args={[0.05, 8, 8]} /> {/* 작고 동그란 별 */}
-      <meshBasicMaterial color='yellow' />
+      <sphereGeometry args={[0.05, 8, 8]} />
+      <meshBasicMaterial color='white' />
     </mesh>
   );
 };
