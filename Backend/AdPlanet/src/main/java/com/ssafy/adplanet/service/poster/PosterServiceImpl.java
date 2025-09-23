@@ -40,6 +40,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.UUID;
 import java.util.List;
@@ -65,7 +66,7 @@ public class PosterServiceImpl implements PosterService {
     public ImageJobResponse create(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile sketchImage, MultipartFile productImage, MultipartFile modelImage, MultipartFile skeletonImage, MultipartFile previousImage) {
 
         String jobId = UUID.randomUUID().toString();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
 
         // 1. PosterGroup 생성 or 조회
         User userRef = userRepository.getReferenceById(userId);
@@ -80,7 +81,7 @@ public class PosterServiceImpl implements PosterService {
                     .user(userRef)
                     .title(request.title())
                     .content(request.content())
-                    .createdAt(LocalDateTime.now())
+                    .createdAt(now)
                     .build();
             posterGroupRepository.saveAndFlush(posterGroup);
             log.info("[POSTER-GEN] 포스터 그룹 생성: {}", posterGroup.getId());
@@ -181,7 +182,7 @@ public class PosterServiceImpl implements PosterService {
             imageJob.setStatus(JobStatus.FAILED);
             log.info("❌ [{}] 작업 실패: {}", imageJob.getStatus().name(), jobId);
         }
-        imageJob.setUpdatedAt(LocalDateTime.now());
+        imageJob.setUpdatedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")));
         imageJobRepository.save(imageJob);
     }
 
@@ -277,7 +278,7 @@ public class PosterServiceImpl implements PosterService {
                 .posterGroup(posterGroup)
                 .prompt(message.prompt())
                 .imgUrl("s3:pending")
-                .createdAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
                 .build();
         posterRepository.saveAndFlush(poster);
         log.info("[POSTER-GEN] 포스터 저장: {}", poster.getId());
@@ -478,7 +479,7 @@ public class PosterServiceImpl implements PosterService {
                 .posterGroup(posterGroup)
                 .prompt("")
                 .imgUrl("s3:pending")
-                .createdAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
                 .build();
         posterRepository.saveAndFlush(poster);
 
