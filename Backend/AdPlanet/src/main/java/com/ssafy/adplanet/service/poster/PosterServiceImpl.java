@@ -3,12 +3,11 @@ package com.ssafy.adplanet.service.poster;
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
 import com.ssafy.adplanet.dto.poster.request.ImageJobMessage;
 import com.ssafy.adplanet.dto.poster.response.ImageJobResponse;
+import com.ssafy.adplanet.dto.poster.response.PosterGroupResponse;
 import com.ssafy.adplanet.dto.poster.response.PosterResponse;
-import com.ssafy.adplanet.entity.ImageJob;
-import com.ssafy.adplanet.entity.Poster;
-import com.ssafy.adplanet.entity.PosterGroup;
-import com.ssafy.adplanet.entity.User;
+import com.ssafy.adplanet.entity.*;
 import com.ssafy.adplanet.enums.JobStatus;
+import com.ssafy.adplanet.enums.PosterListOrder;
 import com.ssafy.adplanet.enums.PosterStyle;
 import com.ssafy.adplanet.exception.BusinessException;
 import com.ssafy.adplanet.exception.ErrorCode;
@@ -22,11 +21,11 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -40,7 +39,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.UUID;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -65,10 +66,23 @@ public class PosterServiceImpl implements PosterService {
         String jobId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
 
-        // 1. 시나리오 별로 요청값 검증
+        // 1. PosterGroup 생성 or 조회
+        User userRef = userRepository.getReferenceById(userId);
+        PosterGroup posterGroup;
+
         if (request.groupId() != null) {
-            posterGroupRepository.findById(request.groupId())
+            posterGroup = posterGroupRepository.findById(request.groupId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
+            log.info("[POSTER-GEN] 포스터 그룹 조회: {}", request.groupId());
+        } else {
+            posterGroup = PosterGroup.builder()
+                    .user(userRef)
+                    .title(request.title())
+                    .content(request.content())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            posterGroupRepository.saveAndFlush(posterGroup);
+            log.info("[POSTER-GEN] 포스터 그룹 생성: {}", posterGroup.getId());
         }
 
         // 2. 이미지 S3 저장 & Key 발급
@@ -84,6 +98,7 @@ public class PosterServiceImpl implements PosterService {
                 .status(JobStatus.QUEUED)
                 .createdAt(now)
                 .updatedAt(now)
+                .posterGroup(posterGroup)
                 .build();
         imageJobRepository.save(job);
 
@@ -94,7 +109,7 @@ public class PosterServiceImpl implements PosterService {
                 JobStatus.QUEUED,
                 now,
                 now,
-                request.groupId(),
+                posterGroup.getId(),
                 request.title(),
                 request.content(),
                 request.prompt(),
@@ -252,24 +267,9 @@ public class PosterServiceImpl implements PosterService {
     protected void saveGenerationResult(ImageJobMessage message, ImageJob imageJob) {
         String jobId = message.jobId();
 
-        // PosterGroup 생성 or 조회
-        User userRef = userRepository.getReferenceById(message.userId());
-        PosterGroup posterGroup;
-
-        if (message.groupId() != null) {
-            posterGroup = posterGroupRepository.findById(message.groupId())
-                    .orElseThrow(() -> new RuntimeException("PosterGroup not found: " + jobId));
-            log.info("[POSTER-GEN] 포스터 그룹 조회: {}", message.groupId());
-        } else {
-            posterGroup = PosterGroup.builder()
-                    .user(userRef)
-                    .title(message.title())
-                    .content(message.content())
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            posterGroupRepository.saveAndFlush(posterGroup);
-            log.info("[POSTER-GEN] 포스터 그룹 생성: {}", posterGroup.getId());
-        }
+        // PosterGroup 조회
+        PosterGroup posterGroup = posterGroupRepository.findById(message.groupId())
+                .orElseThrow(() -> new RuntimeException("PosterGroup not found: " + jobId));
 
         // Poster 엔티티 생성
         Poster poster = Poster.builder()
@@ -352,7 +352,7 @@ public class PosterServiceImpl implements PosterService {
                 PosterResponse posterResponse = new PosterResponse(
                         poster.getId(),
                         poster.getPosterGroup().getId(),
-                        poster.getImgUrl()
+                        s3Service.toHttpUrl(poster.getImgUrl())
                 );
                 yield new ImageJobResponse(
                         job.getId(),
@@ -362,5 +362,90 @@ public class PosterServiceImpl implements PosterService {
                 );
             }
         };
+    }
+
+    @Override
+    public List<PosterGroupResponse> getPosterGroup(Long userId, PosterListOrder order, List<Long> tagIds) {
+
+        Sort sort = (order == null ? PosterListOrder.NEWEST : order).toSort();
+
+        List<PosterGroup> groups;
+
+        if (tagIds == null || tagIds.isEmpty()) {
+            groups = posterGroupRepository.findByUser_UserId(userId, sort);
+        } else {
+            List<Long> ids = posterGroupRepository.findIdsByUserIdAndAllTags(userId, tagIds, tagIds.size());
+            if (ids.isEmpty()) return List.of();
+
+            groups = posterGroupRepository.findAllWithTagsByIdIn(ids);
+
+            Comparator<PosterGroup> comparator = Comparator.comparing(PosterGroup::getCreatedAt);
+            if (order == null || order == PosterListOrder.NEWEST) comparator = comparator.reversed();
+            groups.sort(comparator);
+        }
+
+        return groups.stream()
+                .map(group -> new PosterGroupResponse(
+                        group.getId(),
+                        s3Service.toHttpUrl(group.getMainPoster().getImgUrl()),
+                        group.getTitle(),
+                        group.getContent(),
+                        group.getCreatedAt()
+                ))
+                .toList();
+    }
+
+    @Override
+    public PosterGroupResponse getPosterGroupDetail(Long groupId) {
+
+        PosterGroup group = posterGroupRepository.findByIdWithMainPosterAndTags(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
+
+        List<PosterResponse> history = posterRepository.findByPosterGroup_Id(groupId).stream()
+                .map(poster -> new PosterResponse(
+                        poster.getId(),
+                        s3Service.toHttpUrl(poster.getImgUrl()),
+                        poster.getPrompt()
+                ))
+                .toList();
+
+        return new PosterGroupResponse(
+                group.getId(),
+                s3Service.toHttpUrl(group.getMainPoster().getImgUrl()),
+                group.getTitle(),
+                group.getContent(),
+                group.getMainPoster() != null ? group.getMainPoster().getPrompt() : null,
+                group.getCreatedAt(),
+                history
+        );
+    }
+
+    @Override
+    public PosterResponse getPoster(Long posterId) {
+
+        Poster poster = posterRepository.findById(posterId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
+
+        return new PosterResponse(
+                poster.getId(),
+                poster.getPosterGroup().getId(),
+                s3Service.toHttpUrl(poster.getImgUrl()),
+                poster.getPrompt()
+        );
+    }
+
+    @Override
+    public List<ImageJobResponse> getProgressingJobs(Long groupId) {
+
+        posterGroupRepository.findByIdWithMainPosterAndTags(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
+
+        return imageJobRepository.findByPosterGroupIdAndStatus(groupId, JobStatus.PROCESSING).stream()
+                .map(job -> new ImageJobResponse(
+                        job.getId(),
+                        job.getStatus(),
+                        job.getCreatedAt()
+                ))
+                .toList();
     }
 }
