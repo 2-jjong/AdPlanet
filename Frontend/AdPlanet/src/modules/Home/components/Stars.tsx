@@ -2,7 +2,11 @@ import { useMemo } from "react";
 import * as THREE from "three/src/Three.js"
 import { useFrame } from "@react-three/fiber";
 
-function Stars() {
+interface StarsProps {
+  size?: number; // 기본값을 줄 수 있도록 optional
+}
+
+const Stars: React.FC<StarsProps> = ({ size }) => {
   const starGeo = useMemo(() => {
     const geometry = new THREE.BufferGeometry();
     const vertices = [];
@@ -18,17 +22,17 @@ function Stars() {
 
   const starMat = new THREE.PointsMaterial({
     color: 0xffffff,
-    size: 100,
+    size: size,
     transparent: true,
   });
 
   const stars = new THREE.Points(starGeo, starMat);
 
   useFrame(() => {
-    stars.rotation.y += 0.0005; // 천천히 회전하는 효과
+    stars.rotation.y += 0.0005;
   });
 
   return <primitive object={stars} />;
-}
+};
 
 export default Stars;
