@@ -202,7 +202,7 @@ public class PosterServiceImpl implements PosterService {
 
                 // Python 서버 호출 시뮬레이션 (실제로는 restTemplate.postForEntity 사용)
                 log.info("[POSTER-GEN] 이미지 생성 대기 중: {}", jobId);
-                Thread.sleep(30000);
+                Thread.sleep(10000);
 
                 // 성공 케이스
                 if (true) { // 실제로는 response.getStatusCode().is2xxSuccessful()
