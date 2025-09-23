@@ -102,7 +102,7 @@ const GroupList: React.FC<GroupListProps> = ({
                   <button
                     key={g.posterGroupId}
                     onClick={() => onSelectGroup(g.posterGroupId)}
-                    className={`w/full p-4 rounded-xl text-left transition-all duration-200 group ${
+                    className={`w-full block p-3 rounded-xl text-left transition-all duration-200 group ${
                       currentGroupId === g.posterGroupId
                         ? "bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 shadow-lg shadow-primary/10"
                         : "hover:bg-white/5 hover:border hover:border-white/10"

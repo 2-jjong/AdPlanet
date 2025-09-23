@@ -5,20 +5,38 @@ interface PosterCanvasViewProps {
   onOpenPreview: () => void;
   children?: React.ReactNode;
   isGenerating?: boolean;
+  containerRef?: React.Ref<HTMLDivElement>;
 }
 
-const PosterCanvasView: React.FC<PosterCanvasViewProps> = ({ generatedPoster, onOpenPreview, children, isGenerating }) => {
+const PosterCanvasView: React.FC<PosterCanvasViewProps> = ({ generatedPoster, onOpenPreview, children, isGenerating, containerRef }) => {
+  const [aspect, setAspect] = React.useState<number>(1);
+
+  React.useEffect(() => {
+    if (!generatedPoster) return;
+    const img = new Image();
+    img.onload = () => {
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      if (w > 0 && h > 0) setAspect(w / h);
+    };
+    img.src = generatedPoster;
+  }, [generatedPoster]);
   return (
     <div
-      className='relative w-full aspect-square max-w-[400px] max-h-[50vh] rounded-3xl border-2 border-dashed border-primary/30 hover:border-primary/50 shadow-2xl shadow-primary/5 bg-gradient-to-br from-background to-background/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 group cursor-pointer'
+      ref={containerRef as any}
+      className='relative w-full max-w-[500px] rounded-3xl border-2 border-dashed border-primary/30 hover:border-primary/50 shadow-2xl shadow-primary/5 bg-gradient-to-br from-background to-background/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 group cursor-pointer'
+      style={{ aspectRatio: aspect || 1, maxHeight: '60vh' }}
       onClick={(e) => {
         e.stopPropagation();
+        // 텍스트 오버레이 클릭/드래그 중에는 프리뷰를 열지 않음
+        const target = e.target as HTMLElement | null;
+        if (target && target.closest('[data-overlay="text"]')) return;
         if (generatedPoster) onOpenPreview();
       }}
     >
       {generatedPoster ? (
         <div className='relative w-full h-full'>
-          <img src={generatedPoster} alt='Generated Poster' className='w-full h-full object-cover rounded-2xl' />
+          <img src={generatedPoster} alt='Generated Poster' className='w-full h-full object-contain rounded-2xl' />
           {children}
           {isGenerating && (
             <div className='absolute inset-0 bg-black/40 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center gap-3'>

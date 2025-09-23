@@ -1,7 +1,7 @@
 import React from "react";
 import SkeletonCanvas, { type SkeletonCanvasHandle } from "./SkeletonCanvas";
 import TextEditor from "../../../components/UI/Text/TextEditor";
-import type { SkeletonPose, TextOverlay, UploadedImage } from "../../../types/poster";
+import type { SkeletonPose, TextOverlay } from "../../../types/poster";
 
 interface PosterSidebarProps {
   step: 'upload' | 'generate' | 'edit' | 'text-edit' | 'complete';
@@ -12,6 +12,9 @@ interface PosterSidebarProps {
   onPoseChange: (pose: SkeletonPose) => void;
   onBackToEdit: () => void;
   onComplete: () => void;
+  onSave?: () => void;
+  onGenerateCopy?: () => void;
+  isGeneratingCopy?: boolean;
   onAddText: (t: TextOverlay) => void;
   onUpdateText: (id: string, u: Partial<TextOverlay>) => void;
   onRemoveText: (id: string) => void;
@@ -22,12 +25,13 @@ interface PosterSidebarProps {
 const PosterSidebar: React.FC<PosterSidebarProps> = ({
   step,
   currentPose,
-  isGenerating,
   textOverlays,
   selectedTextId,
   onPoseChange,
   onBackToEdit,
-  onComplete,
+  onSave,
+  onGenerateCopy,
+  isGeneratingCopy,
   onAddText,
   onUpdateText,
   onRemoveText,
@@ -58,17 +62,40 @@ const PosterSidebar: React.FC<PosterSidebarProps> = ({
           </div>
         </section>
         <div className='flex flex-col gap-3 pt-4 border-t border-white/10'>
+          <button
+            onClick={onGenerateCopy}
+            disabled={!!isGeneratingCopy}
+            className={`w-full flex items-center justify-center gap-2 border py-3 rounded-xl font-medium transition-all ${
+              isGeneratingCopy
+                ? 'border-cyan-400/20 text-cyan-200/60 cursor-wait'
+                : 'border-cyan-400/40 text-cyan-300 hover:bg-cyan-500/10 hover:border-cyan-400/60'
+            }`}
+          >
+            {isGeneratingCopy ? (
+              <>
+                <div className='w-4 h-4 border-2 border-cyan-300 border-t-transparent rounded-full animate-spin' />
+                생성 중...
+              </>
+            ) : (
+              <>
+                <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 6v6m0 0v6m0-6h6m-6 0H6' />
+                </svg>
+                문구 생성하기
+              </>
+            )}
+          </button>
           <button onClick={onBackToEdit} className='w-full flex items-center justify-center gap-2 border border-primary/30 text-primary py-3 rounded-xl font-medium transition-all hover:bg-primary/10 hover:border-primary/50'>
             <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
               <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 19l-7-7 7-7' />
             </svg>
             포즈 편집으로 돌아가기
           </button>
-          <button onClick={onComplete} className='w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary/80 text-background py-3 rounded-xl font-medium transition-all hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl'>
+          <button onClick={onSave} className='w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary/80 text-background py-3 rounded-xl font-medium transition-all hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl'>
             <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
               <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' />
             </svg>
-            완료하고 홈으로
+            저장
           </button>
         </div>
       </div>

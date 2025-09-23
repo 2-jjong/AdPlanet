@@ -20,6 +20,15 @@ const TextEditor: React.FC<TextEditorProps> = ({
 }) => {
   const [newText, setNewText] = useState("");
 
+  const fontOptions: Array<{ label: string; value: string }> = [
+    { label: "서비스 기본 (The Jamsil)", value: "The Jamsil 5 Bold" },
+    { label: "Pretendard", value: "Pretendard, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple SD Gothic Neo, Noto Sans KR, Malgun Gothic, sans-serif" },
+    { label: "Noto Sans KR", value: '"Noto Sans KR", sans-serif' },
+    { label: "Nanum Myeongjo", value: '"Nanum Myeongjo", serif' },
+    { label: "Arial", value: "Arial, Helvetica, sans-serif" },
+    { label: "Times New Roman", value: '"Times New Roman", Times, serif' },
+  ];
+
   const handleAddText = useCallback(() => {
     if (!newText.trim()) return;
 
@@ -182,6 +191,22 @@ const TextEditor: React.FC<TextEditorProps> = ({
                 굵게
               </button>
             </div>
+          </div>
+
+          {/* 글꼴 선택 */}
+          <div>
+            <label className='block text-xs text-text-color/80 mb-1'>글꼴</label>
+            <select
+              value={selectedText.fontFamily}
+              onChange={(e) => onUpdateText(selectedText.id, { fontFamily: e.target.value })}
+              className='w-full px-2 py-1 bg-transparent border border-primary/40 rounded text-xs text-text-color focus:border-primary focus:outline-none'
+            >
+              {fontOptions.map((opt) => (
+                <option key={opt.label} value={opt.value} className='bg-background'>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       )}

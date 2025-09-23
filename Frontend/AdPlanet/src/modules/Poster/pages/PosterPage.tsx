@@ -15,9 +15,13 @@ import type { SkeletonCanvasHandle } from "../components/SkeletonCanvas";
 import type { UploadedImage, PosterGenerationState, SkeletonPose, TextOverlay, GenerationRecord } from "../../../types/poster";
 import { PATHS } from "../../../constants/paths";
 import { useCreatePosterMutation } from "../hooks/usePosterMutations";
+import type { UiPosterStyle } from "../hooks/usePosterMutations";
 import { usePosterGroups, usePosterGroupDetail, usePosterJob, posterKeys } from "../hooks/usePosterQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import { defaultSkeletonPose } from "../components/defaultPose";
+import TagDialog from "../components/TagDialog";
+import { generatePosterCopy } from "../../../services/posterService";
+import { composeAndUploadPoster } from "../utils/composeAndUploadPoster";
 
 const PosterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -38,11 +42,38 @@ const PosterPage: React.FC = () => {
   const [productImage, setProductImage] = useState<UploadedImage | null>(null);
   const [sketchImage, setSketchImage] = useState<UploadedImage | null>(null);
   const [isStyleDialogOpen, setIsStyleDialogOpen] = useState<boolean>(true);
+  const [uiStyle, setUiStyle] = useState<UiPosterStyle>(undefined);
   const [selectedTextId, setSelectedTextId] = useState<string | undefined>();
   const [isFileAccordionOpen, setIsFileAccordionOpen] = useState(false);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const createPosterMutation = useCreatePosterMutation();
   const skeletonCanvasRef = React.useRef<SkeletonCanvasHandle | null>(null);
+  const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
+  const posterContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const [isGeneratingCopy, setIsGeneratingCopy] = useState(false);
+
+  // 합성/업로드 호출용 래퍼
+  const doComposeAndUpload = useCallback(async (groupId: number, posterId: number) => {
+    const hostOuter = posterContainerRef.current;
+    const imgEl = hostOuter ? (hostOuter.querySelector('img') as HTMLImageElement | null) : null;
+    const imgRect = imgEl?.getBoundingClientRect();
+    const effectiveWidth = imgRect?.width || hostOuter?.clientWidth || 500;
+    const effectiveHeight = imgRect?.height || hostOuter?.clientHeight || 500;
+    const hostInner = posterContainerRef.current;
+    const overlaysWithComputed = state.textOverlays.map((t) => {
+      let fontPx = t.fontSize;
+      if (hostInner) {
+        const el = hostInner.querySelector(`[data-overlay="text"][data-id="${t.id}"]`) as HTMLElement | null;
+        if (el) {
+          const size = window.getComputedStyle(el).fontSize;
+          const parsed = parseFloat(size || '');
+          if (!Number.isNaN(parsed) && parsed > 0) fontPx = parsed;
+        }
+      }
+      return { ...t, fontSize: fontPx };
+    });
+    await composeAndUploadPoster({ groupId, posterId, overlays: overlaysWithComputed, effectiveCssImageWidthPx: effectiveWidth, effectiveCssImageHeightPx: effectiveHeight });
+  }, [posterContainerRef, state.textOverlays]);
 
   // 그룹 목록 사이드바 상태
   const [isGroupListOpen, setIsGroupListOpen] = useState(false);
@@ -75,8 +106,7 @@ const PosterPage: React.FC = () => {
   const [selectedRecordId, setSelectedRecordId] = useState<string | undefined>();
   const [currentGroupId, setCurrentGroupId] = useState<number | undefined>(undefined);
   const [currentJobId, setCurrentJobId] = useState<string | undefined>(undefined);
-  // 포즈 조정 후 완료 시 문구 추가 화면으로 이동할지 여부
-  const goToTextAfterGenerationRef = React.useRef<boolean>(false);
+  const [currentPosterId, setCurrentPosterId] = useState<number | undefined>(undefined);
 
   // 생성 히스토리 (그룹 선택 시 서버 데이터로 갱신)
   const [generationRecords, setGenerationRecords] = useState<GenerationRecord[]>([]);
@@ -173,21 +203,14 @@ const PosterPage: React.FC = () => {
         }
       }
 
-      // 이번 요청이 포즈 조정 흐름인지 여부: 스켈레톤 또는 previous 이미지 첨부 여부로 판단
-      const shouldGoToTextEdit = Boolean(skeletonFile || previousFile);
-      goToTextAfterGenerationRef.current = shouldGoToTextEdit;
-      
-      if ((import.meta as any)?.env?.DEV) {
-        // eslint-disable-next-line no-console
-        console.log('[handleGenerate] shouldGoToTextEdit:', shouldGoToTextEdit, { skeletonFile: !!skeletonFile, previousFile: !!previousFile });
-      }
+      console.log('[handleGenerate] currentStep before request:', state.step);
 
       const res = await createPosterMutation.mutateAsync({
         groupId: currentGroupId, // 없으면 생략되어 서버가 새 그룹을 생성
         title: state.title || 'Untitled',
         content: state.content || undefined,
         prompt: state.prompt,
-        style: undefined, // StyleSelectionDialog에서 선택 시 연동
+        style: uiStyle, // 스타일을 쿼리 파라미터로 전달
         images: {
           person: personImage?.file ?? null,
           product: productImage?.file ?? null,
@@ -226,8 +249,8 @@ const PosterPage: React.FC = () => {
     currentGroupId,
   ]);
 
-  // 10초 간격으로 생성 작업 상태 폴링
-  const jobQuery = usePosterJob(currentJobId as string, { enabled: !!currentJobId, interval: 10000 });
+  // 3초 간격으로 생성 작업 상태 폴링
+  const jobQuery = usePosterJob(currentJobId as string, { enabled: !!currentJobId, interval: 3000 });
 
   React.useEffect(() => {
     if (!currentJobId) return;
@@ -237,11 +260,12 @@ const PosterPage: React.FC = () => {
     if (status === 'COMPLETED' && job?.result) {
       const finalUrl = job.result.imgUrl;
       const finalGroupId = job.result.groupId;
+      const finalPosterId = job.result.posterId;
       setState((prev) => {
-        const nextStep = goToTextAfterGenerationRef.current ? 'text-edit' : 'edit';
+        const nextStep = prev.step === 'edit' ? 'text-edit' : 'edit';
         if ((import.meta as any)?.env?.DEV) {
           // eslint-disable-next-line no-console
-          console.log('[jobComplete] Transitioning to step:', nextStep, 'flag was:', goToTextAfterGenerationRef.current);
+          console.log('[jobComplete] Transitioning to step:', nextStep);
         }
         return {
           ...prev,
@@ -251,10 +275,9 @@ const PosterPage: React.FC = () => {
           isGenerating: false,
         };
       });
-      // 한 번 사용 후 초기화
-      goToTextAfterGenerationRef.current = false;
       if (typeof finalGroupId === 'number' && Number.isFinite(finalGroupId)) {
         setCurrentGroupId(finalGroupId);
+        if (typeof finalPosterId === 'number') setCurrentPosterId(finalPosterId);
         // 그룹/히스토리 데이터 동기화
         queryClient.invalidateQueries({ queryKey: posterKeys.groups() });
         queryClient.invalidateQueries({ queryKey: posterKeys.groupDetail(finalGroupId) });
@@ -294,6 +317,22 @@ const PosterPage: React.FC = () => {
   const handleComplete = useCallback(() => {
     navigate(PATHS.HOME);
   }, [navigate]);
+
+  // (보류 중) 텍스트 합성 로직은 서버 프록시/합성 채택 시 재사용 예정
+
+  // 저장: 서버에서 바이너리 이미지를 가져와(동일 출처) 로컬 합성 후 업로드
+  const handleSave = useCallback(async () => {
+    if (!currentGroupId || !currentPosterId) {
+      setIsTagDialogOpen(true);
+      return;
+    }
+    try {
+      await doComposeAndUpload(currentGroupId, currentPosterId);
+      setIsTagDialogOpen(true);
+    } catch (e) {
+      setIsTagDialogOpen(true);
+    }
+  }, [currentGroupId, currentPosterId, doComposeAndUpload]);
 
   // 텍스트 관련 핸들러들
   const handleAddText = useCallback((textOverlay: TextOverlay) => {
@@ -379,25 +418,21 @@ const PosterPage: React.FC = () => {
     // 최신 이미지로 캔버스 업데이트: history 마지막
     const last = historyItems.length > 0 ? historyItems[historyItems.length - 1] : undefined;
     setState((prev) => {
-      // 그룹 동기화 시 text-edit 상태는 절대 덮어쓰지 않음
-      const shouldKeepTextEdit = prev.step === 'text-edit';
-      if ((import.meta as any)?.env?.DEV && shouldKeepTextEdit) {
-        // eslint-disable-next-line no-console
-        console.log('[groupSync] Preserving text-edit step');
-      }
+      // 그룹 동기화 시 초기 진입(upload)일 때만 'edit'로 전환하고 현재 단계를 보존
+      const shouldInitializeToEdit = prev.step === 'upload';
+      const nextStep = shouldInitializeToEdit ? 'edit' : prev.step;
+      // eslint-disable-next-line no-console
+      console.log('[groupSync] step preserved:', prev.step, '->', nextStep);
+
       return {
         ...prev,
         generatedPoster: last?.imgUrl ?? prev.generatedPoster,
-        step: shouldKeepTextEdit ? 'text-edit' : 'edit',
-        currentPose: shouldKeepTextEdit ? null : (prev.currentPose ?? defaultSkeletonPose),
+        step: nextStep,
+        currentPose: nextStep === 'text-edit' ? null : (prev.currentPose ?? defaultSkeletonPose),
       };
     });
     setGenerationRecords(mapped);
     setSelectedRecordId(undefined);
-    // 히스토리는 로컬 상태가 아니라 props로 넘기므로 여기선 필요 시 확장 가능
-    // 현재 컴포넌트의 generationRecords는 로컬 상태이므로 동기화
-    // 간단히 replace (최초 로드/그룹 변경 시 갱신)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupDetailQuery.data]);
 
   // 히스토리 선택에 따라 캔버스 이미지 동기화 (선택 없으면 마지막 항목)
@@ -423,7 +458,8 @@ const PosterPage: React.FC = () => {
     <div className='w-full h-screen bg-background overflow-hidden flex'>
       <StyleSelectionDialog
         isOpen={isStyleDialogOpen}
-        onStyleSelect={() => {
+        onStyleSelect={(styleId) => {
+          setUiStyle(styleId as UiPosterStyle);
           setIsStyleDialogOpen(false);
         }}
         onClose={() => setIsStyleDialogOpen(false)}
@@ -469,12 +505,14 @@ const PosterPage: React.FC = () => {
           >
             {/* 가운데: Canvas + 프롬프트 */}
             <main className='relative flex flex-col items-center w-full max-w-[500px] mx-auto flex-1 min-h-0'>
-              <PosterCanvasView generatedPoster={state.generatedPoster} onOpenPreview={() => setIsImagePreviewOpen(true)} isGenerating={state.isGenerating}>
+              <PosterCanvasView generatedPoster={state.generatedPoster} onOpenPreview={() => setIsImagePreviewOpen(true)} isGenerating={state.isGenerating} containerRef={posterContainerRef}>
                 {/* 텍스트 오버레이들 */}
                 {state.textOverlays.map((text) => (
                   <div
                     key={text.id}
                     className={`absolute cursor-move select-none ${selectedTextId === text.id ? "ring-2 ring-primary" : ""}`}
+                    data-overlay='text'
+                    data-id={text.id}
                     style={{
                       left: `${text.x}%`,
                       top: `${text.y}%`,
@@ -485,16 +523,29 @@ const PosterPage: React.FC = () => {
                       transform: "translate(-50%, -50%)",
                       textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
                     }}
-                    onClick={() => setSelectedTextId(selectedTextId === text.id ? undefined : text.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedTextId(selectedTextId === text.id ? undefined : text.id);
+                    }}
                     onMouseDown={(e) => {
-                      const rect = e.currentTarget.parentElement!.getBoundingClientRect();
+                      e.stopPropagation();
+                      const host = posterContainerRef.current ?? e.currentTarget.parentElement!;
+                      const rect = host.getBoundingClientRect();
+                      // 이미지가 object-contain이므로 실제 표시 영역의 padding을 반영
+                      const imgEl = host.querySelector('img');
+                      let effectiveWidth = rect.width, effectiveHeight = rect.height;
+                      if (imgEl) {
+                        const imgRect = (imgEl as HTMLElement).getBoundingClientRect();
+                        effectiveWidth = imgRect.width;
+                        effectiveHeight = imgRect.height;
+                      }
                       const startX = e.clientX;
                       const startY = e.clientY;
                       const startLeft = text.x;
                       const startTop = text.y;
                       const handleMouseMove = (e: MouseEvent) => {
-                        const deltaX = ((e.clientX - startX) / rect.width) * 100;
-                        const deltaY = ((e.clientY - startY) / rect.height) * 100;
+                        const deltaX = ((e.clientX - startX) / effectiveWidth) * 100;
+                        const deltaY = ((e.clientY - startY) / effectiveHeight) * 100;
                         const newX = Math.max(0, Math.min(100, startLeft + deltaX));
                         const newY = Math.max(0, Math.min(100, startTop + deltaY));
                         handleTextPositionChange(text.id, newX, newY);
@@ -536,8 +587,35 @@ const PosterPage: React.FC = () => {
               textOverlays={state.textOverlays}
               selectedTextId={selectedTextId}
               onPoseChange={handlePoseChange}
-              onBackToEdit={() => setState((prev) => ({ ...prev, step: "edit", textOverlays: [] }))}
+              onBackToEdit={() => setState((prev) => ({ ...prev, step: "edit", currentPose: prev.currentPose ?? defaultSkeletonPose }))}
               onComplete={handleComplete}
+              onSave={handleSave}
+              onGenerateCopy={async () => {
+                if (!currentPosterId) return;
+                try {
+                  setIsGeneratingCopy(true);
+                  const res = await generatePosterCopy(currentPosterId);
+                  const content = res.data?.content?.trim();
+                  if (content) {
+                    const newOverlay: TextOverlay = {
+                      id: `text-${Date.now()}`,
+                      text: content,
+                      x: 50,
+                      y: 50,
+                      fontSize: 24,
+                      color: "#FFFFFF",
+                      fontWeight: "bold",
+                      fontFamily: "The Jamsil 5 Bold",
+                    };
+                    setState((prev) => ({ ...prev, textOverlays: [...prev.textOverlays, newOverlay] }));
+                  }
+                } catch (e) {
+                  // eslint-disable-next-line no-console
+                  console.error('[onGenerateCopy] failed:', e);
+                }
+                finally { setIsGeneratingCopy(false); }
+              }}
+              isGeneratingCopy={isGeneratingCopy}
               onAddText={handleAddText}
               onUpdateText={handleUpdateText}
               onRemoveText={handleRemoveText}
@@ -771,6 +849,14 @@ const PosterPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* 태그 지정 다이얼로그 */}
+      {isTagDialogOpen && currentGroupId && (
+        <TagDialog
+          groupId={currentGroupId}
+          onClose={() => setIsTagDialogOpen(false)}
+          onSaved={() => handleNewGroup()}
+        />)
+      }
     </div>
   );
 };

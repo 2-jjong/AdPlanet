@@ -6,6 +6,7 @@ interface PromptInputProps {
   onGenerate: () => void;
   isGenerating: boolean;
   maxLength?: number;
+  allowEmptyPrompt?: boolean;
 }
 
 const PromptInput: React.FC<PromptInputProps> = ({
@@ -13,12 +14,14 @@ const PromptInput: React.FC<PromptInputProps> = ({
   onChange,
   onGenerate,
   isGenerating,
-  maxLength = 500
+  maxLength = 500,
+  allowEmptyPrompt = false,
 }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (value.trim() && !isGenerating) {
+    const canSubmit = (allowEmptyPrompt || Boolean(value.trim())) && !isGenerating;
+    if (canSubmit) {
       onGenerate();
     }
   };
@@ -58,9 +61,9 @@ const PromptInput: React.FC<PromptInputProps> = ({
           
           <button
             type="submit"
-            disabled={!value.trim() || isGenerating}
+            disabled={!(allowEmptyPrompt || Boolean(value.trim())) || isGenerating}
             className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
-              !value.trim() || isGenerating
+              !(allowEmptyPrompt || Boolean(value.trim())) || isGenerating
                 ? 'bg-transparent border border-primary/30 text-primary/50 cursor-not-allowed'
                 : 'bg-primary text-background hover:bg-primary/90'
             }`}

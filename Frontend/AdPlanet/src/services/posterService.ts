@@ -1,6 +1,6 @@
 import apiClient from "./apiClient";
 import type { ApiResponse } from "../types/api";
-import type { CreatePosterRequest, AssignPosterTagsRequest, PosterGroupListQuery } from "./dto/poster.request";
+import type { CreatePosterRequest, PosterGroupListQuery } from "./dto/poster.request";
 import type { PosterTag, PosterDetail, PosterCopy, PosterGroupItem, PosterJobStatus, PosterGroupDetail } from "./dto/poster.response";
 
 /** 포스터 생성 (multipart/form-data) */
@@ -34,24 +34,34 @@ export async function getAllPosterTags(): Promise<ApiResponse<PosterTag[]>> {
   return data;
 }
 
-/** 포스터 태그 지정 */
-export async function assignPosterTags(
-  body: AssignPosterTagsRequest
-): Promise<ApiResponse<null>> {
-  const { data } = await apiClient.post<ApiResponse<null>>(
+/** 포스터 태그 생성 */
+export async function createPosterTag(name: string): Promise<ApiResponse<PosterTag>> {
+  const { data } = await apiClient.post<ApiResponse<PosterTag>>(
     "/api/posters/tags",
-    body
+    { name }
   );
   return data;
 }
 
-/** 포스터 저장 (이미지 업로드) */
-export async function savePoster(image: File): Promise<ApiResponse<PosterDetail>> {
+/** 특정 그룹에 태그 지정 */
+export async function assignGroupTags(
+  groupId: number,
+  tagIds: number[]
+): Promise<ApiResponse<null>> {
+  const { data } = await apiClient.put<ApiResponse<null>>(
+    `/api/posters/group/${groupId}/tags`,
+    { tagIds }
+  );
+  return data;
+}
+
+/** 포스터 저장 (문구 포함 합성 이미지 업로드) */
+export async function savePosterToGroup(groupId: number, image: File): Promise<ApiResponse<PosterDetail>> {
   const form = new FormData();
   form.append('image', image);
 
   const { data } = await apiClient.post<ApiResponse<PosterDetail>>(
-    '/api/posters/save',
+    `/api/posters/group/${groupId}/save`,
     form,
     {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -68,6 +78,13 @@ export async function getPoster(
     `/api/posters/${posterId}`
   );
   return data;
+}
+
+/** 포스터 바이너리 이미지 가져오기 (image/png) */
+export async function getPosterImage(posterId: number): Promise<Blob> {
+  const res = await apiClient.get(`/api/posters/${posterId}/image`, { responseType: 'blob' as any });
+  // axios의 타입 제약 회피를 위해 as any 사용; 응답은 blob
+  return res as unknown as Blob;
 }
 
 /** 포스터 다운로드 */
