@@ -11,6 +11,7 @@ import com.ssafy.adplanet.repository.UserRepository;
 import com.ssafy.adplanet.service.ai.AiService;
 import com.ssafy.adplanet.service.gms.GmsService;
 import com.ssafy.adplanet.service.s3.S3Service;
+import com.ssafy.adplanet.service.watermark.WatermarkService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -39,6 +40,7 @@ public class LogoServiceImpl implements LogoService {
     private final S3Service s3Service;
     private final AiService aiService;
     private final GmsService gmsService;
+    private final WatermarkService watermarkService;
 
     @Override
     @Transactional
@@ -94,9 +96,12 @@ public class LogoServiceImpl implements LogoService {
 
             byte[] pngBytes = toPng(rawBytes);
 
+            // 워터마크 삽입
+            byte[] watermarkedBytes = watermarkService.insertWatermark(pngBytes, userRef.getEmail(), req.title());
+
             // 4) S3 업로드 & URL 갱신 (png 고정)
             String key = s3Service.buildKey("logos/logo_" + logo.getId() + ".png");
-            s3Service.upload(key, pngBytes, "image/png");
+            s3Service.upload(key, watermarkedBytes, "image/png");
             logo.changeImgUrl(s3Service.toS3Uri(key));
 
             String presignedUrl = s3Service.presignGet(key);

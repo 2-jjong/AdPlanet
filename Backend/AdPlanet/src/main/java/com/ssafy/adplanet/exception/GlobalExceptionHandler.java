@@ -7,6 +7,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -18,9 +19,12 @@ public class GlobalExceptionHandler {
         HttpStatus httpStatus = switch (errorCode) {
             case INVALID_REQUEST_PARAMETER, INVALID_OAUTH_CODE, OAUTH_TOKEN_REQUEST_FAILED, OAUTH_USER_INFO_REQUEST_FAILED,
                     JOB_NOT_FOUND, POSTER_GROUP_NOT_FOUND, POSTER_NOT_FOUND,
-                    TAG_ALREADY_EXISTS, TAG_LIST_EMPTY, TAG_NOT_FOUND -> HttpStatus.BAD_REQUEST;
+                    TAG_ALREADY_EXISTS, TAG_LIST_EMPTY, TAG_NOT_FOUND,
+                    WATERMARK_INVALID_FILE, WATERMARK_EMPTY_FILE, WATERMARK_INVALID_IMAGE_FORMAT, WATERMARK_CREATOR_EMPTY, WATERMARK_CONTENT_EMPTY, WATERMARK_NOT_DETECTED, WATERMARK_INVALID_FORMAT -> HttpStatus.BAD_REQUEST;
+            case FILE_SIZE_EXCEEDED, REQUEST_SIZE_EXCEEDED -> HttpStatus.PAYLOAD_TOO_LARGE;
             case UNAUTHORIZED, INVALID_TOKEN, TOKEN_EXPIRED, INVALID_REFRESH_TOKEN, EXPIRED_REFRESH_TOKEN, INVALID_TOKEN_TYPE, USER_NOT_FOUND, REFRESH_TOKEN_NOT_FOUND -> HttpStatus.UNAUTHORIZED;
-            case IMAGE_UPLOAD_FAILED, IMAGE_PROCESSING_FAILED, INTERNAL_SERVER_ERROR -> HttpStatus.INTERNAL_SERVER_ERROR;
+            case IMAGE_UPLOAD_FAILED, IMAGE_PROCESSING_FAILED, INTERNAL_SERVER_ERROR,
+                    WATERMARK_INSERTION_FAILED, WATERMARK_DETECTION_FAILED, WATERMARK_IMAGE_PROCESSING_FAILED -> HttpStatus.INTERNAL_SERVER_ERROR;
         };
 
         return ResponseEntity.status(httpStatus)
@@ -40,6 +44,16 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ResponseDto.error(ErrorCode.INVALID_REQUEST_PARAMETER.getCode(), errorMessage));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ResponseDto<Void>> handleMaxUploadSizeException(MaxUploadSizeExceededException e) {
+        ErrorCode errorCode = e.getMessage() != null && e.getMessage().contains("request")
+                ? ErrorCode.REQUEST_SIZE_EXCEEDED
+                : ErrorCode.FILE_SIZE_EXCEEDED;
+
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(ResponseDto.error(errorCode.getCode(), errorCode.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
