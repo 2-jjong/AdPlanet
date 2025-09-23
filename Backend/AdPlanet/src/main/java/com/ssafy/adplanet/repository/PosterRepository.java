@@ -9,6 +9,5 @@ import java.util.List;
 
 public interface PosterRepository extends JpaRepository<Poster, Long> {
 
-    @Query("SELECT p FROM Poster p WHERE p.posterGroup.id = :groupId ORDER BY p.createdAt ASC")
-    List<Poster> findByGroupId(@Param("groupId") Long groupId);
+    List<Poster> findByPosterGroup_Id(Long groupId);
 }
