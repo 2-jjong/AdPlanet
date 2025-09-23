@@ -402,7 +402,7 @@ public class PosterServiceImpl implements PosterService {
         PosterGroup group = posterGroupRepository.findByIdWithMainPosterAndTags(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
 
-        List<PosterResponse> history = posterRepository.findByGroupId(groupId).stream()
+        List<PosterResponse> history = posterRepository.findByPosterGroup_Id(groupId).stream()
                 .map(poster -> new PosterResponse(
                         poster.getId(),
                         s3Service.toHttpUrl(poster.getImgUrl()),
@@ -441,7 +441,7 @@ public class PosterServiceImpl implements PosterService {
         posterGroupRepository.findById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
 
-        return imageJobRepository.findProgressingJobsByGroupId(groupId).stream()
+        return imageJobRepository.findByPosterGroupIdAndStatus(groupId, JobStatus.PROCESSING).stream()
                 .map(job -> new ImageJobResponse(
                         job.getId(),
                         job.getStatus(),
