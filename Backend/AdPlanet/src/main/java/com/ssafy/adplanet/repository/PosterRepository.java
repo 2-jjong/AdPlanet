@@ -9,5 +9,5 @@ import java.util.List;
 
 public interface PosterRepository extends JpaRepository<Poster, Long> {
 
-    List<Poster> findByPosterGroup_Id(Long groupId);
+    List<Poster> findByPosterGroup_IdOrderByCreatedAtAsc(Long groupId);
 }
