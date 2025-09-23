@@ -3,7 +3,7 @@ import { Button } from "../../../components/UI/Button/Button";
 import addFileImg from "../../../assets/images/add_file.png";
 import scanningFileImg from "../../../assets/images/scanning_file.png";
 import planetImg from "../../../assets/images/puple_planet.png";
-import * as THREE from "three";
+import * as THREE from "three/src/Three.js"
 import { detectWatermark } from "../../../services/watermarkService";
 import Navigation from "../../../components/Layout/Navigation";
 

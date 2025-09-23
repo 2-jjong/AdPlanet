@@ -1,7 +1,7 @@
 // src/modules/Gallery3D/StackedPlanes.tsx
 // 스크롤/배치 관리 + GlassCard 여러 개 배치
 
-import * as THREE from "three";
+import * as THREE from "three/src/Three.js";
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useScroll } from "@react-three/drei";

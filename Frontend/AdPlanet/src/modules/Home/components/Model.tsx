@@ -103,7 +103,7 @@ export function Model(props: JSX.IntrinsicElements["group"]) {
       key: "mars",
       name: "라이브러리",
       des: "AdPlanet의 작품",
-      route: "/archive",
+      route: "/gallery",
       ref: marsPlanetRef,
       position: initialStates.mars.position as [number, number, number],
       rotation: initialStates.mars.rotation as [number, number, number],
@@ -400,7 +400,7 @@ export function Model(props: JSX.IntrinsicElements["group"]) {
             scale={initialStates.mars.scale}
             onClick={() => {
               if (!activePlanet) {
-                handlePlanetClick("라이브러리", "AdPlanet의 작품", "/archive", marsPlanetRef);
+                handlePlanetClick("라이브러리", "AdPlanet의 작품", "/gallery", marsPlanetRef);
               }
             }}
           >

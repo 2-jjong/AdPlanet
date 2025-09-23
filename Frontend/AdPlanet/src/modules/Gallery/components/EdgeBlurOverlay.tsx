@@ -1,121 +1,87 @@
 // src/modules/Gallery3D/EdgeBlurOverlay.tsx
-import * as THREE from "three";
+// 사진 "테두리 투명(페더 알파)" 전용 머티리얼
+// - 블러 없음, 색 왜곡 방지를 위해 sRGB↔Linear를 셰이더에서 직접 처리
+// - three r1xx 버전차로 생기는 #include 의존성 제거 (안전)
+
+import * as THREE from "three/src/Three.js"
 import { useEffect, useMemo, useRef } from "react";
 
 export type EdgeBlurProps = {
   map: THREE.Texture;   // 원본 텍스처
-  inner: number;        // 블러 시작 반경(0~1)
-  outer: number;        // 블러 최대 반경(0~1)
-  power: number;        // 마스크 커브
-  blurPx: number;       // 블러 반경(px)
-  strength: number;     // 블러 섞는 비율(0~1)
+  inner: number;        // 투명 시작 반경(0~1, 작을수록 중앙부터 사라짐)
+  outer: number;        // 투명 최대 반경(0~1, 1이면 테두리에서만 사라짐)
+  power: number;        // 그라데이션 곡선(커질수록 중앙 덜, 테두리 급격)
   opacity: number;      // 전역 알파(스크롤 페이드와 곱해 사용)
-  aspect: number;       // 가로/세로 비(타원 보정)
+  aspect: number;       // 가로/세로 비(= width / height)
 };
 
 export default function EdgeBlurOverlay({
-  map, inner, outer, power, blurPx, strength, opacity, aspect,
+  map, inner, outer, power, opacity, aspect,
 }: EdgeBlurProps) {
   const mat = useRef<THREE.ShaderMaterial>(null);
 
   const uniforms = useMemo(() => ({
-    uMap:      { value: map },
-    uTexel:    { value: new THREE.Vector2(1 / 1024, 1 / 1024) }, // 초기값(로드 후 갱신)
-    uInner:    { value: inner },
-    uOuter:    { value: outer },
-    uPower:    { value: power },
-    uBlurPx:   { value: blurPx },
-    uStrength: { value: strength },
-    uOpacity:  { value: opacity },
-    uAspect:   { value: aspect },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    uMap:     { value: map },
+    uInner:   { value: inner },
+    uOuter:   { value: outer },
+    uPower:   { value: power },
+    uOpacity: { value: opacity },
+    uAspect:  { value: aspect }, // width / height
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [map]);
 
-  // 텍스처 크기 로드 후 texel 갱신
-  useEffect(() => {
-    const updateTexel = () => {
-      const img: any = (map as any).image;
-      if (!img || !img.width) return;
-      mat.current!.uniforms.uTexel.value.set(1 / img.width, 1 / img.height);
-    };
-    if ((map as any).image) updateTexel();
-    (map as any).addEventListener?.("update", updateTexel);
-    return () => (map as any).removeEventListener?.("update", updateTexel);
-  }, [map]);
-
   // prop 변경 시 유니폼 갱신
-  useEffect(() => { if (mat.current) mat.current.uniforms.uInner.value    = inner;    }, [inner]);
-  useEffect(() => { if (mat.current) mat.current.uniforms.uOuter.value    = outer;    }, [outer]);
-  useEffect(() => { if (mat.current) mat.current.uniforms.uPower.value    = power;    }, [power]);
-  useEffect(() => { if (mat.current) mat.current.uniforms.uBlurPx.value   = blurPx;   }, [blurPx]);
-  useEffect(() => { if (mat.current) mat.current.uniforms.uStrength.value = strength; }, [strength]);
-  useEffect(() => { if (mat.current) mat.current.uniforms.uOpacity.value  = opacity;  }, [opacity]);
-  useEffect(() => { if (mat.current) mat.current.uniforms.uAspect.value   = aspect;   }, [aspect]);
+  useEffect(() => { if (mat.current) mat.current.uniforms.uInner.value   = inner;   }, [inner]);
+  useEffect(() => { if (mat.current) mat.current.uniforms.uOuter.value   = outer;   }, [outer]);
+  useEffect(() => { if (mat.current) mat.current.uniforms.uPower.value   = power;   }, [power]);
+  useEffect(() => { if (mat.current) mat.current.uniforms.uOpacity.value = opacity; }, [opacity]);
+  useEffect(() => { if (mat.current) mat.current.uniforms.uAspect.value  = aspect;  }, [aspect]);
 
   return (
     <shaderMaterial
       ref={mat}
+      attach="material"     // ✔ 이 메시에 '단독' 재질로 붙임
       transparent
       depthWrite={false}
+      toneMapped={false}    // ✔ 셰이더에서 색 변환 안 하므로 톤매핑 비활성화
       uniforms={uniforms}
       vertexShader={/* glsl */`
         varying vec2 vUv;
         void main(){
           vUv = uv;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `}
       fragmentShader={/* glsl */`
         varying vec2 vUv;
         uniform sampler2D uMap;
-        uniform vec2  uTexel;    // 1px in UV
-        uniform float uInner;    // 블러 시작 반경
-        uniform float uOuter;    // 블러 최대 반경
-        uniform float uPower;    // 마스크 커브
-        uniform float uBlurPx;   // 블러 반경(px)
-        uniform float uStrength; // 블러 섞는 비율
+        uniform float uInner;    // 투명 시작 반경
+        uniform float uOuter;    // 투명 끝   반경
+        uniform float uPower;    // 곡선
         uniform float uOpacity;  // 전역 알파
-        uniform float uAspect;   // 타원 보정
-
-        // 12탭 링 블러(가벼운 근사)
-        vec4 ringBlur(sampler2D tex, vec2 uv, float px){
-          vec2 t = uTexel * px;
-          vec4 sum = texture2D(tex, uv);
-          sum += texture2D(tex, uv + vec2( t.x, 0.0));
-          sum += texture2D(tex, uv - vec2( t.x, 0.0));
-          sum += texture2D(tex, uv + vec2( 0.0, t.y));
-          sum += texture2D(tex, uv - vec2( 0.0, t.y));
-          sum += texture2D(tex, uv + vec2( 2.0*t.x, 0.0));
-          sum += texture2D(tex, uv - vec2( 2.0*t.x, 0.0));
-          sum += texture2D(tex, uv + vec2( 0.0, 2.0*t.y));
-          sum += texture2D(tex, uv - vec2( 0.0, 2.0*t.y));
-          vec2 d = t * 0.7071;
-          sum += texture2D(tex, uv + vec2( d.x,  d.y));
-          sum += texture2D(tex, uv + vec2(-d.x,  d.y));
-          sum += texture2D(tex, uv + vec2( d.x, -d.y));
-          sum += texture2D(tex, uv + vec2(-d.x, -d.y));
-          return sum / 13.0;
-        }
+        uniform float uAspect;   // width/height
 
         void main(){
+          // 1) 텍스처 샘플(색 변환 없음) — 텍스처는 Linear로 취급됨
           vec4 src = texture2D(uMap, vUv);
 
-          // 중심 기준 타원 거리(가로/세로 보정)
+          // 2) 중심 기준 타원 거리(가로/세로 보정 + 안전 클램프)
           vec2 p = vUv - 0.5;
-          p.x *= uAspect;
-          float r = length(p); // 0(중앙) ~ 1(모서리)
+          float a = max(uAspect, 1e-6);
+          vec2 q = p;
+          if (a < 1.0) q.x /= a;  // 세로가 긴 카드: x 늘림
+          else          q.y *= a; // 가로가 긴 카드: y 늘림
 
-          // 가장자리 마스크 m: 중앙 0 → 테두리 1
-          float m = smoothstep(uInner, uOuter, r);
+          // 3) 가장자리 마스크: 중앙 0 → 테두리 1
+          float r = length(q) * 1.41421356; // 코너까지 ~1
+          float m = clamp((r - uInner) / max(1e-6, (uOuter - uInner)), 0.0, 1.0);
           m = pow(m, uPower);
 
-          // 테두리일수록 블러 반경 증가
-          float px = uBlurPx * m;
+          // 4) 색은 그대로, 알파만 테두리로 갈수록 0
+          float alpha = (1.0 - m) * uOpacity * src.a;
+          if (alpha <= 0.001) discard;
 
-          vec4 blurred = ringBlur(uMap, vUv, px);
-          vec3 color = mix(src.rgb, blurred.rgb, m * uStrength);
-
-          gl_FragColor = vec4(color, src.a * uOpacity);
+          gl_FragColor = vec4(src.rgb, alpha);
         }
       `}
     />

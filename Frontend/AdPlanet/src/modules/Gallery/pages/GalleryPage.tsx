@@ -3,8 +3,9 @@ import GlassCardStack from '../components/GlassCardStack';
 const GalleryPage: React.FC = () => {
 
   return (
-    <GlassCardStack
-    />
+    <div className=''>
+      <GlassCardStack />
+    </div>
   );
 };
 
