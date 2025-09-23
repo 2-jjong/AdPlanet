@@ -23,16 +23,13 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/logos")
@@ -61,22 +58,15 @@ public class LogoController {
             @Parameter(description = "로고 생성 요청 바디", required = true)
             @RequestBody CreateLogoRequest req
     ) {
-        try {
-            Long userId = SecurityUtil.getCurrentUserId();
-            LogoDto dto = logoService.logoCreate(userId, req, style);
-            return ResponseEntity.ok(ResponseDto.ok(dto));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ResponseDto.error("LG4001", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ResponseDto.error("LG5001", "서버 오류"));
-        }
+        Long userId = SecurityUtil.getCurrentUserId();
+        LogoDto dto = logoService.logoCreate(userId, req, style);
+        return ResponseEntity.ok(ResponseDto.ok(dto));
     }
 
     @GetMapping
     @Operation(
             summary = "로고 목록 조회",
-            description = "정렬(order)과 태그(tagIds) 조건으로 로고 목록을 조회합니다. " +
-                    "태그를 선택하지 않으면 해당 사용자의 전체 로고를 반환합니다."
+            description = "정렬(order)과 태그(tagIds) 조건으로 로고 목록을 조회합니다. 태그 미선택 시 전체 반환."
     )
     @ApiResponse(responseCode = "200", description = "조회 성공")
     public ResponseEntity<ResponseDto<List<LogoListItem>>> getLogos(
@@ -84,155 +74,92 @@ public class LogoController {
             @RequestParam(name = "order", required = false, defaultValue = "NEWEST")
             LogoListOrder order,
 
-            @Parameter(description = "다중 태그 id 목록 (CSV/반복 파라미터 모두 허용). 예: tagIds=1,2,3 또는 tagIds=1&tagIds=2")
+            @Parameter(description = "다중 태그 id 목록 (CSV/반복 파라미터 모두 허용). 예: 1,2,3 또는 tagIds=1&tagIds=2")
             @RequestParam(name = "tagIds", required = false)
             List<Long> tagIds
     ) {
         Long userId = SecurityUtil.getCurrentUserId();
-
         List<LogoListItem> data = logoService.logoList(userId, tagIds, order);
-        return ResponseEntity.ok(new ResponseDto<>("S0000", data, null));
+        return ResponseEntity.ok(ResponseDto.ok(data));
     }
 
     @GetMapping("/{logoId}")
-    @Operation(
-            summary = "로고 상세 조회",
-            description = "logoId로 로고 정보를 상세 조회합니다"
-    )
+    @Operation(summary = "로고 상세 조회", description = "logoId로 로고 정보를 상세 조회합니다")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-            @ApiResponse(responseCode = "404", description = "데이터 없음")
+            @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
-
     public ResponseEntity<ResponseDto<LogoDetail>> getLogoDetail(
             @Parameter(description = "로고 ID", example = "1")
             @PathVariable Long logoId
     ) {
-        try {
-            long userId = SecurityUtil.getCurrentUserId();
-            LogoDetail detail = logoService.logoDetail(userId, logoId);
-            return ResponseEntity.ok(new ResponseDto<>("S0000", detail, null));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ResponseDto.error("LG4001", e.getMessage()));
-        } catch (NoSuchElementException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseDto.error("LG4040", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ResponseDto.error("LG5000", "서버 오류"));
-        }
+        long userId = SecurityUtil.getCurrentUserId();
+        LogoDetail detail = logoService.logoDetail(userId, logoId);
+        return ResponseEntity.ok(ResponseDto.ok(detail));
     }
 
     @GetMapping("/tags")
-    @Operation(
-            summary = "로고 태그 목록 조회",
-            description = "로고에 사용 가능한 태그 목록을 조회합니다.")
+    @Operation(summary = "로고 태그 목록 조회", description = "로고에 사용 가능한 태그 목록을 조회합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
     public ResponseEntity<ResponseDto<List<TagDto>>> getLogoTags() {
         var list = tagService.search(null);
-        return ResponseEntity.ok(new ResponseDto<>("S0000", list, null));
+        return ResponseEntity.ok(ResponseDto.ok(list));
     }
 
     @PostMapping("/tags")
     @Operation(summary = "태그 생성(단일)", description = "새 태그를 1개 생성하고 {id, name}을 반환합니다. 중복 이름은 400")
     public ResponseEntity<ResponseDto<TagDto>> createTag(@RequestBody CreateTagRequest req) {
-        try {
-            TagDto dto = tagService.create(req.name());
-            return ResponseEntity.ok(ResponseDto.ok(dto));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ResponseDto.error("TG4001", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ResponseDto.error("TG5001", "서버 오류"));
-        }
+        TagDto dto = tagService.create(req.name());
+        return ResponseEntity.ok(ResponseDto.ok(dto));
     }
 
     @PutMapping("/{logoId}/tags")
     @Operation(summary = "로고 태그 부여", description = "로고 생성 이후, tagIds 목록으로 로고의 태그를 설정합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청(존재하지 않는 tagId 포함 등)"),
-            @ApiResponse(responseCode = "404", description = "로고 없음")
+            @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
     public ResponseEntity<ResponseDto<List<TagDto>>> assignTagsToLogo(
             @PathVariable Long logoId,
             @RequestBody AssignLogoTagsRequest req
-            ) {
-        try {
-            var result = tagService.setLogoTags(logoId, req.tagIds());
-            return ResponseEntity.ok(new ResponseDto<>("S0000", null, null));
-        } catch (NoSuchElementException e) {
-            return ResponseEntity.badRequest().body(ResponseDto.error("LG4041", e.getMessage()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ResponseDto.error("LG4001", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ResponseDto.error("LG5001", "서버 오류"));
-        }
+    ) {
+        var result = tagService.setLogoTags(logoId, req.tagIds());
+        return ResponseEntity.ok(ResponseDto.ok(result));
     }
 
     @PostMapping("/{logoId}/ci-guideline")
-    @Operation(
-            summary = "CI 가이드라인 생성",
-            description = "logoId에 대해 CI(브랜드) 가이드라인을 생성합니다."
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청")
-    })
-    public ResponseEntity<ResponseDto<CiGuidelineResponse>> generateCiGuide (
+    @Operation(summary = "CI 가이드라인 생성", description = "logoId에 대해 CI(브랜드) 가이드라인을 생성합니다.")
+    public ResponseEntity<ResponseDto<CiGuidelineResponse>> generateCiGuide(
             @Parameter(description = "로고 ID", example = "1")
             @PathVariable Long logoId
     ) {
-        try {
-            var resp = ciGuidelineService.createWithImageAi(logoId);
-            return ResponseEntity.ok(ResponseDto.ok(resp));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ResponseDto.error("LG4000", e.getMessage()));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseDto.error("LG4091", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ResponseDto.error("LG5000", "서버 오류"));
-        }
-
+        var resp = ciGuidelineService.createWithImageAi(logoId);
+        return ResponseEntity.ok(ResponseDto.ok(resp));
     }
 
     @GetMapping("/{logoId}/ci-guideline")
     @Operation(summary = "CI 가이드라인 조회", description = "logoId로 저장된 CI(브랜드) 가이드를 조회합니다.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
-            @ApiResponse(responseCode = "404", description = "데이터 없음")
-    })
-    public ResponseEntity<ResponseDto<CiGuidelineResponse>> getCiGuide(
-            @PathVariable Long logoId
-    ) {
-        try {
-            var opt = ciGuidelineService.getByLogoId(logoId);
-            if (opt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ResponseDto.error("LG4000", "해당 로고의 CI 가이드라인이 없습니다."));
-            }
-            return ResponseEntity.ok(ResponseDto.ok(opt.get()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ResponseDto.error("LG4002", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ResponseDto.error("LG5000", "서버 오류"));
+    public ResponseEntity<ResponseDto<CiGuidelineResponse>> getCiGuide(@PathVariable Long logoId) {
+        var opt = ciGuidelineService.getByLogoId(logoId);
+        if (opt.isEmpty()) {
+            // 팀 규칙대로라면 여기서도 BusinessException(LOGO_NOT_FOUND)로 던져 전역 400 처리도 가능
+            return ResponseEntity.badRequest()
+                    .body(ResponseDto.error("LG4040", "해당 로고의 CI 가이드라인이 없습니다."));
         }
+        return ResponseEntity.ok(ResponseDto.ok(opt.get()));
     }
 
     @GetMapping(value = "/{logoId}/download")
-    @Operation(
-            summary="로고 다운로드",
-            description="logoId의 로고 파일을 지정한 형식(png/jpg/svg)으로 다운로드합니다.")
+    @Operation(summary="로고 다운로드", description="logoId의 로고 파일을 지정한 형식(png/jpg/svg)으로 다운로드합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
-    public ResponseEntity<byte[]> download(
-            @PathVariable Long logoId,
-            @RequestParam(defaultValue = "png") String format
-    ) {
+    public ResponseEntity<byte[]> download(@PathVariable Long logoId,
+                                           @RequestParam(defaultValue = "png") String format) {
         String f = format == null ? "png" : format.trim().toLowerCase();
         String contentType;
         byte[] bytes;
@@ -241,15 +168,15 @@ public class LogoController {
             case "jpg":
             case "jpeg":
                 contentType = "image/jpeg";
-                bytes = tinyRaster("jpg"); // 1x1 더미 JPG
+                bytes = tinyRaster("jpg");
                 break;
             case "svg":
                 contentType = "image/svg+xml";
-                bytes = tinySvg(logoId).getBytes(StandardCharsets.UTF_8); // 더미 SVG
+                bytes = tinySvg(logoId).getBytes(StandardCharsets.UTF_8);
                 break;
             default:
                 contentType = "image/png";
-                bytes = tinyRaster("png"); // 1x1 더미 PNG
+                bytes = tinyRaster("png");
         }
 
         String ext = (f.equals("jpg") || f.equals("jpeg")) ? "jpg" : (f.equals("svg") ? "svg" : "png");
@@ -262,11 +189,10 @@ public class LogoController {
                 .body(bytes);
     }
 
-    // ---- 아래는 최소 더미 생성 유틸 (1x1 흰색) ----
     private byte[] tinyRaster(String fmt) {
         try {
             BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
-            img.setRGB(0, 0, 0xFFFFFF); // 흰색
+            img.setRGB(0, 0, 0xFFFFFF);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ImageIO.write(img, fmt.equals("jpg") ? "jpg" : "png", baos);
             return baos.toByteArray();

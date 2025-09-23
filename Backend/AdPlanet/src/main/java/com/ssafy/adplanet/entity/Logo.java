@@ -36,7 +36,7 @@ public class Logo {
     private String prompt;
 
     @Setter
-    @Column(name = "img_url", nullable = false, length = 200)
+    @Column(name = "img_url", length = 200)
     private String imgUrl;
 
     @CreationTimestamp

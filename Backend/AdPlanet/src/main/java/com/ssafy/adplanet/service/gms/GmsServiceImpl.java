@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ssafy.adplanet.exception.BusinessException;
+import com.ssafy.adplanet.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -21,7 +23,6 @@ import java.time.Duration;
 public class GmsServiceImpl implements GmsService {
 
     private final @Qualifier("gmsWebClient") WebClient gmsWebClient;
-
     private final ObjectMapper om;
 
     @Value("${adplanet.gms.api-key}") private String apiKey;
@@ -34,7 +35,6 @@ public class GmsServiceImpl implements GmsService {
         try {
             ObjectNode body = buildRequestBody(brandName, slogan, imageUrl, true);
 
-            // Bean에 baseUrl이 있으므로 상대 경로만 사용
             String respBody = gmsWebClient.post()
                     .uri("/responses")
                     .headers(h -> h.setBearerAuth(apiKey))
@@ -57,16 +57,13 @@ public class GmsServiceImpl implements GmsService {
                 throw new IllegalStateException("GMS 빈 응답");
             }
 
-            // ----- 응답 파싱 -----
             JsonNode root = om.readTree(respBody);
 
-            // (1) output_text 우선
             String out = root.path("output_text").asText(null);
             if (out != null && !out.isBlank()) {
                 return postProcess(out);
             }
 
-            // (2) output 배열 내부 content에서 text/json/parsed 추출
             JsonNode output = root.path("output");
             if (output.isArray()) {
                 for (JsonNode msg : output) {
@@ -85,7 +82,7 @@ public class GmsServiceImpl implements GmsService {
             throw new IllegalStateException("GMS 응답 파싱 실패");
 
         } catch (Exception e) {
-            throw new IllegalStateException("GMS 호출/파싱 오류: " + e.getMessage(), e);
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e);
         }
     }
 
@@ -95,48 +92,50 @@ public class GmsServiceImpl implements GmsService {
             String brand = orEmptyIfBlank(brandName);
             slogan  = orEmptyIfBlank(slogan);
             String raw   = (userPrompt == null) ? "" : userPrompt.trim();
-            if (raw.length() > 2000) raw = raw.substring(0, 2000);  // 과도한 길이 방지
+            if (raw.length() > 2000) raw = raw.substring(0, 2000);
             String sty   = (style == null) ? "-" : style;
 
-            // 1) 요청 바디 구성 (텍스트 출력)
             ObjectNode root = om.createObjectNode();
             root.put("model", "gpt-5-nano");
+
+            ObjectNode textNode = root.putObject("text");
+            ObjectNode format   = textNode.putObject("format");
+            format.put("type", "text"); // 텍스트만 반환
 
             ArrayNode input = root.putArray("input");
             ObjectNode user = input.addObject().put("role", "user");
             ArrayNode content = user.putArray("content");
 
-            // 지시문 (영문화 + 로고용으로 구조화)
             String instruction = """
-            You are a professional brand identity prompt engineer.
-            Rewrite the user's Korean prompt into a concise, production-ready ENGLISH prompt specialized for LOGO generation.
+            You are a professional brand identity prompt engineer for Stable Diffusion.
+            Rewrite the user's prompt into a concise, comma-separated KEYWORD list for a MINIMAL, VECTOR LOGO.
 
-            Rules:
-            - Write in natural, clear English.
-            - Keep it 1–4 sentences, no markdown, no quotes.
-            - Include the brand name and slogan contextually (do NOT output labels).
-            - Include style hints if provided (e.g., "simple", "mono", "minimal", "flat", "geometric").
-            - Focus on composition, shapes, negative space, typography preferences, color hints (optional), and constraints (no photo).
-            - Avoid camera/photo terms, storytelling, or long backgrounds.
-            - Prefer vector-friendly wording (e.g., "clean lines", "high contrast", "scalable", "SVG-friendly").
-            - Output ONLY the refined prompt text, nothing else.
+            STRICT RULES:
+            - OUTPUT MUST BE ONLY comma-separated keywords. No sentences. No quotes. No labels. No markdown.
+            - DO NOT include the brand name or the slogan in the output. If needed, say "brand" generically.
+            - Focus on vector-logo terms: minimalist, flat design, clean lines, geometric, negative space, high contrast, scalable, SVG-friendly.
+            - Include style hints if provided (simple, mono, minimal, flat, geometric).
+            - Keep the FINAL OUTPUT within ~77 WORDS max. If necessary, drop the least important keywords first.
+            - Exclude camera/photo/story words. No periods.
 
-            Brand: %s
-            Slogan: %s
-            Requested style: %s
-            Original (user) prompt (Korean allowed): %s
+            Context (DO NOT output literally):
+            - Brand: %s
+            - Slogan: %s
+            - Requested style: %s
+
+            Original user prompt (Korean allowed):
+            %s
             """.formatted(brand, slogan, sty, raw);
 
             content.addObject()
                     .put("type", "input_text")
                     .put("text", instruction);
 
-            // 2) 호출
-            String refined = gmsWebClient.post()
-                    .uri("/responses") // baseUrl: https://api.openai.com/v1
+            String respBody = gmsWebClient.post()
+                    .uri("/responses")
                     .headers(h -> h.setBearerAuth(apiKey))
                     .contentType(MediaType.APPLICATION_JSON)
-                    .accept(MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
                     .bodyValue(root)
                     .retrieve()
                     .onStatus(s -> !s.is2xxSuccessful(), res ->
@@ -147,18 +146,46 @@ public class GmsServiceImpl implements GmsService {
                     .timeout(requestTimeout)
                     .block();
 
-            if (refined == null || refined.isBlank()) {
+            if (respBody == null || respBody.isBlank()) {
                 throw new IllegalStateException("GMS 빈 응답(프롬프트 정제)");
             }
 
-            // 3) 코드펜스/잡텍스트 제거 & 길이 보정
-            String out = stripCodeFence(refined).trim();
-            if (out.length() > 800) out = out.substring(0, 800); // 너무 길면 컷
+            JsonNode rootJson = om.readTree(respBody);
+            String out = extractFirstTextFromGms(rootJson);
+            if (out == null || out.isBlank()) {
+                out = stripCodeFence(respBody).trim();
+            }
+
+            out = finalizeSdKeywords(out, brand, slogan, 77);
+
+            if (out.length() > 800) out = out.substring(0, 800);
             return out;
 
         } catch (Exception e) {
-            throw new IllegalStateException("GMS 프롬프트 정제 실패: " + e.getMessage(), e);
+            throw new BusinessException(ErrorCode.LOGO_PROMPT_REFINEMENT_FAILED, e);
         }
+    }
+
+    private String extractFirstTextFromGms(JsonNode root) throws Exception {
+        String out = root.path("output_text").asText(null);
+        if (out != null && !out.isBlank()) return stripCodeFence(out).trim();
+
+        JsonNode output = root.path("output");
+        if (output.isArray()) {
+            for (JsonNode msg : output) {
+                JsonNode contents = msg.path("content");
+                if (!contents.isArray()) continue;
+                for (JsonNode c : contents) {
+                    if (c.hasNonNull("text"))  return stripCodeFence(c.get("text").asText()).trim();
+                    if (c.hasNonNull("json"))  return om.writeValueAsString(c.get("json"));
+                    if (c.hasNonNull("parsed"))return om.writeValueAsString(c.get("parsed"));
+                    if ("output_json".equals(c.path("type").asText()) && c.has("json")) {
+                        return om.writeValueAsString(c.get("json"));
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private PalettePayload postProcess(String json) throws Exception {
@@ -273,10 +300,93 @@ public class GmsServiceImpl implements GmsService {
             """.formatted(orEmptyIfBlank(brandName), orEmptyIfBlank(slogan));
     }
 
-    private static String orEmptyIfBlank(String s) { return (s == null || s.isBlank()) ? "" : s; }
+    private static String orEmptyIfBlank(String s) { return (s == null || s.isBlank()) ? null : s; }
 
     private static String trim(String s) {
         if (s == null) return "";
         return s.length() > 512 ? s.substring(0, 512) : s;
+    }
+
+    private static int countWords(String s) {
+        if (s == null || s.isBlank()) return 0;
+        var m = java.util.regex.Pattern.compile("[\\p{L}\\p{N}\\-\\+]+").matcher(s);
+        int c = 0; while (m.find()) c++; return c;
+    }
+
+    private static java.util.List<String> splitPhrases(String raw) {
+        if (raw == null) return java.util.Collections.emptyList();
+        String s = raw.replace("```","").replace("\r",",").replace("\n",",")
+                .replace(";",",").replace("·",",").replace("|",",")
+                .replaceAll("\\s+"," ").trim();
+        String[] arr = s.split(",");
+        java.util.ArrayList<String> list = new java.util.ArrayList<>();
+        for (String a : arr) { String t = a.trim(); if (!t.isEmpty()) list.add(t); }
+        return list;
+    }
+
+    private static String joinPhrases(java.util.List<String> phrases) {
+        return String.join(", ", phrases);
+    }
+
+    private static String sanitizeBrandAndSlogan(String text, String brand, String slogan) {
+        if (text == null) return null;
+        String out = text;
+
+        if (brand != null && !brand.isBlank()) {
+            String b = java.util.regex.Pattern.quote(brand);
+            out = out.replaceAll("(?i)\\b" + b + "\\b", "brand");
+            out = out.replaceAll("(?i)(for|of|by|with)\\s+" + b + "\\b", "$1 brand");
+        }
+        if (slogan != null && !slogan.isBlank()) {
+            String s = java.util.regex.Pattern.quote(slogan);
+            out = out.replaceAll("(?i)" + s, "");
+            out = out.replaceAll("(?i)\\bwith\\s+the\\s+slogan\\b[^,]*", "");
+        }
+        return out.replaceAll("\\s{2,}", " ").trim();
+    }
+
+    private static String takeFirstNWords(String phrase, int n) {
+        if (n <= 0) return "";
+        var m = java.util.regex.Pattern.compile("[\\p{L}\\p{N}\\-\\+]+").matcher(phrase);
+        StringBuilder sb = new StringBuilder(); int c = 0;
+        while (m.find() && c < n) { if (sb.length() > 0) sb.append(' '); sb.append(m.group()); c++; }
+        return sb.toString().trim();
+    }
+
+    private static String finalizeSdKeywords(String modelOut, String brand, String slogan, int wordBudget) {
+        java.util.LinkedHashSet<String> uniq = new java.util.LinkedHashSet<>();
+        for (String p : splitPhrases(modelOut)) {
+            String t = sanitizeBrandAndSlogan(p, brand, slogan);
+            if (t.isBlank()) continue;
+            String tl = t.toLowerCase();
+            if (tl.contains("photo") || tl.contains("photograph") || tl.contains("camera")) continue;
+            t = t.replace(".", "").trim();
+            if (!t.isEmpty()) uniq.add(t);
+            if (uniq.size() > 128) break;
+        }
+
+        java.util.ArrayList<String> list = new java.util.ArrayList<>(uniq);
+        int used = 0;
+        java.util.ArrayList<String> kept = new java.util.ArrayList<>();
+        for (String phrase : list) {
+            int w = countWords(phrase);
+            if (used + w <= wordBudget) {
+                kept.add(phrase);
+                used += w;
+            } else {
+                break;
+            }
+        }
+
+        if (used < wordBudget && !list.isEmpty() && kept.size() < list.size()) {
+            String next = list.get(kept.size());
+            int remain = wordBudget - used;
+            if (remain > 0) {
+                String trimmed = takeFirstNWords(next, remain);
+                if (!trimmed.isBlank()) kept.add(trimmed);
+            }
+        }
+
+        return joinPhrases(kept);
     }
 }
