@@ -29,6 +29,9 @@ public interface S3Service {
     // 다운로드
     byte[] download(String key);
 
+    // S3 URI로 다운로드
+    byte[] downloadFromUri(String s3Uri);
+
     // 다운로드 (파일)
     File downloadFile(String key);
 
