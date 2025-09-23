@@ -490,4 +490,12 @@ public class PosterServiceImpl implements PosterService {
                 s3Service.toHttpUrl(poster.getImgUrl())
         );
     }
+
+    @Override
+    public byte[] downloadPosterImage(Long posterId) {
+        Poster poster = posterRepository.findById(posterId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_NOT_FOUND));
+
+        return s3Service.downloadFromUri(poster.getImgUrl());
+    }
 }
