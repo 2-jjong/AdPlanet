@@ -404,11 +404,12 @@ public class PosterServiceImpl implements PosterService {
         PosterGroup group = posterGroupRepository.findByIdWithMainPosterAndTags(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
 
-        List<PosterResponse> history = posterRepository.findByPosterGroup_Id(groupId).stream()
+        List<PosterResponse> history = posterRepository.findByPosterGroup_IdOrderByCreatedAtAsc(groupId).stream()
                 .map(poster -> new PosterResponse(
                         poster.getId(),
                         s3Service.toHttpUrl(poster.getImgUrl()),
-                        poster.getPrompt()
+                        poster.getPrompt(),
+                        poster.getCreatedAt()
                 ))
                 .toList();
 
