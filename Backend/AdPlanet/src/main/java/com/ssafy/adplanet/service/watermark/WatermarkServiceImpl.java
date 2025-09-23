@@ -1,6 +1,8 @@
 package com.ssafy.adplanet.service.watermark;
 
 import com.ssafy.adplanet.dto.watermark.WatermarkDetectionResponse;
+import com.ssafy.adplanet.exception.BusinessException;
+import com.ssafy.adplanet.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,103 +22,130 @@ public class WatermarkServiceImpl implements WatermarkService {
     private static final String END_MARKER = "1111111111111110";
 
     @Override
-    public byte[] insertWatermark(MultipartFile imageFile, String creator, String content) throws Exception {
-        if (creator == null || creator.trim().isEmpty()) {
-            throw new IllegalArgumentException("워터마크 제작자 값이 없습니다.");
+    public byte[] insertWatermark(MultipartFile imageFile, String creator, String content) {
+        try {
+            if (creator == null || creator.trim().isEmpty()) {
+                throw new BusinessException(ErrorCode.WATERMARK_CREATOR_EMPTY);
+            }
+            if (content == null || content.trim().isEmpty()) {
+                throw new BusinessException(ErrorCode.WATERMARK_CONTENT_EMPTY);
+            }
+
+            String watermarkText = "제작자: " + creator.trim() + " 내용: " + content.trim();
+            log.debug("워터마크 삽입 시작 - 제작자: '{}', 내용: '{}', 전체텍스트길이: {}자",
+                    creator, content, watermarkText.length());
+
+            if (imageFile.isEmpty()) {
+                throw new BusinessException(ErrorCode.WATERMARK_EMPTY_FILE);
+            }
+
+            BufferedImage originalImage = ImageIO.read(imageFile.getInputStream());
+            if (originalImage == null) {
+                throw new BusinessException(ErrorCode.WATERMARK_INVALID_IMAGE_FORMAT);
+            }
+
+            log.debug("이미지 로드 완료 - 크기: {}x{}, 타입: {}",
+                    originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
+
+            BufferedImage watermarkedImage = insertWatermarkToImage(originalImage, watermarkText);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(watermarkedImage, "png", baos);
+            byte[] result = baos.toByteArray();
+
+            log.debug("워터마크 삽입 완료 - 결과파일크기: {}bytes", result.length);
+            return result;
+
+        } catch (BusinessException e) {
+            log.error("워터마크 삽입 실패: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("워터마크 삽입 중 오류 발생", e);
+            throw new BusinessException(ErrorCode.WATERMARK_INSERTION_FAILED, e);
         }
-        if (content == null || content.trim().isEmpty()) {
-            throw new IllegalArgumentException("워터마크 내용이 없습니다.");
-        }
-
-        String watermarkText = "제작자: " + creator.trim() + " 내용: " + content.trim();
-        log.debug("워터마크 삽입 시작 - 제작자: '{}', 내용: '{}', 전체텍스트길이: {}자",
-                creator, content, watermarkText.length());
-
-        if (imageFile.isEmpty()) {
-            throw new IllegalArgumentException("이미지 파일이 없습니다.");
-        }
-
-        BufferedImage originalImage = ImageIO.read(imageFile.getInputStream());
-        if (originalImage == null) {
-            throw new IllegalArgumentException("유효하지 않은 이미지 파일입니다.");
-        }
-
-        log.debug("이미지 로드 완료 - 크기: {}x{}, 타입: {}",
-                originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
-
-        BufferedImage watermarkedImage = insertWatermarkToImage(originalImage, watermarkText);
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ImageIO.write(watermarkedImage, "png", baos);
-        byte[] result = baos.toByteArray();
-
-        log.debug("워터마크 삽입 완료 - 결과파일크기: {}bytes", result.length);
-        return result;
     }
 
     @Override
-    public byte[] insertWatermark(byte[] imageBytes, String creator, String content) throws Exception {
-        if (creator == null || creator.trim().isEmpty()) {
-            throw new IllegalArgumentException("워터마크 제작자 값이 없습니다.");
+    public byte[] insertWatermark(byte[] imageBytes, String creator, String content) {
+        try {
+            if (creator == null || creator.trim().isEmpty()) {
+                throw new BusinessException(ErrorCode.WATERMARK_CREATOR_EMPTY);
+            }
+            if (content == null || content.trim().isEmpty()) {
+                throw new BusinessException(ErrorCode.WATERMARK_CONTENT_EMPTY);
+            }
+
+            String watermarkText = "제작자: " + creator.trim() + " 내용: " + content.trim();
+            log.debug("워터마크 삽입 시작 - 제작자: '{}', 내용: '{}', 전체텍스트길이: {}자",
+                    creator, content, watermarkText.length());
+
+            if (imageBytes == null || imageBytes.length == 0) {
+                throw new BusinessException(ErrorCode.WATERMARK_EMPTY_FILE);
+            }
+
+            BufferedImage originalImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
+            if (originalImage == null) {
+                throw new BusinessException(ErrorCode.WATERMARK_INVALID_IMAGE_FORMAT);
+            }
+
+            log.debug("이미지 로드 완료 - 크기: {}x{}, 타입: {}",
+                    originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
+
+            BufferedImage watermarkedImage = insertWatermarkToImage(originalImage, watermarkText);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(watermarkedImage, "png", baos);
+            byte[] result = baos.toByteArray();
+
+            log.debug("워터마크 삽입 완료 - 결과파일크기: {}bytes", result.length);
+            return result;
+
+        } catch (BusinessException e) {
+            log.error("워터마크 삽입 실패: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("워터마크 삽입 중 오류 발생", e);
+            throw new BusinessException(ErrorCode.WATERMARK_INSERTION_FAILED, e);
         }
-        if (content == null || content.trim().isEmpty()) {
-            throw new IllegalArgumentException("워터마크 내용이 없습니다.");
-        }
-
-        String watermarkText = "제작자: " + creator.trim() + " 내용: " + content.trim();
-        log.debug("워터마크 삽입 시작 - 제작자: '{}', 내용: '{}', 전체텍스트길이: {}자",
-                creator, content, watermarkText.length());
-
-        if (imageBytes == null || imageBytes.length == 0) {
-            throw new IllegalArgumentException("이미지 데이터가 없습니다.");
-        }
-
-        BufferedImage originalImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
-        if (originalImage == null) {
-            throw new IllegalArgumentException("유효하지 않은 이미지 데이터입니다.");
-        }
-
-        log.debug("이미지 로드 완료 - 크기: {}x{}, 타입: {}",
-                originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
-
-        BufferedImage watermarkedImage = insertWatermarkToImage(originalImage, watermarkText);
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ImageIO.write(watermarkedImage, "png", baos);
-        byte[] result = baos.toByteArray();
-
-        log.debug("워터마크 삽입 완료 - 결과파일크기: {}bytes", result.length);
-        return result;
     }
 
     @Override
-    public WatermarkDetectionResponse detectWatermark(MultipartFile imageFile) throws Exception {
-        log.debug("워터마크 검출 시작");
+    public WatermarkDetectionResponse detectWatermark(MultipartFile imageFile) {
+        try {
+            log.debug("워터마크 검출 시작");
 
-        if (imageFile.isEmpty()) {
-            throw new IllegalArgumentException("이미지 파일이 없습니다.");
+            if (imageFile.isEmpty()) {
+                throw new BusinessException(ErrorCode.WATERMARK_EMPTY_FILE);
+            }
+
+            BufferedImage image = ImageIO.read(imageFile.getInputStream());
+            if (image == null) {
+                throw new BusinessException(ErrorCode.WATERMARK_INVALID_IMAGE_FORMAT);
+            }
+
+            log.debug("이미지 로드 완료 - 크기: {}x{}, 타입: {}",
+                    image.getWidth(), image.getHeight(), image.getType());
+
+            String extractedText = detectWatermarkFromImage(image);
+
+            if (extractedText == null || extractedText.equals("워터마크를 찾을 수 없습니다.")) {
+                log.debug("워터마크 검출 실패");
+                throw new BusinessException(ErrorCode.WATERMARK_NOT_DETECTED);
+            }
+
+            WatermarkDetectionResponse result = parseWatermarkText(extractedText);
+            log.debug("워터마크 검출 완료 - 제작자: '{}', 내용: '{}'",
+                    result.creator(), result.content());
+
+            return result;
+
+        } catch (BusinessException e) {
+            log.error("워터마크 검출 실패: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("워터마크 검출 중 오류 발생", e);
+            throw new BusinessException(ErrorCode.WATERMARK_DETECTION_FAILED, e);
         }
-
-        BufferedImage image = ImageIO.read(imageFile.getInputStream());
-        if (image == null) {
-            throw new IllegalArgumentException("유효하지 않은 이미지 파일입니다.");
-        }
-
-        log.debug("이미지 로드 완료 - 크기: {}x{}, 타입: {}",
-                image.getWidth(), image.getHeight(), image.getType());
-
-        String extractedText = detectWatermarkFromImage(image);
-
-        if (extractedText == null || extractedText.equals("워터마크를 찾을 수 없습니다.")) {
-            log.debug("워터마크 검출 실패");
-            throw new IllegalArgumentException("워터마크를 찾을 수 없습니다.");
-        }
-
-        WatermarkDetectionResponse result = parseWatermarkText(extractedText);
-        log.debug("워터마크 검출 완료 - 제작자: '{}', 내용: '{}'",
-                result.creator(), result.content());
-
-        return result;
     }
 
     private WatermarkDetectionResponse parseWatermarkText(String watermarkText) {

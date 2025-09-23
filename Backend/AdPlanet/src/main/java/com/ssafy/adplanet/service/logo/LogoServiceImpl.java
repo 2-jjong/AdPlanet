@@ -44,7 +44,7 @@ public class LogoServiceImpl implements LogoService {
 
     @Override
     @Transactional
-    public LogoDto logoCreate(Long userId, CreateLogoRequest req, LogoStyle style) throws Exception {
+    public LogoDto logoCreate(Long userId, CreateLogoRequest req, LogoStyle style) {
         if (userId == null) throw new IllegalArgumentException("userId는 필수입니다.");
         if (req.title() == null || req.title().isBlank()) throw new IllegalArgumentException("title은 필수입니다.");
         if (req.prompt() == null || req.prompt().isBlank()) throw new IllegalArgumentException("prompt는 필수입니다.");

@@ -5,9 +5,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface WatermarkService {
 
-    byte[] insertWatermark(MultipartFile imageFile, String creator, String content) throws Exception;
+    byte[] insertWatermark(MultipartFile imageFile, String creator, String content);
 
-    byte[] insertWatermark(byte[] imageBytes, String creator, String content) throws Exception;
+    byte[] insertWatermark(byte[] imageBytes, String creator, String content);
 
-    WatermarkDetectionResponse detectWatermark(MultipartFile imageFile) throws Exception;
+    WatermarkDetectionResponse detectWatermark(MultipartFile imageFile);
 }

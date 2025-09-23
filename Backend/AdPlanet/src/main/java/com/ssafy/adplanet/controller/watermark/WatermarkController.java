@@ -33,7 +33,7 @@ public class WatermarkController {
             @ApiResponse(responseCode = "400", description = "잘못된 요청 (파일 없음, 제작자/내용 없음 등)"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<?> insertWatermark(
+    public ResponseEntity<byte[]> insertWatermark(
             @Parameter(description = "워터마크를 삽입할 원본 이미지 파일", required = true)
             @RequestPart("image") MultipartFile imageFile,
             @Parameter(description = "워터마크 내용", required = true, example = "AdPlanet 워터마크")
@@ -44,25 +44,15 @@ public class WatermarkController {
         log.info("워터마크 삽입 요청 - 파일명: {}, 파일크기: {}bytes, 제작자: '{}', 내용: '{}'",
                 imageFile.getOriginalFilename(), imageFile.getSize(), creator, content);
 
-        try {
-            byte[] imageBytes = watermarkService.insertWatermark(imageFile, creator, content);
+        byte[] imageBytes = watermarkService.insertWatermark(imageFile, creator, content);
 
-            log.info("워터마크 삽입 성공 - 결과파일크기: {}bytes", imageBytes.length);
+        log.info("워터마크 삽입 성공 - 결과파일크기: {}bytes", imageBytes.length);
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.IMAGE_PNG);
-            headers.setContentDispositionFormData("attachment", "watermarked_image.png");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.IMAGE_PNG);
+        headers.setContentDispositionFormData("attachment", "watermarked_image.png");
 
-            return new ResponseEntity<>(imageBytes, headers, HttpStatus.OK);
-
-        } catch (IllegalArgumentException e) {
-            log.warn("워터마크 삽입 실패 - 잘못된 입력: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            log.error("워터마크 삽입 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("이미지 처리 중 오류가 발생했습니다: " + e.getMessage());
-        }
+        return new ResponseEntity<>(imageBytes, headers, HttpStatus.OK);
     }
 
     @PostMapping(value = "/detection", consumes =  MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -72,28 +62,18 @@ public class WatermarkController {
             @ApiResponse(responseCode = "400", description = "잘못된 요청 (파일 없음, 워터마크 없음 등)"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<?> detectWatermark(
+    public ResponseEntity<WatermarkDetectionResponse> detectWatermark(
             @Parameter(description = "워터마크가 삽입된 이미지 파일", required = true)
             @RequestPart("image") MultipartFile imageFile) {
 
         log.info("워터마크 검출 요청 - 파일명: {}, 파일크기: {}bytes",
                 imageFile.getOriginalFilename(), imageFile.getSize());
 
-        try {
-            WatermarkDetectionResponse detectionResult = watermarkService.detectWatermark(imageFile);
+        WatermarkDetectionResponse detectionResult = watermarkService.detectWatermark(imageFile);
 
-            log.info("워터마크 검출 성공 - 제작자: '{}', 내용: '{}'",
-                    detectionResult.creator(), detectionResult.content());
+        log.info("워터마크 검출 성공 - 제작자: '{}', 내용: '{}'",
+                detectionResult.creator(), detectionResult.content());
 
-            return ResponseEntity.ok(detectionResult);
-
-        } catch (IllegalArgumentException e) {
-            log.warn("워터마크 검출 실패 - 잘못된 입력: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            log.error("워터마크 검출 중 오류 발생", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("이미지 처리 중 오류가 발생했습니다: " + e.getMessage());
-        }
+        return ResponseEntity.ok(detectionResult);
     }
 }
