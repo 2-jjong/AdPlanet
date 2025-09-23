@@ -11,6 +11,7 @@ import GenerationHistory from "../components/GenerationHistory";
 import PosterTopBar from "../components/PosterTopBar";
 import PosterCanvasView from "../components/PosterCanvasView";
 import PosterSidebar from "../components/PosterSidebar";
+import type { SkeletonCanvasHandle } from "../components/SkeletonCanvas";
 import type { UploadedImage, PosterGenerationState, SkeletonPose, TextOverlay, GenerationRecord } from "../../../types/poster";
 import { PATHS } from "../../../constants/paths";
 import { useCreatePosterMutation } from "../hooks/usePosterMutations";
@@ -41,6 +42,7 @@ const PosterPage: React.FC = () => {
   const [isFileAccordionOpen, setIsFileAccordionOpen] = useState(false);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const createPosterMutation = useCreatePosterMutation();
+  const skeletonCanvasRef = React.useRef<SkeletonCanvasHandle | null>(null);
 
   // 그룹 목록 사이드바 상태
   const [isGroupListOpen, setIsGroupListOpen] = useState(false);
@@ -73,6 +75,8 @@ const PosterPage: React.FC = () => {
   const [selectedRecordId, setSelectedRecordId] = useState<string | undefined>();
   const [currentGroupId, setCurrentGroupId] = useState<number | undefined>(undefined);
   const [currentJobId, setCurrentJobId] = useState<string | undefined>(undefined);
+  // 포즈 조정 후 완료 시 문구 추가 화면으로 이동할지 여부
+  const goToTextAfterGenerationRef = React.useRef<boolean>(false);
 
   // 생성 히스토리 (그룹 선택 시 서버 데이터로 갱신)
   const [generationRecords, setGenerationRecords] = useState<GenerationRecord[]>([]);
@@ -138,17 +142,44 @@ const PosterPage: React.FC = () => {
     ]);
 
     try {
-      // 구도 조정일 때 캔버스에 보이는 이미지를 previousImage 로 첨부
+      // 첫 생성 여부 판단: 히스토리/현재 이미지가 전혀 없으면 첫 생성으로 간주
+      const lastRecord = generationRecords.length > 0 ? generationRecords[generationRecords.length - 1] : undefined;
+      const isFirstGeneration = !state.generatedPoster && !lastRecord;
+
+      // 구도 조정(첫 생성이 아닌 경우)일 때 캔버스에 보이는 이미지를 previousImage 로 첨부
       let previousFile: File | null = null;
-      if (state.generatedPoster) {
-        try {
-          const res = await fetch(state.generatedPoster, { mode: 'cors' });
-          const blob = await res.blob();
-          const ext = blob.type.includes('jpeg') ? 'jpg' : blob.type.split('/')[1] || 'png';
-          previousFile = new File([blob], `previous.${ext}`, { type: blob.type || 'image/png' });
-        } catch (_) {
-          previousFile = null;
+      if (!isFirstGeneration) {
+        const sourceUrl = state.generatedPoster || lastRecord?.thumbnail || '';
+        if (sourceUrl) {
+          try {
+            const res = await fetch(sourceUrl, { mode: 'cors' });
+            const blob = await res.blob();
+            const ext = blob.type.includes('jpeg') ? 'jpg' : blob.type.split('/')[1] || 'png';
+            previousFile = new File([blob], `previous.${ext}`, { type: blob.type || 'image/png' });
+          } catch (_) {
+            previousFile = null;
+          }
         }
+      }
+
+      // 스켈레톤 캔버스 PNG 추출
+      let skeletonFile: File | null = null;
+      if (skeletonCanvasRef.current && state.currentPose) {
+        try {
+          const blob = await skeletonCanvasRef.current.toBlob();
+          skeletonFile = new File([blob], 'skeleton.png', { type: 'image/png' });
+        } catch (_) {
+          skeletonFile = null;
+        }
+      }
+
+      // 이번 요청이 포즈 조정 흐름인지 여부: 스켈레톤 또는 previous 이미지 첨부 여부로 판단
+      const shouldGoToTextEdit = Boolean(skeletonFile || previousFile);
+      goToTextAfterGenerationRef.current = shouldGoToTextEdit;
+      
+      if ((import.meta as any)?.env?.DEV) {
+        // eslint-disable-next-line no-console
+        console.log('[handleGenerate] shouldGoToTextEdit:', shouldGoToTextEdit, { skeletonFile: !!skeletonFile, previousFile: !!previousFile });
       }
 
       const res = await createPosterMutation.mutateAsync({
@@ -161,7 +192,7 @@ const PosterPage: React.FC = () => {
           person: personImage?.file ?? null,
           product: productImage?.file ?? null,
           sketch: sketchImage?.file ?? null,
-          skeleton: null,
+          skeleton: skeletonFile,
           // 첫 생성이면 null, 구도 조정이면 현재 캔버스 이미지를 첨부
           previous: previousFile,
         },
@@ -180,7 +211,20 @@ const PosterPage: React.FC = () => {
         prev.map((r) => (r.id.startsWith('pending-') ? { ...r, status: 'failed' } : r))
       );
     }
-  }, [createPosterMutation, personImage, productImage, sketchImage, state.title, state.content, state.prompt]);
+  }, [
+    createPosterMutation,
+    personImage,
+    productImage,
+    sketchImage,
+    state.title,
+    state.content,
+    state.prompt,
+    state.generatedPoster,
+    state.step,
+    state.currentPose,
+    generationRecords,
+    currentGroupId,
+  ]);
 
   // 10초 간격으로 생성 작업 상태 폴링
   const jobQuery = usePosterJob(currentJobId as string, { enabled: !!currentJobId, interval: 10000 });
@@ -193,13 +237,22 @@ const PosterPage: React.FC = () => {
     if (status === 'COMPLETED' && job?.result) {
       const finalUrl = job.result.imgUrl;
       const finalGroupId = job.result.groupId;
-      setState((prev) => ({
-        ...prev,
-        step: 'edit',
-        generatedPoster: finalUrl ?? prev.generatedPoster,
-        currentPose: prev.currentPose ?? defaultSkeletonPose,
-        isGenerating: false,
-      }));
+      setState((prev) => {
+        const nextStep = goToTextAfterGenerationRef.current ? 'text-edit' : 'edit';
+        if ((import.meta as any)?.env?.DEV) {
+          // eslint-disable-next-line no-console
+          console.log('[jobComplete] Transitioning to step:', nextStep, 'flag was:', goToTextAfterGenerationRef.current);
+        }
+        return {
+          ...prev,
+          step: nextStep,
+          generatedPoster: finalUrl ?? prev.generatedPoster,
+          currentPose: nextStep === 'text-edit' ? null : (prev.currentPose ?? defaultSkeletonPose),
+          isGenerating: false,
+        };
+      });
+      // 한 번 사용 후 초기화
+      goToTextAfterGenerationRef.current = false;
       if (typeof finalGroupId === 'number' && Number.isFinite(finalGroupId)) {
         setCurrentGroupId(finalGroupId);
         // 그룹/히스토리 데이터 동기화
@@ -325,12 +378,20 @@ const PosterPage: React.FC = () => {
     }));
     // 최신 이미지로 캔버스 업데이트: history 마지막
     const last = historyItems.length > 0 ? historyItems[historyItems.length - 1] : undefined;
-    setState((prev) => ({
-      ...prev,
-      generatedPoster: last?.imgUrl ?? prev.generatedPoster,
-      step: 'edit',
-      currentPose: prev.currentPose ?? defaultSkeletonPose,
-    }));
+    setState((prev) => {
+      // 그룹 동기화 시 text-edit 상태는 절대 덮어쓰지 않음
+      const shouldKeepTextEdit = prev.step === 'text-edit';
+      if ((import.meta as any)?.env?.DEV && shouldKeepTextEdit) {
+        // eslint-disable-next-line no-console
+        console.log('[groupSync] Preserving text-edit step');
+      }
+      return {
+        ...prev,
+        generatedPoster: last?.imgUrl ?? prev.generatedPoster,
+        step: shouldKeepTextEdit ? 'text-edit' : 'edit',
+        currentPose: shouldKeepTextEdit ? null : (prev.currentPose ?? defaultSkeletonPose),
+      };
+    });
     setGenerationRecords(mapped);
     setSelectedRecordId(undefined);
     // 히스토리는 로컬 상태가 아니라 props로 넘기므로 여기선 필요 시 확장 가능
@@ -459,6 +520,7 @@ const PosterPage: React.FC = () => {
                     onChange={(value) => setState((prev) => ({ ...prev, prompt: value }))}
                     onGenerate={handleGenerate}
                     isGenerating={state.isGenerating}
+                    allowEmptyPrompt={!!state.generatedPoster}
                   />
                 </div>
               </div>
@@ -480,6 +542,7 @@ const PosterPage: React.FC = () => {
               onUpdateText={handleUpdateText}
               onRemoveText={handleRemoveText}
               onSelectText={setSelectedTextId}
+              skeletonRef={skeletonCanvasRef}
             />
             <div className='p-4 flex flex-col gap-4'>
               {!(state.step === 'text-edit' || (state.step === 'edit' && state.currentPose)) && (

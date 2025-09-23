@@ -1,5 +1,5 @@
 import React from "react";
-import SkeletonCanvas from "./SkeletonCanvas";
+import SkeletonCanvas, { type SkeletonCanvasHandle } from "./SkeletonCanvas";
 import TextEditor from "../../../components/UI/Text/TextEditor";
 import type { SkeletonPose, TextOverlay, UploadedImage } from "../../../types/poster";
 
@@ -16,6 +16,7 @@ interface PosterSidebarProps {
   onUpdateText: (id: string, u: Partial<TextOverlay>) => void;
   onRemoveText: (id: string) => void;
   onSelectText: (id?: string) => void;
+  skeletonRef?: React.Ref<SkeletonCanvasHandle>;
 }
 
 const PosterSidebar: React.FC<PosterSidebarProps> = ({
@@ -31,6 +32,7 @@ const PosterSidebar: React.FC<PosterSidebarProps> = ({
   onUpdateText,
   onRemoveText,
   onSelectText,
+  skeletonRef,
 }) => {
   if (step === 'text-edit') {
     return (
@@ -87,7 +89,7 @@ const PosterSidebar: React.FC<PosterSidebarProps> = ({
           </div>
           <div className='bg-background/50 rounded-xl border border-white/10 p-3 flex-1 min-h-0 flex items-center justify-center'>
             <div className='w-full h-full max-w-md max-h-full'>
-              <SkeletonCanvas pose={currentPose} onPoseChange={onPoseChange} width={360} height={480} />
+              <SkeletonCanvas ref={skeletonRef} pose={currentPose} onPoseChange={onPoseChange} width={360} height={480} />
             </div>
           </div>
         </section>
