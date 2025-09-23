@@ -119,9 +119,8 @@ public class PosterController {
             @Parameter(description = "포스터 id", required = true)
             @PathVariable("posterId") Long posterId
     ) {
-        CopyResponse response = new CopyResponse(
-                "시원한 청정라거, 테라!"
-        );
+        CopyResponse response = posterService.getCopy(posterId);
+
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
 

@@ -2,6 +2,7 @@ package com.ssafy.adplanet.service.poster;
 
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
 import com.ssafy.adplanet.dto.poster.request.ImageJobMessage;
+import com.ssafy.adplanet.dto.poster.response.CopyResponse;
 import com.ssafy.adplanet.dto.poster.response.ImageJobResponse;
 import com.ssafy.adplanet.dto.poster.response.PosterGroupResponse;
 import com.ssafy.adplanet.dto.poster.response.PosterResponse;
@@ -450,6 +451,18 @@ public class PosterServiceImpl implements PosterService {
     }
 
     @Override
+    public CopyResponse getCopy(Long posterId) {
+
+        Poster poster = posterRepository.findById(posterId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_NOT_FOUND));
+
+        String copy = gmsService.generateCopyByImage(poster.getPosterGroup().getTitle(), poster.getPosterGroup().getContent(), s3Service.toHttpUrl(poster.getImgUrl()));
+
+        return new CopyResponse(copy);
+    }
+
+    @Override
+    @Transactional
     public PosterResponse saveImage(Long groupId, MultipartFile image) {
 
         PosterGroup posterGroup = posterGroupRepository.findById(groupId)
