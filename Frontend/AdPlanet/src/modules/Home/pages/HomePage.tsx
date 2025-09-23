@@ -3,7 +3,8 @@ import Navigation from "../../../components/Layout/Navigation";
 
 import { Model } from "../components/Model";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Stars } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
+import Stars from "../components/Stars";
 const HomePage: React.FC = () => {
   useEffect(() => {
     const handleBack = (event: PopStateEvent) => {
@@ -26,7 +27,7 @@ const HomePage: React.FC = () => {
       <Canvas camera={{ position: [0, 0, 10], fov: 50 }}>
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 10, 5]} />
-        <Stars />
+        <Stars size={3} />
         <Model />
         <OrbitControls />
       </Canvas>

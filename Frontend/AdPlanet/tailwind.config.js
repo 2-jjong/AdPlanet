@@ -1,4 +1,4 @@
-/** @type {import('tailwindcss').Config} */
+// tailwind.config.js
 export default {
   content: [
     "./index.html",
@@ -7,20 +7,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        'primary': '#87DEDA',
-        'background': '#1D1F33',
+        primary: '#87DEDA',
+        background: '#1D1F33',
         'text-color': '#FFFFFF',
       },
       fontFamily: {
         kravo: ["Kravo", "system-ui", "sans-serif"],
         jamsil: ['"The Jamsil"', "system-ui", "sans-serif"],
-      },
-      animation: {
-        'float': 'float 6s ease-in-out infinite',
-        'twinkle': 'twinkle 2s ease-in-out infinite alternate',
-        'orbit': 'orbit 20s linear infinite',
-        'breath': 'breath 2.2s ease-in-out infinite',
-        'planet-breath': 'planet-breath 2.2s ease-in-out infinite',
       },
       keyframes: {
         float: {
@@ -45,9 +38,20 @@ export default {
           '50%': { transform: 'translate(-50%, 50%) scale(1.15)', opacity: '1.2' },
           '100%': { transform: 'translate(-50%, 50%) scale(0.9)', opacity: '0.8' },
         },
+        typing: {
+          '0%': { width: '0ch' },
+          '100%': { width: '10ch' },
+        },
+      },
+      animation: {
+        float: 'float 6s ease-in-out infinite',
+        twinkle: 'twinkle 2s ease-in-out infinite alternate',
+        orbit: 'orbit 20s linear infinite',
+        breath: 'breath 2.2s ease-in-out infinite',
+        'planet-breath': 'planet-breath 2.2s ease-in-out infinite',
+        typing: 'typing 2s steps(10) infinite alternate',
       },
     },
   },
   plugins: [],
-}
-
+};
