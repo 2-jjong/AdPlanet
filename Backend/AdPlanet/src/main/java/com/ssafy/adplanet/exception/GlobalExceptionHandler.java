@@ -56,10 +56,4 @@ public class GlobalExceptionHandler {
                 .body(ResponseDto.error(errorCode.getCode(), errorCode.getMessage()));
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ResponseDto<Void>> handleGeneralException(Exception e) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ResponseDto.error(ErrorCode.INTERNAL_SERVER_ERROR.getCode(),
-                        ErrorCode.INTERNAL_SERVER_ERROR.getMessage()));
-    }
 }
