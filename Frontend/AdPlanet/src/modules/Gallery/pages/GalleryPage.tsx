@@ -1,10 +1,10 @@
-import Gallery3D from "../components/Gallery3D";
+import GlassCardStack from '../components/GlassCardStack';
 
 const GalleryPage: React.FC = () => {
+
   return (
-    <div>
-      <Gallery3D />
-    </div>
+    <GlassCardStack
+    />
   );
 };
 
