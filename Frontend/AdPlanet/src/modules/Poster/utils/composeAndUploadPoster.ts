@@ -1,62 +1,74 @@
-import { savePosterToGroup, getPosterImage } from '../../../services/posterService';
-import type { TextOverlay } from '../../../types/poster';
+import html2canvas from 'html2canvas';
+import { getPosterImage, savePosterToGroup } from '../../../services/posterService';
 
 export interface ComposeOptions {
   groupId: number;
   posterId: number;
-  overlays: TextOverlay[];
-  effectiveCssImageWidthPx: number;
-  effectiveCssImageHeightPx: number;
+  posterElement: HTMLElement;
 }
 
-export async function composeAndUploadPoster({ groupId, posterId, overlays, effectiveCssImageWidthPx, effectiveCssImageHeightPx }: ComposeOptions): Promise<void> {
-  const blob = await getPosterImage(posterId);
-  const baseUrl = URL.createObjectURL(blob);
+export async function composeAndUploadPoster({ groupId, posterId, posterElement }: ComposeOptions): Promise<void> {
+  let localImageUrl: string | null = null;
+  
   try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = reject;
-      image.src = baseUrl;
+    // 1. 서버에서 이미지 바이너리 가져오기 (CORS 우회)
+    const imageBlob = await getPosterImage(posterId);
+    localImageUrl = URL.createObjectURL(imageBlob);
+    
+    // 2. DOM의 이미지 src를 로컬 Blob URL로 임시 변경
+    const imgElement = posterElement.querySelector('img') as HTMLImageElement | null;
+    const originalSrc = imgElement?.src;
+    
+    if (imgElement) {
+      imgElement.src = localImageUrl;
+      
+      // 이미지 로드 대기
+      await new Promise((resolve, reject) => {
+        if (imgElement.complete) {
+          resolve(void 0);
+        } else {
+          imgElement.onload = () => resolve(void 0);
+          imgElement.onerror = reject;
+        }
+      });
+    }
+
+    // 3. HTML2Canvas로 DOM 캡처 (이제 CORS 문제 없음)
+    const canvas = await html2canvas(posterElement, {
+      useCORS: false, // 로컬 이미지이므로 false
+      allowTaint: false,
+      logging: false,
+      width: posterElement.offsetWidth,
+      height: posterElement.offsetHeight,
     });
 
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth || img.width;
-    canvas.height = img.naturalHeight || img.height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas 2D context not available');
+    // 4. 원본 이미지 src 복원
+    if (imgElement && originalSrc) {
+      imgElement.src = originalSrc;
+    }
 
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    const safeCssWidth = Math.max(1, Math.floor(effectiveCssImageWidthPx || 500));
-    const safeCssHeight = Math.max(1, Math.floor(effectiveCssImageHeightPx || 500));
-    // 보수적으로 가로/세로 스케일 중 큰 값을 사용해 작은 저장 현상 방지
-    const ratioW = canvas.width / safeCssWidth;
-    const ratioH = canvas.height / safeCssHeight;
-    const scaleRatio = Math.max(ratioW, ratioH);
-    overlays.forEach((t) => {
-      const x = (t.x / 100) * canvas.width;
-      const y = (t.y / 100) * canvas.height;
-      const scaledFontSize = Math.max(10, t.fontSize * scaleRatio);
-      ctx.font = `${t.fontWeight} ${scaledFontSize}px ${t.fontFamily}`;
-      ctx.fillStyle = t.color;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(0,0,0,0.6)';
-      ctx.shadowBlur = 4;
-      ctx.shadowOffsetX = 1;
-      ctx.shadowOffsetY = 1;
-      ctx.fillText(t.text, x, y);
-    });
-
+    // 5. 캔버스를 Blob으로 변환
     const composedBlob: Blob = await new Promise((resolve, reject) => {
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png');
+      canvas.toBlob((b: Blob | null) => {
+        if (b) {
+          resolve(b);
+        } else {
+          reject(new Error('toBlob failed'));
+        }
+      }, 'image/png', 0.95);
     });
-    const file = new File([composedBlob], 'image.png', { type: 'image/png' });
+
+    // 6. 파일 생성 및 업로드
+    const file = new File([composedBlob], 'poster.png', { type: 'image/png' });
     await savePosterToGroup(groupId, file);
+    
+  } catch (error) {
+    console.error('Compose and upload error:', error);
+    throw error;
   } finally {
-    URL.revokeObjectURL(baseUrl);
+    // 7. 로컬 Blob URL 정리
+    if (localImageUrl) {
+      URL.revokeObjectURL(localImageUrl);
+    }
   }
 }
-
-

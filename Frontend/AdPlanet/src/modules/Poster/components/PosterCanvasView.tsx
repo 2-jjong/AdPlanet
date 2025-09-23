@@ -24,7 +24,11 @@ const PosterCanvasView: React.FC<PosterCanvasViewProps> = ({ generatedPoster, on
   return (
     <div
       ref={containerRef as any}
-      className='relative w-full max-w-[500px] rounded-3xl border-2 border-dashed border-primary/30 hover:border-primary/50 shadow-2xl shadow-primary/5 bg-gradient-to-br from-background to-background/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 group cursor-pointer'
+      className={`relative w-full max-w-[500px] rounded-3xl shadow-2xl shadow-primary/5 flex items-center justify-center transition-all duration-300 group cursor-pointer ${
+        generatedPoster 
+          ? 'bg-transparent' // 이미지가 있을 때: 테두리 없음, 투명 배경
+          : 'border-2 border-dashed border-primary/30 hover:border-primary/50 bg-gradient-to-br from-background to-background/50 backdrop-blur-sm' // 이미지가 없을 때: 점선 테두리와 그라데이션 배경
+      }`}
       style={{ aspectRatio: aspect || 1, maxHeight: '60vh' }}
       onClick={(e) => {
         e.stopPropagation();
@@ -36,7 +40,16 @@ const PosterCanvasView: React.FC<PosterCanvasViewProps> = ({ generatedPoster, on
     >
       {generatedPoster ? (
         <div className='relative w-full h-full'>
-          <img src={generatedPoster} alt='Generated Poster' className='w-full h-full object-contain rounded-2xl' />
+          <img 
+            src={generatedPoster} 
+            alt='Generated Poster' 
+            className='w-full h-full object-contain rounded-2xl'
+            onLoad={(e) => {
+              // HTML2Canvas를 위해 crossOrigin 속성 제거
+              const img = e.target as HTMLImageElement;
+              img.removeAttribute('crossorigin');
+            }}
+          />
           {children}
           {isGenerating && (
             <div className='absolute inset-0 bg-black/40 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center gap-3'>

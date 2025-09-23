@@ -52,29 +52,6 @@ const PosterPage: React.FC = () => {
   const posterContainerRef = React.useRef<HTMLDivElement | null>(null);
   const [isGeneratingCopy, setIsGeneratingCopy] = useState(false);
 
-  // 합성/업로드 호출용 래퍼
-  const doComposeAndUpload = useCallback(async (groupId: number, posterId: number) => {
-    const hostOuter = posterContainerRef.current;
-    const imgEl = hostOuter ? (hostOuter.querySelector('img') as HTMLImageElement | null) : null;
-    const imgRect = imgEl?.getBoundingClientRect();
-    const effectiveWidth = imgRect?.width || hostOuter?.clientWidth || 500;
-    const effectiveHeight = imgRect?.height || hostOuter?.clientHeight || 500;
-    const hostInner = posterContainerRef.current;
-    const overlaysWithComputed = state.textOverlays.map((t) => {
-      let fontPx = t.fontSize;
-      if (hostInner) {
-        const el = hostInner.querySelector(`[data-overlay="text"][data-id="${t.id}"]`) as HTMLElement | null;
-        if (el) {
-          const size = window.getComputedStyle(el).fontSize;
-          const parsed = parseFloat(size || '');
-          if (!Number.isNaN(parsed) && parsed > 0) fontPx = parsed;
-        }
-      }
-      return { ...t, fontSize: fontPx };
-    });
-    await composeAndUploadPoster({ groupId, posterId, overlays: overlaysWithComputed, effectiveCssImageWidthPx: effectiveWidth, effectiveCssImageHeightPx: effectiveHeight });
-  }, [posterContainerRef, state.textOverlays]);
-
   // 그룹 목록 사이드바 상태
   const [isGroupListOpen, setIsGroupListOpen] = useState(false);
   const groupsQuery = usePosterGroups({ order: 'NEWEST' });
@@ -110,6 +87,20 @@ const PosterPage: React.FC = () => {
 
   // 생성 히스토리 (그룹 선택 시 서버 데이터로 갱신)
   const [generationRecords, setGenerationRecords] = useState<GenerationRecord[]>([]);
+
+  // 합성/업로드 호출용 래퍼
+  const doComposeAndUpload = useCallback(async (groupId: number) => {
+    const posterElement = posterContainerRef.current;
+    if (!posterElement || !currentPosterId) {
+      throw new Error('Poster container or posterId not found');
+    }
+    
+    await composeAndUploadPoster({ 
+      groupId, 
+      posterId: currentPosterId,
+      posterElement 
+    });
+  }, [posterContainerRef, currentPosterId]);
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setState((prev) => ({
@@ -322,17 +313,20 @@ const PosterPage: React.FC = () => {
 
   // 저장: 서버에서 바이너리 이미지를 가져와(동일 출처) 로컬 합성 후 업로드
   const handleSave = useCallback(async () => {
-    if (!currentGroupId || !currentPosterId) {
+    if (!currentGroupId) {
       setIsTagDialogOpen(true);
       return;
     }
     try {
-      await doComposeAndUpload(currentGroupId, currentPosterId);
+      await doComposeAndUpload(currentGroupId);
+      // 저장 성공 후 텍스트 오버레이 초기화
+      setState((prev) => ({ ...prev, textOverlays: [] }));
       setIsTagDialogOpen(true);
     } catch (e) {
+      console.error('[handleSave] composeAndUploadPoster failed:', e);
       setIsTagDialogOpen(true);
     }
-  }, [currentGroupId, currentPosterId, doComposeAndUpload]);
+  }, [currentGroupId, doComposeAndUpload]);
 
   // 텍스트 관련 핸들러들
   const handleAddText = useCallback((textOverlay: TextOverlay) => {
@@ -409,7 +403,7 @@ const PosterPage: React.FC = () => {
     const historyItems = (detail as any).history ?? (detail as any).posters ?? [];
     const mapped = historyItems.map((p: any, idx: number) => ({
       id: String(p.posterId ?? idx),
-      timestamp: new Date(),
+      timestamp: new Date(p.createdAt || new Date()),
       thumbnail: p.imgUrl,
       prompt: p.prompt ?? detail.title ?? `생성 ${idx + 1}`,
       step: 'generate' as const,
@@ -510,55 +504,100 @@ const PosterPage: React.FC = () => {
                 {state.textOverlays.map((text) => (
                   <div
                     key={text.id}
-                    className={`absolute cursor-move select-none ${selectedTextId === text.id ? "ring-2 ring-primary" : ""}`}
+                    className={`absolute select-none ${selectedTextId === text.id ? "ring-2 ring-primary ring-opacity-50" : ""}`}
                     data-overlay='text'
                     data-id={text.id}
                     style={{
                       left: `${text.x}%`,
                       top: `${text.y}%`,
-                      fontSize: `${text.fontSize}px`,
-                      color: text.color,
-                      fontWeight: text.fontWeight,
-                      fontFamily: text.fontFamily,
+                      width: text.width ? `${text.width}px` : 'auto',
                       transform: "translate(-50%, -50%)",
-                      textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedTextId(selectedTextId === text.id ? undefined : text.id);
                     }}
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      const host = posterContainerRef.current ?? e.currentTarget.parentElement!;
-                      const rect = host.getBoundingClientRect();
-                      // 이미지가 object-contain이므로 실제 표시 영역의 padding을 반영
-                      const imgEl = host.querySelector('img');
-                      let effectiveWidth = rect.width, effectiveHeight = rect.height;
-                      if (imgEl) {
-                        const imgRect = (imgEl as HTMLElement).getBoundingClientRect();
-                        effectiveWidth = imgRect.width;
-                        effectiveHeight = imgRect.height;
-                      }
-                      const startX = e.clientX;
-                      const startY = e.clientY;
-                      const startLeft = text.x;
-                      const startTop = text.y;
-                      const handleMouseMove = (e: MouseEvent) => {
-                        const deltaX = ((e.clientX - startX) / effectiveWidth) * 100;
-                        const deltaY = ((e.clientY - startY) / effectiveHeight) * 100;
-                        const newX = Math.max(0, Math.min(100, startLeft + deltaX));
-                        const newY = Math.max(0, Math.min(100, startTop + deltaY));
-                        handleTextPositionChange(text.id, newX, newY);
-                      };
-                      const handleMouseUp = () => {
-                        document.removeEventListener("mousemove", handleMouseMove);
-                        document.removeEventListener("mouseup", handleMouseUp);
-                      };
-                      document.addEventListener("mousemove", handleMouseMove);
-                      document.addEventListener("mouseup", handleMouseUp);
-                    }}
                   >
-                    {text.text}
+                    {/* 텍스트 내용 */}
+                    <div
+                      className="cursor-move break-words whitespace-pre-wrap"
+                      style={{
+                        fontSize: `${text.fontSize}px`,
+                        color: text.color,
+                        fontWeight: text.fontWeight,
+                        fontFamily: text.fontFamily,
+                        textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
+                        lineHeight: "1.2",
+                        textAlign: "center",
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        const host = posterContainerRef.current ?? e.currentTarget.parentElement!.parentElement!;
+                        const rect = host.getBoundingClientRect();
+                        // 이미지가 object-contain이므로 실제 표시 영역의 padding을 반영
+                        const imgEl = host.querySelector('img');
+                        let effectiveWidth = rect.width, effectiveHeight = rect.height;
+                        if (imgEl) {
+                          const imgRect = (imgEl as HTMLElement).getBoundingClientRect();
+                          effectiveWidth = imgRect.width;
+                          effectiveHeight = imgRect.height;
+                        }
+                        const startX = e.clientX;
+                        const startY = e.clientY;
+                        const startLeft = text.x;
+                        const startTop = text.y;
+                        const handleMouseMove = (e: MouseEvent) => {
+                          const deltaX = ((e.clientX - startX) / effectiveWidth) * 100;
+                          const deltaY = ((e.clientY - startY) / effectiveHeight) * 100;
+                          const newX = Math.max(0, Math.min(100, startLeft + deltaX));
+                          const newY = Math.max(0, Math.min(100, startTop + deltaY));
+                          handleTextPositionChange(text.id, newX, newY);
+                        };
+                        const handleMouseUp = () => {
+                          document.removeEventListener("mousemove", handleMouseMove);
+                          document.removeEventListener("mouseup", handleMouseUp);
+                        };
+                        document.addEventListener("mousemove", handleMouseMove);
+                        document.addEventListener("mouseup", handleMouseUp);
+                      }}
+                    >
+                      {text.text}
+                    </div>
+                    
+                    {/* 리사이즈 핸들 (선택된 텍스트에만 표시) */}
+                    {selectedTextId === text.id && (
+                      <>
+                        {/* 우측 너비 조절 핸들 */}
+                        <div
+                          className="absolute top-1/2 -right-1 w-3 h-3 bg-primary border border-white rounded-full cursor-ew-resize shadow-sm transform -translate-y-1/2"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            const startX = e.clientX;
+                            const startWidth = text.width || 200; // 기본 너비
+                            
+                            const handleMouseMove = (e: MouseEvent) => {
+                              const deltaX = e.clientX - startX;
+                              const newWidth = Math.max(50, Math.min(400, startWidth + deltaX)); // 최소 50px, 최대 400px
+                              
+                              setState((prev) => ({
+                                ...prev,
+                                textOverlays: prev.textOverlays.map((t) =>
+                                  t.id === text.id ? { ...t, width: newWidth } : t
+                                ),
+                              }));
+                            };
+                            
+                            const handleMouseUp = () => {
+                              document.removeEventListener("mousemove", handleMouseMove);
+                              document.removeEventListener("mouseup", handleMouseUp);
+                            };
+                            
+                            document.addEventListener("mousemove", handleMouseMove);
+                            document.addEventListener("mouseup", handleMouseUp);
+                          }}
+                        />
+                      </>
+                    )}
                   </div>
                 ))}
               </PosterCanvasView>
