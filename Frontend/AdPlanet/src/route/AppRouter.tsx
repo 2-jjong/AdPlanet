@@ -1,14 +1,13 @@
 import { createBrowserRouter, type RouteObject, RouterProvider, Navigate } from "react-router-dom";
 import HomePage from "../modules/Home/pages/HomePage";
 import LogoDetailPage from "../modules/Mypage/pages/LogoDetailPage";
-import PosterDetailPage from '../modules/Mypage/pages/PosterDetailPage';
+import PosterDetailPage from "../modules/Mypage/pages/PosterDetailPage";
 import WatermarkDetectionPage from "../modules/Watermark/pages/WatermarkDetectionPage";
 import ArchivePage from "../modules/Mypage/pages/ArchivePage";
 import { PATHS } from "../constants/paths";
 import LogoPage from "../modules/Logo/pages/LogoPage";
 import PosterPage from "../modules/Poster/pages/PosterPage";
 import AuthCallbackPage from "../modules/Auth/pages/AuthCallbackPage";
-
 
 const routeConfig = [
   {
@@ -29,7 +28,7 @@ const routeConfig = [
   },
   {
     path: PATHS.ARCHIVE,
-    element: <Navigate to="/archive/logo" replace />,
+    element: <Navigate to='/archive/logo' replace />,
   },
   {
     path: "/archive/:kind",
@@ -42,7 +41,7 @@ const routeConfig = [
   },
   {
     path: "/archive/poster/:id",
-    element: <PosterDetailPage />
+    element: <PosterDetailPage />,
   },
 
   {
