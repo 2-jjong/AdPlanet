@@ -7,7 +7,8 @@ import EdgeBlurOverlay from "./EdgeBlurOverlay";
 import GlassFrame from "./GlassFrame";
 import {
   CARD_W, CARD_H, CARD_D, MAX_ANISOTROPY,
-  FADE_RADIUS, MIN_OPACITY, SHOW_FRAME, SHOW_BACKPLATE
+  FADE_RADIUS, MIN_OPACITY, SHOW_FRAME, SHOW_BACKPLATE,
+  HOVER_FLATTEN, HOVER_SCALE, HOVER_DAMP, HOVER_LIFT
 } from "./options";
 import Backplate from "./Backplate";
 
@@ -29,7 +30,7 @@ export default function GlassCard({
   const tex = useTexture(src) as THREE.Texture;
 
   // 텍스처 세팅
-  tex.colorSpace = (THREE as any).LinearSRGBColorSpace ?? THREE.SRGBColorSpace;
+  tex.colorSpace = THREE.SRGBColorSpace;
   tex.generateMipmaps = true;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.magFilter = THREE.LinearFilter;
@@ -56,6 +57,8 @@ export default function GlassCard({
 
   const groupRef = useRef<THREE.Group>(null);
   const posterMeshRef = useRef<THREE.Mesh>(null);
+  const frameRef = useRef<THREE.Group>(null);
+  const backplateRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
   useCursor(hovered, "pointer", "auto");
 
@@ -71,11 +74,15 @@ export default function GlassCard({
       mat.uniforms.uOpacity.value = 0.98 * opacityForCard;
     }
 
-    const targetScale = hovered ? 1.05 : 1;
-    groupRef.current.scale.x = THREE.MathUtils.damp(groupRef.current.scale.x, targetScale, 6, dt);
-    groupRef.current.scale.y = THREE.MathUtils.damp(groupRef.current.scale.y, targetScale, 6, dt);
-    const targetRotY = hovered ? rotY + 0.05 : rotY;
-    groupRef.current.rotation.y = THREE.MathUtils.damp(groupRef.current.rotation.y, targetRotY, 6, dt);
+    // 향상된 호버 효과 - 스케일과 틸팅
+    const targetScale = hovered ? HOVER_SCALE : 1;
+    groupRef.current.scale.x = THREE.MathUtils.damp(groupRef.current.scale.x, targetScale, HOVER_DAMP, dt);
+    groupRef.current.scale.y = THREE.MathUtils.damp(groupRef.current.scale.y, targetScale, HOVER_DAMP, dt);
+
+    // 틸팅을 정면으로 부드럽게 변화
+    const targetRotY = hovered ? rotY * (1 - HOVER_FLATTEN) : rotY;
+    groupRef.current.rotation.y = THREE.MathUtils.damp(groupRef.current.rotation.y, targetRotY, HOVER_DAMP, dt);
+
   });
 
   return (
@@ -108,7 +115,11 @@ export default function GlassCard({
         />
       </mesh>
 
-      {SHOW_FRAME && <GlassFrame />}
+      {SHOW_FRAME && (
+        <group ref={frameRef}>
+          <GlassFrame />
+        </group>
+      )}
     </group>
   );
 }

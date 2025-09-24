@@ -6,9 +6,19 @@ import { Canvas } from "@react-three/fiber";
 
 const GalleryPage: React.FC = () => {
   return (
-    <div style={{ position: "relative", minHeight: "100dvh", overflow: "hidden" }}>
+    <div className='' style={{ position: "relative", minHeight: "100dvh", overflow: "hidden" }}>
       <Navigation />
-
+    <div
+      style={{
+        position: "fixed", inset: 0, zIndex: 20,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        pointerEvents: "none",
+      }}
+    >
+      <h1 style={{ color: "#87DEDA", fontWeight: 700, fontSize: "clamp(2rem,5vw,3rem)" }}>
+        Style Library
+      </h1>
+    </div>
       {/* 배경 Canvas (전체 화면 고정) */}
       <Canvas
         style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}

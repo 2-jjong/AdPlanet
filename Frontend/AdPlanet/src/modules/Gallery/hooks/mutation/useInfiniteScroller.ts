@@ -9,7 +9,7 @@ type Opts = {
 };
 
 export function useInfiniteScroller(target: HTMLElement | null, opts: Opts) {
-  const { onChange, friction = 0.92, wheelSpeed = 1.0, dragSpeed = 1.0 } = opts;
+  const { onChange, friction = 0.85, wheelSpeed = 0.6, dragSpeed = 1.0 } = opts;
   const pos = useRef(0);
   const vel = useRef(0);
   const dragging = useRef(false);
