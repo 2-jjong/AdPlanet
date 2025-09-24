@@ -14,6 +14,9 @@ import PosterTagBar from "../components/PosterTagBar";
 import type { PosterTagItem } from "../components/PosterTagBar";
 import PosterTagGrid from "../components/PosterTagGrid";
 import { getAllPosterTags } from "../../../services/posterService";
+import Stars from "../../Home/components/Stars";
+import { Canvas } from '@react-three/fiber';
+
 
 const ArchivePage: React.FC = () => {
   const { kind: kindParam } = useParams();
@@ -98,7 +101,14 @@ const ArchivePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background items-center justify-center">
+    <section className="relative w-screen h-screen">
+      <Canvas className="absolute inset-0 !w-full !h-full" camera={{ position: [0, 0, 10], fov: 50 }}>
+        <ambientLight intensity={0.5} />
+        <directionalLight position={[10, 10, 5]} />
+        <Stars size={3} />
+      </Canvas>
+
+    <div className="min-h-screen items-center justify-center absolute inset-0">
       <Navigation />
       <main className="font-jamsil relative z-10 flex flex-col items-center justify-start min-h-[calc(100vh-80px)] lg:px-12 text-center">
         <h1 className="text-4xl lg:text-5xl font-bold text-white mt-6">Archive</h1>
@@ -146,6 +156,10 @@ const ArchivePage: React.FC = () => {
         </div>
       </main>
     </div>
+
+
+
+    </section>
   );
 };
 

@@ -5,6 +5,8 @@ import { Model } from "../components/Model";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import Stars from "../components/Stars";
+import { motion } from "framer-motion";
+
 const HomePage: React.FC = () => {
   useEffect(() => {
     const handleBack = (event: PopStateEvent) => {
@@ -22,7 +24,9 @@ const HomePage: React.FC = () => {
   }, []);
 
   return (
-    <div className='w-full h-screen overflow-hidden'>
+    <div
+      className='w-full h-screen overflow-hidden'
+    >
       <Navigation />
       <Canvas camera={{ position: [0, 0, 10], fov: 50 }}>
         <ambientLight intensity={0.5} />
