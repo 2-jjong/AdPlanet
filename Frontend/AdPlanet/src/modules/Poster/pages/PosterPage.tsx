@@ -20,6 +20,9 @@ import { usePosterGroups, usePosterGroupDetail, usePosterJob, posterKeys } from 
 import { useQueryClient } from "@tanstack/react-query";
 import { defaultSkeletonPose } from "../components/defaultPose";
 import TagDialog from "../components/TagDialog";
+import StatusIndicatorItem from "../components/StatusIndicatorItem";
+import SectionHeader from "../components/SectionHeader";
+import TextOverlayItem from "../components/TextOverlayItem";
 import { generatePosterCopy } from "../../../services/posterService";
 import { composeAndUploadPoster } from "../utils/composeAndUploadPoster";
 
@@ -360,6 +363,75 @@ const PosterPage: React.FC = () => {
     [handleUpdateText]
   );
 
+  // 텍스트 드래그 시작 핸들러
+  const handleTextDragStart = useCallback(
+    (e: React.MouseEvent, textId: string, currentX: number, currentY: number) => {
+      e.stopPropagation();
+      const host = posterContainerRef.current ?? e.currentTarget.parentElement!.parentElement!;
+      const rect = host.getBoundingClientRect();
+      
+      // 이미지가 object-contain이므로 실제 표시 영역의 padding을 반영
+      const imgEl = host.querySelector('img');
+      let effectiveWidth = rect.width, effectiveHeight = rect.height;
+      if (imgEl) {
+        const imgRect = (imgEl as HTMLElement).getBoundingClientRect();
+        effectiveWidth = imgRect.width;
+        effectiveHeight = imgRect.height;
+      }
+      
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startLeft = currentX;
+      const startTop = currentY;
+
+      const handleMouseMove = (e: MouseEvent) => {
+        const deltaX = ((e.clientX - startX) / effectiveWidth) * 100;
+        const deltaY = ((e.clientY - startY) / effectiveHeight) * 100;
+        const newX = Math.max(0, Math.min(100, startLeft + deltaX));
+        const newY = Math.max(0, Math.min(100, startTop + deltaY));
+        handleTextPositionChange(textId, newX, newY);
+      };
+
+      const handleMouseUp = () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [handleTextPositionChange]
+  );
+
+  // 텍스트 리사이즈 시작 핸들러
+  const handleTextResizeStart = useCallback(
+    (e: React.MouseEvent, textId: string, startWidth: number) => {
+      e.stopPropagation();
+      const startX = e.clientX;
+      
+      const handleMouseMove = (e: MouseEvent) => {
+        const deltaX = e.clientX - startX;
+        const newWidth = Math.max(50, Math.min(400, startWidth + deltaX)); // 최소 50px, 최대 400px
+        
+        setState((prev) => ({
+          ...prev,
+          textOverlays: prev.textOverlays.map((t) =>
+            t.id === textId ? { ...t, width: newWidth } : t
+          ),
+        }));
+      };
+      
+      const handleMouseUp = () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+      
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [setState]
+  );
+
   // 그룹 선택/신규
   const handleSelectGroup = useCallback((groupId: number) => {
     setCurrentGroupId(groupId);
@@ -498,103 +570,17 @@ const PosterPage: React.FC = () => {
               <PosterCanvasView generatedPoster={state.generatedPoster} onOpenPreview={() => setIsImagePreviewOpen(true)} isGenerating={state.isGenerating} containerRef={posterContainerRef}>
                 {/* 텍스트 오버레이들 */}
                 {state.textOverlays.map((text) => (
-                  <div
+                  <TextOverlayItem
                     key={text.id}
-                    className={`absolute select-none ${selectedTextId === text.id ? "ring-2 ring-primary ring-opacity-50" : ""}`}
-                    data-overlay='text'
-                    data-id={text.id}
-                    style={{
-                      left: `${text.x}%`,
-                      top: `${text.y}%`,
-                      width: text.width ? `${text.width}px` : 'auto',
-                      transform: "translate(-50%, -50%)",
-                    }}
-                    onClick={(e) => {
+                    text={text}
+                    isSelected={selectedTextId === text.id}
+                    onTextClick={(e, textId) => {
                       e.stopPropagation();
-                      setSelectedTextId(selectedTextId === text.id ? undefined : text.id);
+                      setSelectedTextId(selectedTextId === textId ? undefined : textId);
                     }}
-                  >
-                    {/* 텍스트 내용 */}
-                    <div
-                      className="cursor-move break-words whitespace-pre-wrap"
-                      style={{
-                        fontSize: `${text.fontSize}px`,
-                        color: text.color,
-                        fontWeight: text.fontWeight,
-                        fontFamily: text.fontFamily,
-                        textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
-                        lineHeight: "1.2",
-                        textAlign: "center",
-                      }}
-                      onMouseDown={(e) => {
-                        e.stopPropagation();
-                        const host = posterContainerRef.current ?? e.currentTarget.parentElement!.parentElement!;
-                        const rect = host.getBoundingClientRect();
-                        // 이미지가 object-contain이므로 실제 표시 영역의 padding을 반영
-                        const imgEl = host.querySelector('img');
-                        let effectiveWidth = rect.width, effectiveHeight = rect.height;
-                        if (imgEl) {
-                          const imgRect = (imgEl as HTMLElement).getBoundingClientRect();
-                          effectiveWidth = imgRect.width;
-                          effectiveHeight = imgRect.height;
-                        }
-                        const startX = e.clientX;
-                        const startY = e.clientY;
-                        const startLeft = text.x;
-                        const startTop = text.y;
-                        const handleMouseMove = (e: MouseEvent) => {
-                          const deltaX = ((e.clientX - startX) / effectiveWidth) * 100;
-                          const deltaY = ((e.clientY - startY) / effectiveHeight) * 100;
-                          const newX = Math.max(0, Math.min(100, startLeft + deltaX));
-                          const newY = Math.max(0, Math.min(100, startTop + deltaY));
-                          handleTextPositionChange(text.id, newX, newY);
-                        };
-                        const handleMouseUp = () => {
-                          document.removeEventListener("mousemove", handleMouseMove);
-                          document.removeEventListener("mouseup", handleMouseUp);
-                        };
-                        document.addEventListener("mousemove", handleMouseMove);
-                        document.addEventListener("mouseup", handleMouseUp);
-                      }}
-                    >
-                      {text.text}
-                    </div>
-                    
-                    {/* 리사이즈 핸들 (선택된 텍스트에만 표시) */}
-                    {selectedTextId === text.id && (
-                      <>
-                        {/* 우측 너비 조절 핸들 */}
-                        <div
-                          className="absolute top-1/2 -right-1 w-3 h-3 bg-primary border border-white rounded-full cursor-ew-resize shadow-sm transform -translate-y-1/2"
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            const startX = e.clientX;
-                            const startWidth = text.width || 200; // 기본 너비
-                            
-                            const handleMouseMove = (e: MouseEvent) => {
-                              const deltaX = e.clientX - startX;
-                              const newWidth = Math.max(50, Math.min(400, startWidth + deltaX)); // 최소 50px, 최대 400px
-                              
-                              setState((prev) => ({
-                                ...prev,
-                                textOverlays: prev.textOverlays.map((t) =>
-                                  t.id === text.id ? { ...t, width: newWidth } : t
-                                ),
-                              }));
-                            };
-                            
-                            const handleMouseUp = () => {
-                              document.removeEventListener("mousemove", handleMouseMove);
-                              document.removeEventListener("mouseup", handleMouseUp);
-                            };
-                            
-                            document.addEventListener("mousemove", handleMouseMove);
-                            document.addEventListener("mouseup", handleMouseUp);
-                          }}
-                        />
-                      </>
-                    )}
-                  </div>
+                    onTextDragStart={handleTextDragStart}
+                    onResizeStart={handleTextResizeStart}
+                  />
                 ))}
               </PosterCanvasView>
 
@@ -690,8 +676,9 @@ const PosterPage: React.FC = () => {
                     className='flex flex-col gap-3 flex-shrink-0'
                     onClick={handleOutsideClick}
                   >
-                    <div className='flex items-center gap-3 pb-3 border-b border-white/10'>
-                      <div className='p-2 bg-primary/10 rounded-lg'>
+                    <SectionHeader
+                      title="기본 정보"
+                      icon={
                         <svg
                           className='w-4 h-4 text-primary'
                           fill='none'
@@ -705,9 +692,8 @@ const PosterPage: React.FC = () => {
                             d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
                           />
                         </svg>
-                      </div>
-                      <h3 className='text-base font-bold text-text-color'>기본 정보</h3>
-                    </div>
+                      }
+                    />
                     <div className='space-y-3'>
                       <input
                         type='text'
@@ -735,8 +721,9 @@ const PosterPage: React.FC = () => {
                       className='flex flex-col gap-3 flex-shrink-0'
                       onClick={handleOutsideClick}
                     >
-                      <div className='flex items-center gap-3 pb-3 border-b border-white/10'>
-                        <div className='p-2 bg-primary/10 rounded-lg'>
+                      <SectionHeader
+                        title="현재 상태"
+                        icon={
                           <svg
                             className='w-4 h-4 text-primary'
                             fill='none'
@@ -750,79 +737,38 @@ const PosterPage: React.FC = () => {
                               d='M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'
                             />
                           </svg>
-                        </div>
-                        <h3 className='text-base font-bold text-text-color'>현재 상태</h3>
-                      </div>
+                        }
+                      />
                       <div className='bg-background/30 rounded-xl p-4 space-y-3'>
-                        <div className='flex items-center justify-between p-2 rounded-lg bg-background/50'>
-                          <div className='flex items-center gap-3'>
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                state.title.trim() ? "bg-green-400 animate-pulse" : "bg-gray-400"
-                              }`}
-                            ></div>
-                            <span className='text-sm font-medium'>제목</span>
-                          </div>
-                          <span className='text-xs text-text-color/60'>
-                            {state.title.trim() ? "완료" : "대기중"}
-                          </span>
-                        </div>
-
-                        <div className='flex items-center justify-between p-2 rounded-lg bg-background/50'>
-                          <div className='flex items-center gap-3'>
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                state.content.trim() ? "bg-green-400 animate-pulse" : "bg-gray-400"
-                              }`}
-                            ></div>
-                            <span className='text-sm font-medium'>내용</span>
-                          </div>
-                          <span className='text-xs text-text-color/60'>
-                            {state.content.trim() ? "완료" : "선택사항"}
-                          </span>
-                        </div>
-
-                        <div className='flex items-center justify-between p-2 rounded-lg bg-background/50'>
-                          <div className='flex items-center gap-3'>
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                personImage ? "bg-green-400 animate-pulse" : "bg-gray-400"
-                              }`}
-                            ></div>
-                            <span className='text-sm font-medium'>인물 사진</span>
-                          </div>
-                          <span className='text-xs text-text-color/60'>
-                            {personImage ? "업로드됨" : "대기중"}
-                          </span>
-                        </div>
-
-                        <div className='flex items-center justify-between p-2 rounded-lg bg-background/50'>
-                          <div className='flex items-center gap-3'>
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                productImage ? "bg-green-400 animate-pulse" : "bg-gray-400"
-                              }`}
-                            ></div>
-                            <span className='text-sm font-medium'>상품 사진</span>
-                          </div>
-                          <span className='text-xs text-text-color/60'>
-                            {productImage ? "업로드됨" : "대기중"}
-                          </span>
-                        </div>
-
-                        <div className='flex items-center justify-between p-2 rounded-lg bg-background/50'>
-                          <div className='flex items-center gap-3'>
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                state.prompt.trim() ? "bg-green-400 animate-pulse" : "bg-gray-400"
-                              }`}
-                            ></div>
-                            <span className='text-sm font-medium'>프롬프트</span>
-                          </div>
-                          <span className='text-xs text-text-color/60'>
-                            {state.prompt.trim() ? "완료" : "대기중"}
-                          </span>
-                        </div>
+                        <StatusIndicatorItem
+                          label="제목"
+                          isCompleted={!!state.title.trim()}
+                          statusText={state.title.trim() ? "완료" : "대기중"}
+                        />
+                        
+                        <StatusIndicatorItem
+                          label="내용"
+                          isCompleted={!!state.content.trim()}
+                          statusText={state.content.trim() ? "완료" : "선택사항"}
+                        />
+                        
+                        <StatusIndicatorItem
+                          label="인물 사진"
+                          isCompleted={!!personImage}
+                          statusText={personImage ? "업로드됨" : "대기중"}
+                        />
+                        
+                        <StatusIndicatorItem
+                          label="상품 사진"
+                          isCompleted={!!productImage}
+                          statusText={productImage ? "업로드됨" : "대기중"}
+                        />
+                        
+                        <StatusIndicatorItem
+                          label="프롬프트"
+                          isCompleted={!!state.prompt.trim()}
+                          statusText={state.prompt.trim() ? "완료" : "대기중"}
+                        />
                       </div>
                     </section>
                   )}
