@@ -38,3 +38,8 @@ export const BACKPLATE_COLOR  = "#dfdfdfff";      // 중성 회색(언릿)
 export const BACKPLATE_OPACITY= 1.0;            // 배경판 불투명도(0~1)
 export const BACKPLATE_ROUND  = 0.10;           // 배경판 모서리 라운드(프레임보다 살짝 작게)
 export const BACKPLATE_THICK  = 0.002;          // 두께(아주 얇게)
+
+/** 호버 인터랙션(정면화) */
+export const HOVER_FLATTEN = 0.85; // 0=변화없음, 1=완전 정면(rotY→0으로 보간)
+export const HOVER_SCALE   = 1.06; // 호버 시 확대 비율
+export const HOVER_DAMP    = 7;    // 감쇠(반응 속도) — 높을수록 빨리 수렴
