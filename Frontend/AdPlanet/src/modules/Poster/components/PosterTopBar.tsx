@@ -1,5 +1,6 @@
 import React from "react";
 import { Button } from "../../../components/UI/Button/Button";
+import Header from "../../../components/Layout/Header";
 
 interface PosterTopBarProps {
   historyCount: number;
@@ -8,14 +9,9 @@ interface PosterTopBarProps {
 
 const PosterTopBar: React.FC<PosterTopBarProps> = ({ historyCount, onOpenHistory }) => {
   return (
-    <header className='flex items-center justify-between p-6 border-b border-white/5 flex-shrink-0 bg-background/50 backdrop-blur-xl'>
+    <header className='flex items-center justify-between p-6 border-b border-white/5 flex-shrink-0 bg-background/50 backdrop-blur-xl relative z-40'>
       <div className='flex items-center'>
-        <div>
-          <h1 className='text-2xl lg:text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent'>
-            AdPlanet
-          </h1>
-          <p className='text-sm text-text-color/60 mt-1'>AI 포스터 생성 스튜디오</p>
-        </div>
+        <Header />
       </div>
 
       <div className='flex items-center gap-2 bg-background/30 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/10'>

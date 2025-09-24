@@ -449,7 +449,7 @@ const PosterPage: React.FC = () => {
   );
 
   return (
-    <div className='w-full h-screen bg-background overflow-hidden flex'>
+    <div className='w-full h-screen bg-background overflow-hidden flex flex-col'>
       <StyleSelectionDialog
         isOpen={isStyleDialogOpen}
         onStyleSelect={(styleId) => {
@@ -459,36 +459,32 @@ const PosterPage: React.FC = () => {
         onClose={() => setIsStyleDialogOpen(false)}
       />
 
-      {/* 그룹 목록 사이드바 */}
-      <GroupList
-        groups={groupsQuery.data ?? []}
-        currentGroupId={currentGroupId}
-        onSelectGroup={handleSelectGroup}
-        onNewGroup={handleNewGroup}
-        isOpen={isGroupListOpen}
-        onToggle={() => setIsGroupListOpen(!isGroupListOpen)}
+      {/* Header - 최상단 고정 */}
+      <PosterTopBar
+        historyCount={generationRecords.length}
+        onOpenHistory={() => {
+          const event = new CustomEvent("openGenerationHistory");
+          window.dispatchEvent(event);
+        }}
       />
 
-      <div
-        className={`flex-1 flex flex-col transition-all duration-300 ${
-          isGroupListOpen ? "lg:ml-72" : "lg:ml-16"
-        }`}
-        style={{ height: "calc(100vh - 0px)" }}
-      >
-        {/* Header + 생성 히스토리 통합 */}
-        <PosterTopBar
-          historyCount={generationRecords.length}
-          onOpenHistory={() => {
-            const event = new CustomEvent("openGenerationHistory");
-            window.dispatchEvent(event);
-          }}
-        />
+      {/* 생성 과정 히스토리 - 이벤트 기반으로 처리 */}
+      <GenerationHistory
+        records={generationRecords}
+        onSelectRecord={handleSelectRecord}
+        selectedRecordId={selectedRecordId}
+      />
 
-        {/* 생성 과정 히스토리 - 이벤트 기반으로 처리 */}
-        <GenerationHistory
-          records={generationRecords}
-          onSelectRecord={handleSelectRecord}
-          selectedRecordId={selectedRecordId}
+      {/* Body - Header 아래 전체 영역 */}
+      <div className='flex-1 flex flex-row min-h-0 overflow-hidden'>
+        {/* 그룹 목록 사이드바 */}
+        <GroupList
+          groups={groupsQuery.data ?? []}
+          currentGroupId={currentGroupId}
+          onSelectGroup={handleSelectGroup}
+          onNewGroup={handleNewGroup}
+          isOpen={isGroupListOpen}
+          onToggle={() => setIsGroupListOpen(!isGroupListOpen)}
         />
 
         <div className='flex-1 flex flex-row min-h-0'>

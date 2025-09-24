@@ -36,12 +36,12 @@ const GroupList: React.FC<GroupListProps> = ({
 
   return (
     <>
-      {isOpen && <div className='fixed inset-0 bg-black/20 z-40 lg:hidden' onClick={onToggle} />}
+      {isOpen && <div className='fixed inset-0 bg-black/20 z-20 lg:hidden' onClick={onToggle} />}
 
       <div
-        className={`fixed left-0 top-0 h-full bg-background/95 backdrop-blur-xl border-r border-white/10 z-50 transform transition-all duration-300 ease-in-out flex flex-col ${
-          isOpen ? "translate-x-0 w-80 lg:w-72" : "-translate-x-full lg:translate-x-0 w-80 lg:w-16"
-        } lg:fixed lg:bg-background`}
+        className={`relative bg-background/95 backdrop-blur-xl border-r border-white/10 transform transition-all duration-300 ease-in-out flex flex-col h-full ${
+          isOpen ? "w-80 lg:w-72" : "w-16"
+        } lg:bg-background`}
       >
         <div
           className={`flex items-center justify-between border-b border-white/5 transition-all ${
@@ -58,7 +58,7 @@ const GroupList: React.FC<GroupListProps> = ({
               </button>
             </>
           ) : (
-            <button onClick={onToggle} className='w-full p-2 text-text-color/60 hover:text-text-color rounded-lg hover:bg-white/5 transition-all hidden lg:flex items-center justify-center' title='그룹 열기'>
+            <button onClick={onToggle} className='w-full p-2 text-text-color/60 hover:text-text-color rounded-lg hover:bg-white/5 transition-all flex items-center justify-center' title='그룹 열기'>
               <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                 <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 5l7 7-7 7' />
               </svg>
@@ -130,7 +130,7 @@ const GroupList: React.FC<GroupListProps> = ({
               </div>
             )
           ) : (
-            <div className='hidden lg:flex flex-col p-2 space-y-2'>
+            <div className='flex flex-col p-2 space-y-2'>
               {sortedGroups.slice(0, 6).map((g) => {
                 const thumb = (g as any).imgUrl ?? (g as any).imageUrl;
                 return (
