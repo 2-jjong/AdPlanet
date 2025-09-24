@@ -155,8 +155,7 @@ public class PosterController {
             @RequestParam("format") PosterDownloadFormat format
     ) {
 
-        // 더미 이미지 bytes 생성
-        byte[] bytes = tinyRaster(format.extension);
+        byte[] bytes = posterService.downloadPosterImage(posterId);
 
         String filename = "poster_" + posterId + "." + format.extension;
 
@@ -165,22 +164,6 @@ public class PosterController {
                         ContentDisposition.attachment().filename(filename).build().toString())
                 .contentType(MediaType.parseMediaType(format.contentType))
                 .body(bytes);
-    }
-
-    /**
-     * 더미 이미지 생성 (1x1 px)
-     */
-    private byte[] tinyRaster(String format) {
-        BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
-        Graphics2D g2d = img.createGraphics();
-        g2d.setColor(Color.WHITE); // 흰색으로 채움
-        g2d.fillRect(0, 0, 1, 1);
-        g2d.dispose();
-
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            ImageIO.write(img, format, baos);
-            return baos.toByteArray();
-        } catch (Exception e) { return new byte[0]; }
     }
 
     @GetMapping("/group")
