@@ -3,16 +3,16 @@
 import * as THREE from "three/src/Three.js"
 
 /** 카드 크기/모양 */
-export const CARD_W = 2.3;        // 카드 가로 (더 작게 조정)
-export const CARD_H = 2.8;        // 카드 세로 (더 작게 조정)
+export const CARD_W = 3;        // 카드 가로 (더 작게 조정)
+export const CARD_H = 3;        // 카드 세로 (더 작게 조정)
 export const CARD_D = 0.07;       // 카드 두께(유리 프레임)
 export const CARD_RADIUS = 0.10;  // 카드 모서리 라운드
 export const FEATHER_CORNER = Math.min(CARD_RADIUS / CARD_W, CARD_RADIUS / CARD_H); // 모서리 페더 비율
 
 /** 배치/각도 */
-export const DEFAULT_GAP   = 2.4;   // 카드 간격(좌→우) - 카드 크기에 맞춰 조정
+export const DEFAULT_GAP   = 0.3;   // 카드 간격(좌→우) - 겹쳐진 효과를 위해 줄임
 export const DEFAULT_TILT  = -0.6;  // 카드 기울기(좌상→우하 사선) - 더 세련된 좌측 틸팅
-export const DEFAULT_DEPTH = -0.25; // z 간격(원근) - 카드가 작아진 만큼 조정
+export const DEFAULT_DEPTH = -0.6; // z 간격(원근) - 책꽂이 효과를 위해 더 크게
 
 /** 프레임(유리) */
 export const SHOW_FRAME = true;     // 프레임 노출 여부

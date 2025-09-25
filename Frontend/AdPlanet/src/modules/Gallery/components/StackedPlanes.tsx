@@ -43,37 +43,46 @@ export default function StackedPlanesInfinite({
     return { half, buffer, count };
   }, [viewport.width, gap]);
 
-  // center를 기준으로 [-N, +N] 가상 인덱스(i)를 만들고, 각 i를 이미지 k로 매핑
+  // 스크롤에 따라 카드 위치가 변화하는 스택 레이아웃
   const items = useMemo(() => {
-    const N = visibleWindow.count;
+    const stackSize = 8; // 화면에 보이는 카드 수
     const iCenter = Math.floor(center);
-    const arr: { i: number; imgIndex: number; src: string; x: number; z: number; rotY: number }[] = [];
-    for (let di = -N; di <= N; di++) {
-      const i = iCenter + di;                           // 가상 인덱스(무한대)
+    const offset = center - iCenter; // 소수점 부분 (애니메이션용)
+    const arr: { i: number; imgIndex: number; src: string; x: number; y: number; z: number; rotY: number }[] = [];
+
+    for (let stackIndex = 0; stackIndex < stackSize; stackIndex++) {
+      const i = iCenter + stackIndex;                   // 가상 인덱스(무한대)
       const imgIndex = ((i % M) + M) % M;               // 원본 이미지 인덱스
+
+      // 애니메이션을 위한 위치 계산: 스크롤에 따라 앞으로 이동
+      const animatedIndex = stackIndex - offset;
+
+      // 스택 중심을 화면 중앙에 맞추기 위한 오프셋 계산
+      const centerOffset = (stackSize - 1) / 2;
+
       arr.push({
         i,
         imgIndex,
         src: images[imgIndex],
-        x: i * gap,
-        z: i * depthStep,
+        x: (animatedIndex - centerOffset) * 1.2,  // 중앙 정렬
+        y: (animatedIndex - centerOffset) * 0.6,  // 중앙 정렬
+        z: -animatedIndex * 1.2,  // z축은 그대로 (깊이감 유지)
         rotY: tilt,
       });
     }
     return arr;
-  }, [center, images, M, gap, depthStep, tilt, visibleWindow.count]);
+  }, [center, images, M, tilt]);
 
-  // 그룹 이동 — 즉시 반영(래깅 제거)
+  // 카드 스택은 고정 위치 유지 (그룹 이동 제거)
   useFrame(() => {
-    if (!group.current) return;
-    group.current.position.x = -posRef.current;
+    // 카드 위치는 고정하고 스크롤 시 이미지만 변경
   });
 
   // 공유 PlaneGeometry (루프 밖 1회 생성)
   const sharedPlaneGeom = useMemo(() => new THREE.PlaneGeometry(CARD_W, CARD_H), []);
 
   return (
-    <group ref={group} position={[-1.5, 0, 0]}>
+    <group ref={group} position={[0, 0, 0]}>
       {items.map((p) => (
         <GlassCard
           key={p.i}
@@ -82,6 +91,7 @@ export default function StackedPlanesInfinite({
           center={center}
           src={p.src}
           x={p.x}
+          y={p.y}
           z={p.z}
           rotY={p.rotY}
           sharedGeom={sharedPlaneGeom}

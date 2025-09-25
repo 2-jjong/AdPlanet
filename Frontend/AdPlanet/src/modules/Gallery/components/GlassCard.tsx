@@ -18,6 +18,7 @@ type Props = {
   center: number;
   src: string;
   x: number;
+  y?: number;
   z: number;
   rotY: number;
   sharedGeom: THREE.PlaneGeometry;
@@ -25,7 +26,7 @@ type Props = {
 };
 
 export default function GlassCard({
-  index, center, src, x, z, rotY, sharedGeom, onSelect,
+  index, center, src, x, y = 0, z, rotY, sharedGeom, onSelect,
 }: Props) {
   const tex = useTexture(src) as THREE.Texture;
 
@@ -85,7 +86,7 @@ export default function GlassCard({
   });
 
   return (
-    <group ref={groupRef} position={[x, 0, z]} rotation={[0, rotY, 0]}>
+    <group ref={groupRef} position={[x, y, z]} rotation={[0, rotY, 0]}>
       {SHOW_BACKPLATE && (
         <group position={[0, 0, +CARD_D * 0.505]}>
           <Backplate renderOrder={0} />
