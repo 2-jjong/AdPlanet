@@ -33,6 +33,7 @@ export interface TextOverlay {
   color: string;
   fontWeight: 'normal' | 'bold';
   fontFamily: string;
+  width?: number; // 텍스트 박스 너비 (px)
 }
 
 export interface PosterGenerationState {

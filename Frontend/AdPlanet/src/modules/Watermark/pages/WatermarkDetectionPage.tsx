@@ -6,6 +6,7 @@ import planetImg from "../../../assets/images/puple_planet.png";
 import * as THREE from "three/src/Three.js"
 import { detectWatermark } from "../../../services/watermarkService";
 import Navigation from "../../../components/Layout/Navigation";
+import { useMutation } from "@tanstack/react-query";
 
 const WatermarkDetectionPage: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -63,29 +64,37 @@ const WatermarkDetectionPage: React.FC = () => {
     }, 2000);
   }, []);
 
-  const handleDetect = useCallback(async () => {
+  const mutation = useMutation({
+    mutationFn: async (uploadFile: File) => {
+      const delay = new Promise((resolve) => setTimeout(resolve, 5000));
+      try {
+        const res = await detectWatermark(uploadFile);
+        await delay; // 성공 시에도 최소 5초 대기
+        return res;
+      } catch (error) {
+        await delay; // 실패 시에도 최소 5초 대기
+        throw error;
+      }
+    },
+    onMutate: () => {
+      setState("loading");
+    },
+    onSuccess: (res) => {
+      const ok = res?.data?.verified === true;
+      setState(ok ? "success" : "failure");
+    },
+    onError: () => {
+      setState("failure");
+    },
+  });
+
+  const handleDetect = useCallback(() => {
     if (!file) {
       showToast("파일을 선택해 주세요.");
       return;
     }
-
-    setState("loading");
-
-    try {
-      // API 호출과 5초 딜레이를 병렬로 처리
-      const [res] = await Promise.all([
-        detectWatermark(file),
-        new Promise((resolve) => setTimeout(resolve, 5000)), // 5초 강제 딜레이
-      ]);
-
-      const ok = res?.data?.verified === true;
-      setState(ok ? "success" : "failure");
-    } catch (e) {
-      // 에러가 발생해도 5초는 기다림
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      setState("failure");
-    }
-  }, [file, showToast]);
+    mutation.mutate(file);
+  }, [file, showToast, mutation]);
 
   // three.js 배경: 메인 행성 + 위성 공전
   const canvasRef = useRef<HTMLCanvasElement | null>(null);

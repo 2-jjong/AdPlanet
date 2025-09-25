@@ -1,23 +1,30 @@
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import PromptInput from "../components/PromptInput";
-import SkeletonCanvas from "../components/SkeletonCanvas";
+// SkeletonCanvas is consumed inside PosterSidebar
 import StyleSelectionDialog from "../components/StyleSelectionDialog";
 import Accordion from "../components/Accordion";
 import UploadDropzone from "../components/UploadDropzone";
-import TextEditor from "../../../components/UI/Text/TextEditor";
-import ChatRoomList from "../components/ChatRoomList";
+// TextEditor is now used inside PosterSidebar
+import GroupList from "../components/GroupList";
 import GenerationHistory from "../components/GenerationHistory";
-import { Button } from "../../../components/UI/Button/Button";
-import type {
-  UploadedImage,
-  PosterGenerationState,
-  SkeletonPose,
-  TextOverlay,
-  ChatRoom,
-  GenerationRecord,
-} from "../../../types/poster";
+import PosterTopBar from "../components/PosterTopBar";
+import PosterCanvasView from "../components/PosterCanvasView";
+import PosterSidebar from "../components/PosterSidebar";
+import type { SkeletonCanvasHandle } from "../components/SkeletonCanvas";
+import type { UploadedImage, PosterGenerationState, SkeletonPose, TextOverlay, GenerationRecord } from "../../../types/poster";
 import { PATHS } from "../../../constants/paths";
+import { useCreatePosterMutation } from "../hooks/usePosterMutations";
+import type { UiPosterStyle } from "../hooks/usePosterMutations";
+import { usePosterGroups, usePosterGroupDetail, usePosterJob, posterKeys } from "../hooks/usePosterQueries";
+import { useQueryClient } from "@tanstack/react-query";
+import { defaultSkeletonPose } from "../components/defaultPose";
+import TagDialog from "../components/TagDialog";
+import StatusIndicatorItem from "../components/StatusIndicatorItem";
+import SectionHeader from "../components/SectionHeader";
+import TextOverlayItem from "../components/TextOverlayItem";
+import { generatePosterCopy } from "../../../services/posterService";
+import { composeAndUploadPoster } from "../utils/composeAndUploadPoster";
 
 const PosterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -25,7 +32,7 @@ const PosterPage: React.FC = () => {
   const [state, setState] = useState<PosterGenerationState>({
     step: "upload",
     uploadedImages: [],
-    generatedPoster: "/src/assets/poster.jpg", // 테스트용 이미지
+    generatedPoster: null,
     currentPose: null,
     prompt: "",
     isGenerating: false,
@@ -38,12 +45,20 @@ const PosterPage: React.FC = () => {
   const [productImage, setProductImage] = useState<UploadedImage | null>(null);
   const [sketchImage, setSketchImage] = useState<UploadedImage | null>(null);
   const [isStyleDialogOpen, setIsStyleDialogOpen] = useState<boolean>(true);
+  const [uiStyle, setUiStyle] = useState<UiPosterStyle>(undefined);
   const [selectedTextId, setSelectedTextId] = useState<string | undefined>();
   const [isFileAccordionOpen, setIsFileAccordionOpen] = useState(false);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const createPosterMutation = useCreatePosterMutation();
+  const skeletonCanvasRef = React.useRef<SkeletonCanvasHandle | null>(null);
+  const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
+  const posterContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const [isGeneratingCopy, setIsGeneratingCopy] = useState(false);
 
-  // 채팅방 관련 상태
-  const [isChatListOpen, setIsChatListOpen] = useState(false);
+  // 그룹 목록 사이드바 상태
+  const [isGroupListOpen, setIsGroupListOpen] = useState(false);
+  const groupsQuery = usePosterGroups({ order: 'NEWEST' });
+  const queryClient = useQueryClient();
 
   // 파일 첨부 아코디언 자동 닫기 핸들러
   const handleOutsideClick = useCallback(() => {
@@ -68,63 +83,27 @@ const PosterPage: React.FC = () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isImagePreviewOpen]);
-  const [currentRoomId, setCurrentRoomId] = useState<string>("room-1");
   const [selectedRecordId, setSelectedRecordId] = useState<string | undefined>();
+  const [currentGroupId, setCurrentGroupId] = useState<number | undefined>(undefined);
+  const [currentJobId, setCurrentJobId] = useState<string | undefined>(undefined);
+  const [currentPosterId, setCurrentPosterId] = useState<number | undefined>(undefined);
 
-  // 더미 채팅방 데이터
-  const [chatRooms] = useState<ChatRoom[]>([
-    {
-      id: "room-1",
-      title: "새 포스터 프로젝트",
-      lastUpdated: new Date(),
-      messageCount: 5,
-      isActive: true,
-    },
-    {
-      id: "room-2",
-      title: "여름 세일 포스터",
-      lastUpdated: new Date(Date.now() - 86400000), // 어제
-      thumbnail: "/src/assets/poster.jpg",
-      messageCount: 12,
-      isActive: false,
-    },
-    {
-      id: "room-3",
-      title: "신제품 런칭 광고",
-      lastUpdated: new Date(Date.now() - 172800000), // 2일 전
-      thumbnail: "/src/assets/poster.jpg",
-      messageCount: 8,
-      isActive: false,
-    },
-  ]);
+  // 생성 히스토리 (그룹 선택 시 서버 데이터로 갱신)
+  const [generationRecords, setGenerationRecords] = useState<GenerationRecord[]>([]);
 
-  // 더미 생성 기록 데이터
-  const [generationRecords] = useState<GenerationRecord[]>([
-    {
-      id: "record-1",
-      timestamp: new Date(Date.now() - 300000), // 5분 전
-      thumbnail: "/src/assets/poster.jpg",
-      prompt: "깔끔한 포스터 생성",
-      step: "upload",
-      status: "completed",
-    },
-    {
-      id: "record-2",
-      timestamp: new Date(Date.now() - 180000), // 3분 전
-      thumbnail: "/src/assets/poster.jpg",
-      prompt: "포즈 조정된 포스터",
-      step: "edit",
-      status: "completed",
-    },
-    {
-      id: "record-3",
-      timestamp: new Date(Date.now() - 60000), // 1분 전
-      thumbnail: "/src/assets/poster.jpg",
-      prompt: "텍스트 추가된 포스터",
-      step: "text-edit",
-      status: "generating",
-    },
-  ]);
+  // 합성/업로드 호출용 래퍼
+  const doComposeAndUpload = useCallback(async (groupId: number) => {
+    const posterElement = posterContainerRef.current;
+    if (!posterElement || !currentPosterId) {
+      throw new Error('Poster container or posterId not found');
+    }
+    
+    await composeAndUploadPoster({ 
+      groupId, 
+      posterId: currentPosterId,
+      posterElement 
+    });
+  }, [posterContainerRef, currentPosterId]);
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setState((prev) => ({
@@ -165,79 +144,165 @@ const PosterPage: React.FC = () => {
   }, []);
 
   const handleGenerate = useCallback(async () => {
+    // 첫 생성은 업로드/프롬프트 중 하나가 있어야 하고,
+    // 구도 조정(이미 생성본 존재)일 때는 previousImage 로만 생성 허용
+    if (!personImage && !productImage && !sketchImage && !state.prompt.trim() && !state.generatedPoster) {
+      return;
+    }
+
     setState((prev) => ({ ...prev, isGenerating: true }));
-
-    // 실제 API 호출 시뮬레이션
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    // 더미 포스터 이미지 URL
-    const dummyPosterUrl = "/src/assets/poster.jpg";
-
-    // 기본 스켈레톤 포즈 생성
-    const defaultPose = {
-      points: [
-        // 머리
-        { id: "head", x: 175, y: 80, name: "머리", color: "#8B5CF6" },
-        { id: "neck", x: 175, y: 120, name: "목", color: "#A855F7" },
-
-        // 몸통
-        { id: "chest", x: 175, y: 160, name: "가슴", color: "#3B82F6" },
-        { id: "waist", x: 175, y: 220, name: "허리", color: "#10B981" },
-
-        // 팔
-        { id: "left_shoulder", x: 135, y: 140, name: "왼쪽 어깨", color: "#10B981" },
-        { id: "left_elbow", x: 95, y: 180, name: "왼쪽 팔꿈치", color: "#06B6D4" },
-        { id: "left_wrist", x: 75, y: 220, name: "왼쪽 손목", color: "#059669" },
-
-        { id: "right_shoulder", x: 215, y: 140, name: "오른쪽 어깨", color: "#F59E0B" },
-        { id: "right_elbow", x: 255, y: 180, name: "오른쪽 팔꿈치", color: "#EAB308" },
-        { id: "right_wrist", x: 275, y: 220, name: "오른쪽 손목", color: "#84CC16" },
-
-        // 다리
-        { id: "left_hip", x: 155, y: 280, name: "왼쪽 엉덩이", color: "#06B6D4" },
-        { id: "left_knee", x: 145, y: 380, name: "왼쪽 무릎", color: "#3B82F6" },
-        { id: "left_ankle", x: 135, y: 460, name: "왼쪽 발목", color: "#8B5CF6" },
-
-        { id: "right_hip", x: 195, y: 280, name: "오른쪽 엉덩이", color: "#10B981" },
-        { id: "right_knee", x: 205, y: 380, name: "오른쪽 무릎", color: "#3B82F6" },
-        { id: "right_ankle", x: 215, y: 460, name: "오른쪽 발목", color: "#8B5CF6" },
-      ],
-      connections: [
-        // 머리-목-가슴
-        { from: "head", to: "neck", color: "#8B5CF6" },
-        { from: "neck", to: "chest", color: "#3B82F6" },
-        { from: "chest", to: "waist", color: "#10B981" },
-
-        // 왼쪽 팔
-        { from: "chest", to: "left_shoulder", color: "#10B981" },
-        { from: "left_shoulder", to: "left_elbow", color: "#06B6D4" },
-        { from: "left_elbow", to: "left_wrist", color: "#059669" },
-
-        // 오른쪽 팔
-        { from: "chest", to: "right_shoulder", color: "#F59E0B" },
-        { from: "right_shoulder", to: "right_elbow", color: "#EAB308" },
-        { from: "right_elbow", to: "right_wrist", color: "#84CC16" },
-
-        // 왼쪽 다리
-        { from: "waist", to: "left_hip", color: "#06B6D4" },
-        { from: "left_hip", to: "left_knee", color: "#3B82F6" },
-        { from: "left_knee", to: "left_ankle", color: "#8B5CF6" },
-
-        // 오른쪽 다리
-        { from: "waist", to: "right_hip", color: "#10B981" },
-        { from: "right_hip", to: "right_knee", color: "#3B82F6" },
-        { from: "right_knee", to: "right_ankle", color: "#8B5CF6" },
-      ],
-    };
-
-    setState((prev) => ({
+    // 로컬 히스토리에 generating 항목 추가 (플레이스홀더)
+    const pendingId = `pending-${Date.now()}`;
+    setGenerationRecords((prev) => [
       ...prev,
-      step: "edit",
-      generatedPoster: dummyPosterUrl,
-      currentPose: defaultPose,
-      isGenerating: false,
-    }));
-  }, []);
+      {
+        id: pendingId,
+        timestamp: new Date(),
+        thumbnail: prev.length > 0 ? (prev[prev.length - 1].thumbnail) : (state.generatedPoster ?? ''),
+        prompt: state.prompt || '생성 요청',
+        step: 'generate',
+        status: 'generating',
+      },
+    ]);
+
+    try {
+      // 첫 생성 여부 판단: 히스토리/현재 이미지가 전혀 없으면 첫 생성으로 간주
+      const lastRecord = generationRecords.length > 0 ? generationRecords[generationRecords.length - 1] : undefined;
+      const isFirstGeneration = !state.generatedPoster && !lastRecord;
+
+      // 구도 조정(첫 생성이 아닌 경우)일 때 캔버스에 보이는 이미지를 previousImage 로 첨부
+      let previousFile: File | null = null;
+      if (!isFirstGeneration) {
+        const sourceUrl = state.generatedPoster || lastRecord?.thumbnail || '';
+        if (sourceUrl) {
+          try {
+            const res = await fetch(sourceUrl, { mode: 'cors' });
+            const blob = await res.blob();
+            const ext = blob.type.includes('jpeg') ? 'jpg' : blob.type.split('/')[1] || 'png';
+            previousFile = new File([blob], `previous.${ext}`, { type: blob.type || 'image/png' });
+          } catch (_) {
+            previousFile = null;
+          }
+        }
+      }
+
+      // 스켈레톤 캔버스 PNG 추출
+      let skeletonFile: File | null = null;
+      if (skeletonCanvasRef.current && state.currentPose) {
+        try {
+          const blob = await skeletonCanvasRef.current.toBlob();
+          skeletonFile = new File([blob], 'skeleton.png', { type: 'image/png' });
+        } catch (_) {
+          skeletonFile = null;
+        }
+      }
+
+      console.log('[handleGenerate] currentStep before request:', state.step);
+
+      const res = await createPosterMutation.mutateAsync({
+        groupId: currentGroupId, // 없으면 생략되어 서버가 새 그룹을 생성
+        title: state.title || 'Untitled',
+        content: state.content || undefined,
+        prompt: state.prompt,
+        style: uiStyle, // 스타일을 쿼리 파라미터로 전달
+        images: {
+          person: personImage?.file ?? null,
+          product: productImage?.file ?? null,
+          sketch: sketchImage?.file ?? null,
+          skeleton: skeletonFile,
+          // 첫 생성이면 null, 구도 조정이면 현재 캔버스 이미지를 첨부
+          previous: previousFile,
+        },
+      });
+
+      const jobId = res.data?.jobId;
+      if (jobId) {
+        setCurrentJobId(jobId);
+      } else {
+        setState((prev) => ({ ...prev, isGenerating: false }));
+      }
+    } catch (e) {
+      setState((prev) => ({ ...prev, isGenerating: false }));
+      // 실패로 표시
+      setGenerationRecords((prev) =>
+        prev.map((r) => (r.id.startsWith('pending-') ? { ...r, status: 'failed' } : r))
+      );
+    }
+  }, [
+    createPosterMutation,
+    personImage,
+    productImage,
+    sketchImage,
+    state.title,
+    state.content,
+    state.prompt,
+    state.generatedPoster,
+    state.step,
+    state.currentPose,
+    generationRecords,
+    currentGroupId,
+  ]);
+
+  // 3초 간격으로 생성 작업 상태 폴링
+  const jobQuery = usePosterJob(currentJobId as string, { enabled: !!currentJobId, interval: 3000 });
+
+  React.useEffect(() => {
+    if (!currentJobId) return;
+    const job = jobQuery.data;
+    const status = job?.status?.toString().toUpperCase();
+    if (!status) return;
+    if (status === 'COMPLETED' && job?.result) {
+      const finalUrl = job.result.imgUrl;
+      const finalGroupId = job.result.groupId;
+      const finalPosterId = job.result.posterId;
+      setState((prev) => {
+        const nextStep = prev.step === 'edit' ? 'text-edit' : 'edit';
+        if ((import.meta as any)?.env?.DEV) {
+          // eslint-disable-next-line no-console
+          console.log('[jobComplete] Transitioning to step:', nextStep);
+        }
+        return {
+          ...prev,
+          step: nextStep,
+          generatedPoster: finalUrl ?? prev.generatedPoster,
+          currentPose: nextStep === 'text-edit' ? null : (prev.currentPose ?? defaultSkeletonPose),
+          isGenerating: false,
+        };
+      });
+      if (typeof finalGroupId === 'number' && Number.isFinite(finalGroupId)) {
+        setCurrentGroupId(finalGroupId);
+        if (typeof finalPosterId === 'number') setCurrentPosterId(finalPosterId);
+        // 그룹/히스토리 데이터 동기화
+        queryClient.invalidateQueries({ queryKey: posterKeys.groups() });
+        queryClient.invalidateQueries({ queryKey: posterKeys.groupDetail(finalGroupId) });
+      } else {
+        queryClient.invalidateQueries({ queryKey: posterKeys.groups() });
+      }
+      // 마지막 pending 항목을 completed로 교체/업데이트
+      setGenerationRecords((prev) => {
+        const updated = [...prev];
+        for (let i = updated.length - 1; i >= 0; i--) {
+          if (updated[i].status === 'generating') {
+            updated[i] = {
+              ...updated[i],
+              status: 'completed',
+              thumbnail: finalUrl || updated[i].thumbnail,
+              timestamp: new Date(),
+            };
+            break;
+          }
+        }
+        return updated;
+      });
+      setCurrentJobId(undefined);
+    } else if (status === 'FAILED') {
+      setState((prev) => ({ ...prev, isGenerating: false }));
+      setGenerationRecords((prev) =>
+        prev.map((r) => (r.status === 'generating' ? { ...r, status: 'failed' } : r))
+      );
+      setCurrentJobId(undefined);
+    }
+  }, [currentJobId, jobQuery.data, queryClient]);
 
   const handlePoseChange = useCallback((pose: SkeletonPose) => {
     setState((prev) => ({ ...prev, currentPose: pose }));
@@ -246,6 +311,25 @@ const PosterPage: React.FC = () => {
   const handleComplete = useCallback(() => {
     navigate(PATHS.HOME);
   }, [navigate]);
+
+  // (보류 중) 텍스트 합성 로직은 서버 프록시/합성 채택 시 재사용 예정
+
+  // 저장: 서버에서 바이너리 이미지를 가져와(동일 출처) 로컬 합성 후 업로드
+  const handleSave = useCallback(async () => {
+    if (!currentGroupId) {
+      setIsTagDialogOpen(true);
+      return;
+    }
+    try {
+      await doComposeAndUpload(currentGroupId);
+      // 저장 성공 후 텍스트 오버레이 초기화
+      setState((prev) => ({ ...prev, textOverlays: [] }));
+      setIsTagDialogOpen(true);
+    } catch (e) {
+      console.error('[handleSave] composeAndUploadPoster failed:', e);
+      setIsTagDialogOpen(true);
+    }
+  }, [currentGroupId, doComposeAndUpload]);
 
   // 텍스트 관련 핸들러들
   const handleAddText = useCallback((textOverlay: TextOverlay) => {
@@ -279,19 +363,154 @@ const PosterPage: React.FC = () => {
     [handleUpdateText]
   );
 
-  // 채팅방 관련 핸들러들
-  const handleSelectRoom = useCallback((roomId: string) => {
-    setCurrentRoomId(roomId);
-    setIsChatListOpen(false);
-    // 실제로는 선택된 방의 데이터를 로드
+  // 텍스트 드래그 시작 핸들러
+  const handleTextDragStart = useCallback(
+    (e: React.MouseEvent, textId: string, currentX: number, currentY: number) => {
+      e.stopPropagation();
+      const host = posterContainerRef.current ?? e.currentTarget.parentElement!.parentElement!;
+      const rect = host.getBoundingClientRect();
+      
+      // 이미지가 object-contain이므로 실제 표시 영역의 padding을 반영
+      const imgEl = host.querySelector('img');
+      let effectiveWidth = rect.width, effectiveHeight = rect.height;
+      if (imgEl) {
+        const imgRect = (imgEl as HTMLElement).getBoundingClientRect();
+        effectiveWidth = imgRect.width;
+        effectiveHeight = imgRect.height;
+      }
+      
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startLeft = currentX;
+      const startTop = currentY;
+
+      const handleMouseMove = (e: MouseEvent) => {
+        const deltaX = ((e.clientX - startX) / effectiveWidth) * 100;
+        const deltaY = ((e.clientY - startY) / effectiveHeight) * 100;
+        const newX = Math.max(0, Math.min(100, startLeft + deltaX));
+        const newY = Math.max(0, Math.min(100, startTop + deltaY));
+        handleTextPositionChange(textId, newX, newY);
+      };
+
+      const handleMouseUp = () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [handleTextPositionChange]
+  );
+
+  // 텍스트 리사이즈 시작 핸들러
+  const handleTextResizeStart = useCallback(
+    (e: React.MouseEvent, textId: string, startWidth: number) => {
+      e.stopPropagation();
+      const startX = e.clientX;
+      
+      const handleMouseMove = (e: MouseEvent) => {
+        const deltaX = e.clientX - startX;
+        const newWidth = Math.max(50, Math.min(400, startWidth + deltaX)); // 최소 50px, 최대 400px
+        
+        setState((prev) => ({
+          ...prev,
+          textOverlays: prev.textOverlays.map((t) =>
+            t.id === textId ? { ...t, width: newWidth } : t
+          ),
+        }));
+      };
+      
+      const handleMouseUp = () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+      
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [setState]
+  );
+
+  // 그룹 선택/신규
+  const handleSelectGroup = useCallback((groupId: number) => {
+    setCurrentGroupId(groupId);
+    setIsGroupListOpen(false);
+    setSelectedRecordId(undefined);
+    setState((prev) => ({
+      ...prev,
+      step: 'edit',
+      currentPose: prev.currentPose ?? defaultSkeletonPose,
+    }));
   }, []);
 
-  const handleNewRoom = useCallback(() => {
-    const newRoomId = `room-${Date.now()}`;
-    setCurrentRoomId(newRoomId);
-    setIsChatListOpen(false);
-    // 새 방 생성 로직
+  const handleNewGroup = useCallback(() => {
+    setCurrentGroupId(undefined);
+    setIsGroupListOpen(false);
+    setGenerationRecords([]);
+    setSelectedRecordId(undefined);
+    setPersonImage(null);
+    setProductImage(null);
+    setSketchImage(null);
+    setState({
+      step: 'upload',
+      uploadedImages: [],
+      generatedPoster: null,
+      currentPose: null,
+      prompt: '',
+      isGenerating: false,
+      textOverlays: [],
+      title: '',
+      content: '',
+    });
   }, []);
+
+  // 현재 그룹 상세를 불러와 히스토리와 캔버스를 동기화
+  const groupDetailQuery = usePosterGroupDetail(currentGroupId as number);
+
+  React.useEffect(() => {
+    const detail = groupDetailQuery.data;
+    if (!detail) return;
+    // 히스토리 변환: 서버 포스터 목록(history 또는 posters)을 UI 레코드로 맵핑
+    const historyItems = (detail as any).history ?? (detail as any).posters ?? [];
+    const mapped = historyItems.map((p: any, idx: number) => ({
+      id: String(p.posterId ?? idx),
+      timestamp: new Date(p.createdAt || new Date()),
+      thumbnail: p.imgUrl,
+      prompt: p.prompt ?? detail.title ?? `생성 ${idx + 1}`,
+      step: 'generate' as const,
+      status: 'completed' as const,
+    }));
+    // 최신 이미지로 캔버스 업데이트: history 마지막
+    const last = historyItems.length > 0 ? historyItems[historyItems.length - 1] : undefined;
+    setState((prev) => {
+      // 그룹 동기화 시 초기 진입(upload)일 때만 'edit'로 전환하고 현재 단계를 보존
+      const shouldInitializeToEdit = prev.step === 'upload';
+      const nextStep = shouldInitializeToEdit ? 'edit' : prev.step;
+      // eslint-disable-next-line no-console
+      console.log('[groupSync] step preserved:', prev.step, '->', nextStep);
+
+      return {
+        ...prev,
+        generatedPoster: last?.imgUrl ?? prev.generatedPoster,
+        step: nextStep,
+        currentPose: nextStep === 'text-edit' ? null : (prev.currentPose ?? defaultSkeletonPose),
+      };
+    });
+    setGenerationRecords(mapped);
+    setSelectedRecordId(undefined);
+  }, [groupDetailQuery.data]);
+
+  // 히스토리 선택에 따라 캔버스 이미지 동기화 (선택 없으면 마지막 항목)
+  React.useEffect(() => {
+    const selected = generationRecords.find((r) => r.id === selectedRecordId);
+    const last = generationRecords.length > 0 ? generationRecords[generationRecords.length - 1] : undefined;
+    if (!selected && !last) return;
+    setState((prev) => ({
+      ...prev,
+      generatedPoster: selected?.thumbnail ?? last?.thumbnail ?? prev.generatedPoster,
+    }));
+  }, [selectedRecordId, generationRecords]);
 
   const handleSelectRecord = useCallback(
     (recordId: string) => {
@@ -302,98 +521,42 @@ const PosterPage: React.FC = () => {
   );
 
   return (
-    <div className='w-full h-screen bg-background overflow-hidden flex'>
+    <div className='w-full h-screen bg-background overflow-hidden flex flex-col'>
       <StyleSelectionDialog
         isOpen={isStyleDialogOpen}
-        onStyleSelect={() => {
+        onStyleSelect={(styleId) => {
+          setUiStyle(styleId as UiPosterStyle);
           setIsStyleDialogOpen(false);
         }}
         onClose={() => setIsStyleDialogOpen(false)}
       />
 
-      {/* 채팅방 목록 사이드바 */}
-      <ChatRoomList
-        chatRooms={chatRooms}
-        currentRoomId={currentRoomId}
-        onSelectRoom={handleSelectRoom}
-        onNewRoom={handleNewRoom}
-        isOpen={isChatListOpen}
-        onToggle={() => setIsChatListOpen(!isChatListOpen)}
+      {/* Header - 최상단 고정 */}
+      <PosterTopBar
+        historyCount={generationRecords.length}
+        onOpenHistory={() => {
+          const event = new CustomEvent("openGenerationHistory");
+          window.dispatchEvent(event);
+        }}
       />
 
-      <div
-        className={`flex-1 flex flex-col transition-all duration-300 ${
-          isChatListOpen ? "lg:ml-72" : "lg:ml-16"
-        }`}
-        style={{ height: "calc(100vh - 0px)" }}
-      >
-        {/* Header + 생성 히스토리 통합 */}
-        <header className='flex items-center justify-between p-6 border-b border-white/5 flex-shrink-0 bg-background/50 backdrop-blur-xl'>
-          {/* 왼쪽: AdPlanet 로고 */}
-          <div className='flex items-center'>
-            <div>
-              <h1 className='text-2xl lg:text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent'>
-                AdPlanet
-              </h1>
-              <p className='text-sm text-text-color/60 mt-1'>AI 포스터 생성 스튜디오</p>
-            </div>
-          </div>
+      {/* 생성 과정 히스토리 - 이벤트 기반으로 처리 */}
+      <GenerationHistory
+        records={generationRecords}
+        onSelectRecord={handleSelectRecord}
+        selectedRecordId={selectedRecordId}
+      />
 
-          {/* 중앙: 생성 히스토리 컨트롤 */}
-          <div className='flex items-center gap-2 bg-background/30 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/10'>
-            <div className='p-1.5 bg-primary/10 rounded-lg'>
-              <svg
-                className='w-3.5 h-3.5 text-primary'
-                fill='none'
-                stroke='currentColor'
-                viewBox='0 0 24 24'
-              >
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth={2}
-                  d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
-                />
-              </svg>
-            </div>
-            <div>
-              <h3 className='text-sm font-semibold text-text-color'>생성 히스토리</h3>
-              <p className='text-xs text-text-color/60'>{generationRecords.length}개의 단계</p>
-            </div>
-            <button
-              onClick={() => {
-                // 생성 히스토리 다이얼로그 열기
-                const event = new CustomEvent("openGenerationHistory");
-                window.dispatchEvent(event);
-              }}
-              className='p-2 text-text-color/60 hover:text-text-color hover:bg-white/5 rounded-lg transition-all ml-2'
-            >
-              <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth={2}
-                  d='M4 6h16M4 12h16M4 18h16'
-                />
-              </svg>
-            </button>
-          </div>
-
-          {/* 오른쪽: 액션 버튼들 */}
-          <div className='flex items-center gap-3'>
-            <Button text='내보내기' variant='outline' size='xs' />
-            <Button text='아카이브' variant='outline' size='xs' />
-            <div className='w-8 h-8 bg-gradient-to-r from-primary/20 to-primary/10 rounded-full flex items-center justify-center'>
-              <div className='w-2 h-2 bg-primary rounded-full'></div>
-            </div>
-          </div>
-        </header>
-
-        {/* 생성 과정 히스토리 - 이벤트 기반으로 처리 */}
-        <GenerationHistory
-          records={generationRecords}
-          onSelectRecord={handleSelectRecord}
-          selectedRecordId={selectedRecordId}
+      {/* Body - Header 아래 전체 영역 */}
+      <div className='flex-1 flex flex-row min-h-0 overflow-hidden'>
+        {/* 그룹 목록 사이드바 */}
+        <GroupList
+          groups={groupsQuery.data ?? []}
+          currentGroupId={currentGroupId}
+          onSelectGroup={handleSelectGroup}
+          onNewGroup={handleNewGroup}
+          isOpen={isGroupListOpen}
+          onToggle={() => setIsGroupListOpen(!isGroupListOpen)}
         />
 
         <div className='flex-1 flex flex-row min-h-0'>
@@ -404,119 +567,22 @@ const PosterPage: React.FC = () => {
           >
             {/* 가운데: Canvas + 프롬프트 */}
             <main className='relative flex flex-col items-center w-full max-w-[500px] mx-auto flex-1 min-h-0'>
-              <div
-                className='relative w-full aspect-square max-w-[400px] max-h-[50vh] rounded-3xl border-2 border-dashed border-primary/30 hover:border-primary/50 shadow-2xl shadow-primary/5 bg-gradient-to-br from-background to-background/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 group cursor-pointer'
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (state.generatedPoster) {
-                    setIsImagePreviewOpen(true);
-                  }
-                }}
-              >
-                {state.generatedPoster ? (
-                  <div className='relative w-full h-full'>
-                    <img
-                      src={state.generatedPoster}
-                      alt='Generated Poster'
-                      className='w-full h-full object-cover rounded-2xl'
-                    />
-
-                    {/* 텍스트 오버레이들 */}
-                    {state.textOverlays.map((text) => (
-                      <div
-                        key={text.id}
-                        className={`absolute cursor-move select-none ${
-                          selectedTextId === text.id ? "ring-2 ring-primary" : ""
-                        }`}
-                        style={{
-                          left: `${text.x}%`,
-                          top: `${text.y}%`,
-                          fontSize: `${text.fontSize}px`,
-                          color: text.color,
-                          fontWeight: text.fontWeight,
-                          fontFamily: text.fontFamily,
-                          transform: "translate(-50%, -50%)",
-                          textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
-                        }}
-                        onClick={() =>
-                          setSelectedTextId(selectedTextId === text.id ? undefined : text.id)
-                        }
-                        onMouseDown={(e) => {
-                          const rect = e.currentTarget.parentElement!.getBoundingClientRect();
-                          const startX = e.clientX;
-                          const startY = e.clientY;
-                          const startLeft = text.x;
-                          const startTop = text.y;
-
-                          const handleMouseMove = (e: MouseEvent) => {
-                            const deltaX = ((e.clientX - startX) / rect.width) * 100;
-                            const deltaY = ((e.clientY - startY) / rect.height) * 100;
-                            const newX = Math.max(0, Math.min(100, startLeft + deltaX));
-                            const newY = Math.max(0, Math.min(100, startTop + deltaY));
-                            handleTextPositionChange(text.id, newX, newY);
-                          };
-
-                          const handleMouseUp = () => {
-                            document.removeEventListener("mousemove", handleMouseMove);
-                            document.removeEventListener("mouseup", handleMouseUp);
-                          };
-
-                          document.addEventListener("mousemove", handleMouseMove);
-                          document.addEventListener("mouseup", handleMouseUp);
-                        }}
-                      >
-                        {text.text}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className='text-center text-text-color/60 group-hover:text-text-color/80 transition-colors'>
-                    <div className='w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-primary/20 to-primary/5 rounded-3xl flex items-center justify-center group-hover:scale-105 transition-transform'>
-                      <svg
-                        className='w-12 h-12 text-primary/60'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'
-                      >
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={1.5}
-                          d='M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'
-                        />
-                      </svg>
-                    </div>
-                    <h3 className='text-lg font-semibold mb-2'>포스터 캔버스</h3>
-                    <p className='text-sm text-text-color/50 max-w-sm mx-auto leading-relaxed'>
-                      파일을 업로드하고 프롬프트를 입력하여
-                      <br />
-                      AI가 생성한 포스터를 확인하세요
-                    </p>
-                  </div>
-                )}
-
-                {/* 포스터 위 버튼들 */}
-                {state.generatedPoster && (
-                  <div className='absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity'>
-                    <button className='px-4 py-2 bg-background/90 backdrop-blur-sm text-text-color rounded-xl text-sm hover:bg-background transition-all shadow-lg border border-white/10'>
-                      <svg
-                        className='w-4 h-4 inline mr-2'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'
-                      >
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={2}
-                          d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4 4m4-4v12'
-                        />
-                      </svg>
-                      내보내기
-                    </button>
-                  </div>
-                )}
-              </div>
+              <PosterCanvasView generatedPoster={state.generatedPoster} onOpenPreview={() => setIsImagePreviewOpen(true)} isGenerating={state.isGenerating} containerRef={posterContainerRef}>
+                {/* 텍스트 오버레이들 */}
+                {state.textOverlays.map((text) => (
+                  <TextOverlayItem
+                    key={text.id}
+                    text={text}
+                    isSelected={selectedTextId === text.id}
+                    onTextClick={(e, textId) => {
+                      e.stopPropagation();
+                      setSelectedTextId(selectedTextId === textId ? undefined : textId);
+                    }}
+                    onTextDragStart={handleTextDragStart}
+                    onResizeStart={handleTextResizeStart}
+                  />
+                ))}
+              </PosterCanvasView>
 
               {/* 하단 프롬프트 영역 - 고정 위치 */}
               <div className='w-full flex-shrink-0 mt-4'>
@@ -526,6 +592,7 @@ const PosterPage: React.FC = () => {
                     onChange={(value) => setState((prev) => ({ ...prev, prompt: value }))}
                     onGenerate={handleGenerate}
                     isGenerating={state.isGenerating}
+                    allowEmptyPrompt={!!state.generatedPoster}
                   />
                 </div>
               </div>
@@ -533,190 +600,51 @@ const PosterPage: React.FC = () => {
           </div>
 
           {/* 오른쪽: 통합 사이드바 */}
-          <aside
-            className={`${
-              state.step === "edit" && state.currentPose
-                ? "w-[400px] lg:w-[480px]"
-                : "w-[300px] lg:w-[340px]"
-            } border-l border-white/5 bg-background/50 backdrop-blur-xl overflow-y-auto scrollbar-hidden transition-all duration-300`}
-            style={{ height: "100%" }}
-          >
+          <aside className={`${state.step === "edit" && state.currentPose ? "w-[400px] lg:w-[480px]" : "w-[300px] lg:w-[340px]"} border-l border-white/5 bg-background/50 backdrop-blur-xl overflow-y-auto scrollbar-hidden transition-all duration-300`} style={{ height: "100%" }}>
+            <PosterSidebar
+              step={state.step}
+              currentPose={state.currentPose}
+              isGenerating={state.isGenerating}
+              textOverlays={state.textOverlays}
+              selectedTextId={selectedTextId}
+              onPoseChange={handlePoseChange}
+              onBackToEdit={() => setState((prev) => ({ ...prev, step: "edit", currentPose: prev.currentPose ?? defaultSkeletonPose }))}
+              onComplete={handleComplete}
+              onSave={handleSave}
+              onGenerateCopy={async () => {
+                if (!currentPosterId) return;
+                try {
+                  setIsGeneratingCopy(true);
+                  const res = await generatePosterCopy(currentPosterId);
+                  const content = res.data?.content?.trim();
+                  if (content) {
+                    const newOverlay: TextOverlay = {
+                      id: `text-${Date.now()}`,
+                      text: content,
+                      x: 50,
+                      y: 50,
+                      fontSize: 24,
+                      color: "#FFFFFF",
+                      fontWeight: "bold",
+                      fontFamily: "The Jamsil 5 Bold",
+                    };
+                    setState((prev) => ({ ...prev, textOverlays: [...prev.textOverlays, newOverlay] }));
+                  }
+                } catch (e) {
+                  // eslint-disable-next-line no-console
+                  console.error('[onGenerateCopy] failed:', e);
+                }
+                finally { setIsGeneratingCopy(false); }
+              }}
+              isGeneratingCopy={isGeneratingCopy}
+              onAddText={handleAddText}
+              onUpdateText={handleUpdateText}
+              onRemoveText={handleRemoveText}
+              onSelectText={setSelectedTextId}
+              skeletonRef={skeletonCanvasRef}
+            />
             <div className='p-4 flex flex-col gap-4'>
-              {state.step === "text-edit" ? (
-                <>
-                  {/* 텍스트 편집 */}
-                  <section className='flex flex-col gap-3 flex-1 min-h-0'>
-                    <div className='flex items-center gap-3 pb-3 border-b border-white/10'>
-                      <div className='p-2 bg-primary/10 rounded-lg'>
-                        <svg
-                          className='w-4 h-4 text-primary'
-                          fill='none'
-                          stroke='currentColor'
-                          viewBox='0 0 24 24'
-                        >
-                          <path
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
-                            strokeWidth={2}
-                            d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
-                          />
-                        </svg>
-                      </div>
-                      <h3 className='text-base font-bold text-text-color'>텍스트 편집</h3>
-                    </div>
-                    <div className='flex-1 overflow-y-auto'>
-                      <TextEditor
-                        textOverlays={state.textOverlays}
-                        onAddText={handleAddText}
-                        onUpdateText={handleUpdateText}
-                        onRemoveText={handleRemoveText}
-                        selectedTextId={selectedTextId}
-                        onSelectText={setSelectedTextId}
-                      />
-                    </div>
-                  </section>
-
-                  {/* 버튼들 */}
-                  <div className='flex flex-col gap-3 pt-4 border-t border-white/10'>
-                    <button
-                      onClick={() =>
-                        setState((prev) => ({
-                          ...prev,
-                          step: "edit",
-                          textOverlays: [], // 텍스트 오버레이 모두 제거
-                        }))
-                      }
-                      className='w-full flex items-center justify-center gap-2 border border-primary/30 text-primary py-3 rounded-xl font-medium transition-all hover:bg-primary/10 hover:border-primary/50'
-                    >
-                      <svg
-                        className='w-4 h-4'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'
-                      >
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={2}
-                          d='M15 19l-7-7 7-7'
-                        />
-                      </svg>
-                      포즈 편집으로 돌아가기
-                    </button>
-
-                    <button
-                      onClick={handleComplete}
-                      className='w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary/80 text-background py-3 rounded-xl font-medium transition-all hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl'
-                    >
-                      <svg
-                        className='w-4 h-4'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'
-                      >
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={2}
-                          d='M5 13l4 4L19 7'
-                        />
-                      </svg>
-                      완료하고 홈으로
-                    </button>
-                  </div>
-                </>
-              ) : state.step === "edit" && state.currentPose ? (
-                <div className='h-full flex flex-col'>
-                  {/* 포즈 조정 */}
-                  <section className='flex flex-col gap-3 flex-1 min-h-0'>
-                    <div className='flex items-center gap-3 pb-3 border-b border-white/10 flex-shrink-0'>
-                      <div className='p-2 bg-primary/10 rounded-lg'>
-                        <svg
-                          className='w-4 h-4 text-primary'
-                          fill='none'
-                          stroke='currentColor'
-                          viewBox='0 0 24 24'
-                        >
-                          <path
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
-                            strokeWidth={2}
-                            d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
-                          />
-                        </svg>
-                      </div>
-                      <h3 className='text-base font-bold text-text-color'>포즈 조정</h3>
-                    </div>
-                    <div className='bg-background/50 rounded-xl border border-white/10 p-3 flex-1 min-h-0 flex items-center justify-center'>
-                      <div className='w-full h-full max-w-md max-h-full'>
-                        <SkeletonCanvas
-                          pose={state.currentPose}
-                          onPoseChange={handlePoseChange}
-                          width={state.step === "edit" ? 360 : 350}
-                          height={state.step === "edit" ? 480 : 500}
-                        />
-                      </div>
-                    </div>
-                  </section>
-
-                  {/* 버튼들 */}
-                  <div className='flex flex-col gap-3 pt-4 border-t border-white/10 flex-shrink-0'>
-                    <button
-                      onClick={async () => {
-                        await handleGenerate();
-                        // 재생성 후 텍스트 편집 단계로 이동
-                        setState((prev) => ({ ...prev, step: "text-edit" }));
-                      }}
-                      disabled={state.isGenerating}
-                      className='w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary/80 text-background py-3 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl'
-                    >
-                      {state.isGenerating ? (
-                        <>
-                          <div className='w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin'></div>
-                          재생성 중...
-                        </>
-                      ) : (
-                        <>
-                          <svg
-                            className='w-4 h-4'
-                            fill='none'
-                            stroke='currentColor'
-                            viewBox='0 0 24 24'
-                          >
-                            <path
-                              strokeLinecap='round'
-                              strokeLinejoin='round'
-                              strokeWidth={2}
-                              d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
-                            />
-                          </svg>
-                          포즈 적용하여 재생성
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      onClick={handleComplete}
-                      className='w-full flex items-center justify-center gap-2 border border-primary/30 text-primary py-3 rounded-xl font-medium transition-all hover:bg-primary/10 hover:border-primary/50'
-                    >
-                      <svg
-                        className='w-4 h-4'
-                        fill='none'
-                        stroke='currentColor'
-                        viewBox='0 0 24 24'
-                      >
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={2}
-                          d='M5 13l4 4L19 7'
-                        />
-                      </svg>
-                      완료하고 홈으로
-                    </button>
-                  </div>
-                </div>
-              ) : (
+              {!(state.step === 'text-edit' || (state.step === 'edit' && state.currentPose)) && (
                 <div className='flex flex-col gap-4'>
                   {/* 파일 첨부 */}
                   <section
@@ -748,8 +676,9 @@ const PosterPage: React.FC = () => {
                     className='flex flex-col gap-3 flex-shrink-0'
                     onClick={handleOutsideClick}
                   >
-                    <div className='flex items-center gap-3 pb-3 border-b border-white/10'>
-                      <div className='p-2 bg-primary/10 rounded-lg'>
+                    <SectionHeader
+                      title="기본 정보"
+                      icon={
                         <svg
                           className='w-4 h-4 text-primary'
                           fill='none'
@@ -763,9 +692,8 @@ const PosterPage: React.FC = () => {
                             d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
                           />
                         </svg>
-                      </div>
-                      <h3 className='text-base font-bold text-text-color'>기본 정보</h3>
-                    </div>
+                      }
+                    />
                     <div className='space-y-3'>
                       <input
                         type='text'
@@ -793,8 +721,9 @@ const PosterPage: React.FC = () => {
                       className='flex flex-col gap-3 flex-shrink-0'
                       onClick={handleOutsideClick}
                     >
-                      <div className='flex items-center gap-3 pb-3 border-b border-white/10'>
-                        <div className='p-2 bg-primary/10 rounded-lg'>
+                      <SectionHeader
+                        title="현재 상태"
+                        icon={
                           <svg
                             className='w-4 h-4 text-primary'
                             fill='none'
@@ -808,79 +737,38 @@ const PosterPage: React.FC = () => {
                               d='M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'
                             />
                           </svg>
-                        </div>
-                        <h3 className='text-base font-bold text-text-color'>현재 상태</h3>
-                      </div>
+                        }
+                      />
                       <div className='bg-background/30 rounded-xl p-4 space-y-3'>
-                        <div className='flex items-center justify-between p-2 rounded-lg bg-background/50'>
-                          <div className='flex items-center gap-3'>
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                state.title.trim() ? "bg-green-400 animate-pulse" : "bg-gray-400"
-                              }`}
-                            ></div>
-                            <span className='text-sm font-medium'>제목</span>
-                          </div>
-                          <span className='text-xs text-text-color/60'>
-                            {state.title.trim() ? "완료" : "대기중"}
-                          </span>
-                        </div>
-
-                        <div className='flex items-center justify-between p-2 rounded-lg bg-background/50'>
-                          <div className='flex items-center gap-3'>
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                state.content.trim() ? "bg-green-400 animate-pulse" : "bg-gray-400"
-                              }`}
-                            ></div>
-                            <span className='text-sm font-medium'>내용</span>
-                          </div>
-                          <span className='text-xs text-text-color/60'>
-                            {state.content.trim() ? "완료" : "선택사항"}
-                          </span>
-                        </div>
-
-                        <div className='flex items-center justify-between p-2 rounded-lg bg-background/50'>
-                          <div className='flex items-center gap-3'>
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                personImage ? "bg-green-400 animate-pulse" : "bg-gray-400"
-                              }`}
-                            ></div>
-                            <span className='text-sm font-medium'>인물 사진</span>
-                          </div>
-                          <span className='text-xs text-text-color/60'>
-                            {personImage ? "업로드됨" : "대기중"}
-                          </span>
-                        </div>
-
-                        <div className='flex items-center justify-between p-2 rounded-lg bg-background/50'>
-                          <div className='flex items-center gap-3'>
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                productImage ? "bg-green-400 animate-pulse" : "bg-gray-400"
-                              }`}
-                            ></div>
-                            <span className='text-sm font-medium'>상품 사진</span>
-                          </div>
-                          <span className='text-xs text-text-color/60'>
-                            {productImage ? "업로드됨" : "대기중"}
-                          </span>
-                        </div>
-
-                        <div className='flex items-center justify-between p-2 rounded-lg bg-background/50'>
-                          <div className='flex items-center gap-3'>
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                state.prompt.trim() ? "bg-green-400 animate-pulse" : "bg-gray-400"
-                              }`}
-                            ></div>
-                            <span className='text-sm font-medium'>프롬프트</span>
-                          </div>
-                          <span className='text-xs text-text-color/60'>
-                            {state.prompt.trim() ? "완료" : "대기중"}
-                          </span>
-                        </div>
+                        <StatusIndicatorItem
+                          label="제목"
+                          isCompleted={!!state.title.trim()}
+                          statusText={state.title.trim() ? "완료" : "대기중"}
+                        />
+                        
+                        <StatusIndicatorItem
+                          label="내용"
+                          isCompleted={!!state.content.trim()}
+                          statusText={state.content.trim() ? "완료" : "선택사항"}
+                        />
+                        
+                        <StatusIndicatorItem
+                          label="인물 사진"
+                          isCompleted={!!personImage}
+                          statusText={personImage ? "업로드됨" : "대기중"}
+                        />
+                        
+                        <StatusIndicatorItem
+                          label="상품 사진"
+                          isCompleted={!!productImage}
+                          statusText={productImage ? "업로드됨" : "대기중"}
+                        />
+                        
+                        <StatusIndicatorItem
+                          label="프롬프트"
+                          isCompleted={!!state.prompt.trim()}
+                          statusText={state.prompt.trim() ? "완료" : "대기중"}
+                        />
                       </div>
                     </section>
                   )}
@@ -942,6 +830,14 @@ const PosterPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* 태그 지정 다이얼로그 */}
+      {isTagDialogOpen && currentGroupId && (
+        <TagDialog
+          groupId={currentGroupId}
+          onClose={() => setIsTagDialogOpen(false)}
+          onSaved={() => handleNewGroup()}
+        />)
+      }
     </div>
   );
 };
