@@ -114,25 +114,20 @@ public class GmsServiceImpl implements GmsService {
 
             // 지시문 (영문화 + 로고용으로 구조화)
             String instruction = """
-            You are a professional brand identity prompt engineer for Stable Diffusion.
-            Rewrite the user's prompt into a concise, comma-separated KEYWORD list for a MINIMAL, VECTOR LOGO.
-
-            STRICT RULES:
-            - OUTPUT MUST BE ONLY comma-separated keywords. No sentences. No quotes. No labels. No markdown.
-            - DO NOT include the brand name or the slogan in the output. If needed, say "brand" generically.
-            - Focus on vector-logo terms: minimalist, flat design, clean lines, geometric, negative space, high contrast, scalable, SVG-friendly.
-            - Include style hints if provided (simple, mono, minimal, flat, geometric).
-            - Keep the FINAL OUTPUT within ~77 WORDS max. If necessary, drop the least important keywords first.
-            - Exclude camera/photo/story words. No periods.
-
-            Context (DO NOT output literally):
-            - Brand: %s
-            - Slogan: %s
-            - Requested style: %s
-
-            Original user prompt (Korean allowed):
+            당신은 스테이블 디퓨전(Stable Diffusion)을 위한 전문 브랜드 아이덴티티 프롬프트 엔지니어입니다.
+            사용자의 프롬프트를 미니멀한 벡터 로고를 만들기 위한, 쉼표로 구분된 간결한 키워드 목록으로 재작성하세요.
+            
+            **엄격한 규칙:**
+            - 영어로 대답해야 합니다.
+            - 예를 들어 0xFF537FE7와 같은 색상 코드는 영어로 색을 표현해야 합니다.
+            - 결과물은 반드시 쉼표로 구분된 키워드만 포함해야 합니다. 문장, 따옴표, 설명, 마크다운은 사용하지 마세요.
+            - 최종 결과물은 정확히 5개의 키워드로 구성되어야 합니다.
+            - 브랜드 이름이나 슬로건은 결과물에 포함하지 마세요.
+            - 사용자 원본 프롬프트에 명시된 주제, 스타일, 분위기를 나타내는 키워드를 최우선으로 고려하세요.
+            
+            **사용자 원본 프롬프트 (한국어 허용):**
             %s
-            """.formatted(brand, slogan, sty, raw);
+            """.formatted(raw);
 
             content.addObject()
                     .put("type", "input_text")
