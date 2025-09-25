@@ -76,6 +76,10 @@ public class PosterServiceImpl implements PosterService {
             posterGroup = posterGroupRepository.findById(request.groupId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
             log.info("[POSTER-GEN] 포스터 그룹 조회: {}", request.groupId());
+
+            if (!userId.equals(posterGroup.getUser().getUserId())) {
+                throw new BusinessException(ErrorCode.POSTER_GROUP_ACCESS_DENIED);
+            }
         } else {
             posterGroup = PosterGroup.builder()
                     .user(userRef)
@@ -139,6 +143,9 @@ public class PosterServiceImpl implements PosterService {
 
         // 2. PosterGroup 조회
         PosterGroup posterGroup = poster.getPosterGroup();
+        if (!userId.equals(posterGroup.getUser().getUserId())) {
+            throw new BusinessException(ErrorCode.POSTER_ACCESS_DENIED);
+        }
 
         // 3. DB 저장
         ImageJob job = ImageJob.builder()
@@ -193,7 +200,7 @@ public class PosterServiceImpl implements PosterService {
 
         // 1. 작업 조회
         ImageJob imageJob = imageJobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.IMAGE_JOB_NOT_FOUND));
 
         log.info("[POSTER-GEN] DB 조회 성공: {})", jobId);
 
@@ -305,7 +312,7 @@ public class PosterServiceImpl implements PosterService {
 
         // PosterGroup 조회
         PosterGroup posterGroup = posterGroupRepository.findById(message.groupId())
-                .orElseThrow(() -> new RuntimeException("PosterGroup not found: " + jobId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
 
         // Poster 엔티티 생성
         Poster poster = Poster.builder()
@@ -401,7 +408,7 @@ public class PosterServiceImpl implements PosterService {
     }
 
     @Override
-    public List<PosterGroupResponse> getPosterGroup(Long userId, PosterListOrder order, List<Long> tagIds) {
+    public List<PosterGroupResponse> getAllPosterGroup(Long userId, PosterListOrder order, List<Long> tagIds) {
 
         Sort sort = (order == null ? PosterListOrder.NEWEST : order).toSort();
 

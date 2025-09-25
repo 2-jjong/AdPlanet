@@ -80,7 +80,6 @@ public class PosterController {
             @Parameter(description = "작업 id", required = true)
             @PathVariable("jobId") String jobId
     ) {
-
         ImageJobResponse response = posterService.getStatus(jobId);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
@@ -193,7 +192,7 @@ public class PosterController {
     ) {
         Long userId = SecurityUtil.getCurrentUserId();
 
-        List<PosterGroupResponse> list = posterService.getPosterGroup(userId, order, tagIds);
+        List<PosterGroupResponse> list = posterService.getAllPosterGroup(userId, order, tagIds);
 
         return ResponseEntity.ok(ResponseDto.ok(list));
     }

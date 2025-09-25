@@ -21,7 +21,7 @@ public interface PosterService {
 
     ImageJobResponse getStatus(String jobId);
 
-    List<PosterGroupResponse> getPosterGroup(Long userId, PosterListOrder order, List<Long> tagIds);
+    List<PosterGroupResponse> getAllPosterGroup(Long userId, PosterListOrder order, List<Long> tagIds);
 
     PosterGroupResponse getPosterGroupDetail(Long groupId);
 
