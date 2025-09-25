@@ -16,7 +16,7 @@ export const DEFAULT_DEPTH = -0.25; // z 간격(원근) - 카드가 작아진 �
 
 /** 프레임(유리) */
 export const SHOW_FRAME = true;     // 프레임 노출 여부
-export const GLASS_OPACITY   = 0.9; // 유리판 자체 투명도 (더 투명하게)
+export const GLASS_OPACITY   = 0.7; // 유리판 자체 투명도 (더 투명하게)
 export const GLASS_ROUGHNESS = 0.05;// 표면 거칠기 (더 매끄럽게)
 export const GLASS_THICKNESS = 0.05;// 굴절 두께 (더 두껍게 해서 유리감 향상)
 export const GLASS_IOR       = 1.45;// 굴절률 (유리에 더 가깝게)
@@ -26,7 +26,7 @@ export const MAX_ANISOTROPY = 16;   // 비스듬히 볼 때 선명도(최대값�
 
 /** 스크롤 중심에서 멀수록 카드 전체 페이드 */
 export const FADE_RADIUS = 5;       // 중심에서 ±몇 장까지 또렷 (더 집중적인 효과)
-export const MIN_OPACITY = 0.3;    // 가장 바깥 카드 최소 불투명도 (더 강한 페이드)
+export const MIN_OPACITY = 0.6;    // 가장 바깥 카드 최소 불투명도 (더 강한 페이드)
 
 /** 렌더러 공용 설정 */
 export const OUTPUT_COLORSPACE = THREE.SRGBColorSpace;

@@ -11,7 +11,8 @@ const GalleryPage: React.FC = () => {
     <div
       style={{
         position: "fixed", inset: 0, zIndex: 20,
-        display: "flex", alignItems: "center", justifyContent: "center",
+        display: "flex", alignItems: "flex-start", justifyContent: "center",
+        paddingTop: "120px",
         pointerEvents: "none",
       }}
     >
@@ -19,16 +20,20 @@ const GalleryPage: React.FC = () => {
         Style Library
       </h1>
     </div>
-      {/* 배경 Canvas (전체 화면 고정) */}
-      <Canvas
-        style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}
-        gl={{ alpha: true }}
-        camera={{ position: [0, 0, 10], fov: 50 }}
-      >
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[10, 10, 5]} />
-        <Stars size={3} />
-      </Canvas>
+
+      <div>
+
+        {/* 배경 Canvas (전체 화면 고정) */}
+        <Canvas
+          style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}
+          gl={{ alpha: true }}
+          camera={{ position: [0, 0, 10], fov: 50 }}
+          >
+          <ambientLight intensity={0.5} />
+          <directionalLight position={[10, 10, 5]} />
+          <Stars size={3} />
+        </Canvas>
+      </div>
 
       {/* 전경: 부모 높이 100% 채움 */}
       <div style={{ height: "calc(100dvh - 64px)" }}>

@@ -8,7 +8,7 @@ import GlassFrame from "./GlassFrame";
 import {
   CARD_W, CARD_H, CARD_D, MAX_ANISOTROPY,
   FADE_RADIUS, MIN_OPACITY, SHOW_FRAME, SHOW_BACKPLATE,
-  HOVER_FLATTEN, HOVER_SCALE, HOVER_DAMP, HOVER_LIFT
+  HOVER_FLATTEN, HOVER_SCALE, HOVER_DAMP,
 } from "./options";
 import Backplate from "./Backplate";
 
@@ -25,7 +25,7 @@ type Props = {
 };
 
 export default function GlassCard({
-  index, total, center, src, x, z, rotY, sharedGeom, onSelect,
+  index, center, src, x, z, rotY, sharedGeom, onSelect,
 }: Props) {
   const tex = useTexture(src) as THREE.Texture;
 
@@ -58,7 +58,6 @@ export default function GlassCard({
   const groupRef = useRef<THREE.Group>(null);
   const posterMeshRef = useRef<THREE.Mesh>(null);
   const frameRef = useRef<THREE.Group>(null);
-  const backplateRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
   useCursor(hovered, "pointer", "auto");
 
