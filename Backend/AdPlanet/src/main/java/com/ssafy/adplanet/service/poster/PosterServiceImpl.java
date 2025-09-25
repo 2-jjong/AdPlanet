@@ -63,7 +63,7 @@ public class PosterServiceImpl implements PosterService {
     private static final int MAX_RETRY = 10;
 
     @Override
-    public ImageJobResponse create(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile sketchImage, MultipartFile productImage, MultipartFile modelImage) {
+    public ImageJobResponse create(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile backgroundImage, MultipartFile productImage, MultipartFile modelImage) {
 
         String jobId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
@@ -88,7 +88,7 @@ public class PosterServiceImpl implements PosterService {
         }
 
         // 2. 이미지 S3 저장 & Key 발급
-        String sketchKey = uploadIfExists(sketchImage, "sketch", jobId);
+        String backgroundKey = uploadIfExists(backgroundImage, "background", jobId);
         String productKey = uploadIfExists(productImage, "product", jobId);
         String modelKey = uploadIfExists(modelImage, "model", jobId);
 
@@ -113,7 +113,7 @@ public class PosterServiceImpl implements PosterService {
                 request.title(),
                 request.content(),
                 request.prompt(),
-                sketchKey,
+                backgroundKey,
                 productKey,
                 modelKey
         );
@@ -236,9 +236,9 @@ public class PosterServiceImpl implements PosterService {
     private MultiValueMap<String, Object> prepareRequestBody(ImageJobMessage message) {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 
-        if (message.sketchKey() != null) {
-            File sketchFile = s3Service.downloadFile(message.sketchKey());
-            body.add("sketchImage", new FileSystemResource(sketchFile));
+        if (message.backgroundKey() != null) {
+            File backgroundFile = s3Service.downloadFile(message.backgroundKey());
+            body.add("backgroundImage", new FileSystemResource(backgroundFile));
         }
         if (message.productKey() != null) {
             File productFile = s3Service.downloadFile(message.productKey());
