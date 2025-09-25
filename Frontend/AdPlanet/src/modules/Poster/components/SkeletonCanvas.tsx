@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import type { SkeletonPoint, SkeletonPose } from "../../../types/poster";
 interface SkeletonCanvasProps {
   pose: SkeletonPose;
@@ -7,12 +7,17 @@ interface SkeletonCanvasProps {
   height?: number;
 }
 
-const SkeletonCanvas: React.FC<SkeletonCanvasProps> = ({
+export interface SkeletonCanvasHandle {
+  /** 현재 스켈레톤 캔버스를 PNG Blob으로 반환 */
+  toBlob: () => Promise<Blob>;
+}
+
+function SkeletonCanvasImpl({
   pose,
   onPoseChange,
   width = 350,
   height = 500,
-}) => {
+}: SkeletonCanvasProps, ref: React.Ref<SkeletonCanvasHandle>) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedPoint, setSelectedPoint] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -158,24 +163,17 @@ const SkeletonCanvas: React.FC<SkeletonCanvasProps> = ({
     setSelectedPoint(null);
   }, []);
 
-  // 캔버스 그리기
-  const drawCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // 캔버스 초기화
+  // 주어진 컨텍스트에 스켈레톤을 그림
+  const drawToContext = useCallback((ctx: CanvasRenderingContext2D, backgroundColor: string) => {
+    // 초기화 및 배경
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "#1D1F33";
+    ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, width, height);
 
-    // 연결선 그리기
+    // 연결선
     pose.connections.forEach((connection) => {
       const fromPoint = pose.points.find((p) => p.id === connection.from);
       const toPoint = pose.points.find((p) => p.id === connection.to);
-
       if (fromPoint && toPoint) {
         ctx.strokeStyle = connection.color;
         ctx.lineWidth = 3;
@@ -186,23 +184,17 @@ const SkeletonCanvas: React.FC<SkeletonCanvasProps> = ({
       }
     });
 
-    // 포인트 그리기
+    // 포인트
     pose.points.forEach((point) => {
       const isSelected = point.id === selectedPoint;
       const radius = isSelected ? 12 : 10;
-
-      // 포인트 배경 (더 큰 원)
       ctx.fillStyle = point.color;
       ctx.beginPath();
       ctx.arc(point.x, point.y, radius, 0, 2 * Math.PI);
       ctx.fill();
-
-      // 포인트 테두리 (더 두꺼운 테두리)
       ctx.strokeStyle = isSelected ? "#FFFFFF" : "#000000";
       ctx.lineWidth = isSelected ? 3 : 2;
       ctx.stroke();
-
-      // 호버 효과를 위한 반투명 외곽선
       if (!isSelected) {
         ctx.strokeStyle = point.color;
         ctx.lineWidth = 1;
@@ -215,6 +207,15 @@ const SkeletonCanvas: React.FC<SkeletonCanvasProps> = ({
     });
   }, [pose, selectedPoint, width, height]);
 
+  // 실제 화면 캔버스 그리기
+  const drawCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    drawToContext(ctx, "#1D1F33");
+  }, [drawToContext]);
+
   // 초기화 및 그리기
   useEffect(() => {
     if (!pose.points.length) {
@@ -224,6 +225,31 @@ const SkeletonCanvas: React.FC<SkeletonCanvasProps> = ({
       drawCanvas();
     }
   }, [pose, createDefaultPose, onPoseChange, drawCanvas]);
+
+  // 외부에서 PNG Blob 추출할 수 있도록 ref API 제공
+  useImperativeHandle(ref, () => ({
+    toBlob: () =>
+      new Promise<Blob>((resolve, reject) => {
+        // 오프스크린 캔버스에 검정 배경으로 렌더링하여 내보냄 (화면 깜빡임 없음)
+        try {
+          const off = document.createElement('canvas');
+          off.width = width;
+          off.height = height;
+          const offCtx = off.getContext('2d');
+          if (!offCtx) {
+            reject(new Error('Offscreen context not available'));
+            return;
+          }
+          drawToContext(offCtx, "#000000");
+          off.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Failed to export skeleton canvas"));
+          }, "image/png");
+        } catch (e) {
+          reject(e);
+        }
+      }),
+  }));
 
   return (
     <div className='w-full'>
@@ -251,6 +277,8 @@ const SkeletonCanvas: React.FC<SkeletonCanvasProps> = ({
       </div>
     </div>
   );
-};
+}
+
+const SkeletonCanvas = forwardRef<SkeletonCanvasHandle, SkeletonCanvasProps>(SkeletonCanvasImpl);
 
 export default SkeletonCanvas;
