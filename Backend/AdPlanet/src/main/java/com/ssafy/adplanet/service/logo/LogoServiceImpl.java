@@ -4,6 +4,7 @@ import com.ssafy.adplanet.dto.logo.*;
 import com.ssafy.adplanet.dto.tag.TagDto;
 import com.ssafy.adplanet.entity.Logo;
 import com.ssafy.adplanet.entity.User;
+import com.ssafy.adplanet.enums.ImageFormat;
 import com.ssafy.adplanet.enums.LogoListOrder;
 import com.ssafy.adplanet.enums.LogoStyle;
 import com.ssafy.adplanet.exception.BusinessException;
@@ -189,26 +190,40 @@ public class LogoServiceImpl implements LogoService {
     }
 
     @Override
-    public byte[] downloadLogoImage(Long userId, Long logoId) {
-        if (userId == null || logoId == null || logoId <= 0) {
-            throw new BusinessException(ErrorCode.LOGO_INVALID_REQUEST);
-        }
-
+    public byte[] downloadLogo(Long userId, Long logoId, ImageFormat format, Integer quality) {
         Logo logo = logoRepository.findByIdAndUser_UserId(logoId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOGO_NOT_FOUND));
 
-        String s3Uri = logo.getImgUrl();
-        if (s3Uri == null || s3Uri.isBlank()) {
-            throw new BusinessException(ErrorCode.LOGO_NOT_FOUND);
+        // 1) S3에서 PNG 바이트 획득 (저장은 PNG)
+        byte[] png = s3Service.downloadFromUri(logo.getImgUrl());
+        boolean looksPng = png.length > 8
+                && (png[0]&0xFF)==0x89 && png[1]==0x50 && png[2]==0x4E && png[3]==0x47
+                && png[4]==0x0D && png[5]==0x0A && png[6]==(byte)0x1A && png[7]==0x0A;
+        log.info("PNG signature ok? {}", looksPng);
+        if (png == null || png.length == 0) {
+            throw new BusinessException(ErrorCode.LOGO_IMAGE_EMPTY);
         }
 
-        return s3Service.downloadFromUri(s3Uri);
+        // 2) PNG 그대로
+        if (format == null || format == ImageFormat.PNG) {
+            return png;
+        }
+
+        // 3) 변환 호출 (JPG/JPEG/SVG)
+        var req = new com.ssafy.adplanet.dto.logo.ImageConvertRequest(
+                format,
+                quality,
+                "logo_" + logoId + ".png",
+                png
+        );
+        return aiService.convertImage(req);
     }
 
     private static byte[] toPng(byte[] src) {
         try (var in = new ByteArrayInputStream(src);
              var out = new ByteArrayOutputStream()) {
             var img = ImageIO.read(in);
+            log.info("ImageIO can read? {}", img != null);
             if (img == null) throw new IllegalArgumentException("지원하지 않는 이미지 포맷이거나 손상된 데이터입니다.");
             ImageIO.write(img, "png", out);
             return out.toByteArray();

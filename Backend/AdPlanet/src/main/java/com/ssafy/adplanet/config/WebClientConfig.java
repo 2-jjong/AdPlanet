@@ -3,6 +3,7 @@ package com.ssafy.adplanet.config;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,7 @@ import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
+@Slf4j
 public class WebClientConfig {
 
     @Bean
@@ -37,6 +39,11 @@ public class WebClientConfig {
             @Value("${adplanet.ai.read-timeout-seconds:120}") int readTimeoutSeconds
     ) {
         HttpClient http = HttpClient.create()
+                .wiretap(
+                        "reactor.netty.http.client.HttpClient",
+                        io.netty.handler.logging.LogLevel.DEBUG,
+                        reactor.netty.transport.logging.AdvancedByteBufFormat.TEXTUAL
+                )
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10_000)
                 .responseTimeout(Duration.ofSeconds(readTimeoutSeconds))
                 .doOnConnected(c -> c
@@ -46,6 +53,16 @@ public class WebClientConfig {
         return WebClient.builder()
                 .baseUrl(baseUrl)
                 .clientConnector(new ReactorClientHttpConnector(http))
+                .filter((request, next) -> {
+                    // 요청 라인/헤더 로그
+                    log.info("[AI/WebClient] {} {}", request.method(), request.url());
+                    request.headers().forEach((k, v) -> log.debug("[AI/WebClient] > {}: {}", k, String.join(",", v)));
+                    return next.exchange(request).doOnNext(resp -> {
+                        // 응답 헤더 로그
+                        log.info("[AI/WebClient] < {}", resp.statusCode());
+                        resp.headers().asHttpHeaders().forEach((k, v) -> log.debug("[AI/WebClient] < {}: {}", k, String.join(",", v)));
+                    });
+                })
                 .codecs(c -> c.defaultCodecs().maxInMemorySize(25 * 1024 * 1024))
                 .build();
     }
