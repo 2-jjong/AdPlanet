@@ -63,7 +63,7 @@ public class PosterServiceImpl implements PosterService {
     private static final int MAX_RETRY = 10;
 
     @Override
-    public ImageJobResponse create(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile sketchImage, MultipartFile productImage, MultipartFile modelImage, MultipartFile skeletonImage, MultipartFile previousImage) {
+    public ImageJobResponse create(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile backgroundImage, MultipartFile productImage, MultipartFile modelImage) {
 
         String jobId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
@@ -88,11 +88,9 @@ public class PosterServiceImpl implements PosterService {
         }
 
         // 2. 이미지 S3 저장 & Key 발급
-        String sketchKey = uploadIfExists(sketchImage, "sketch", jobId);
+        String backgroundKey = uploadIfExists(backgroundImage, "background", jobId);
         String productKey = uploadIfExists(productImage, "product", jobId);
         String modelKey = uploadIfExists(modelImage, "model", jobId);
-        String skeletonKey = uploadIfExists(skeletonImage, "skeleton", jobId);
-        String previousKey = uploadIfExists(previousImage, "previous", jobId);
 
         // 3. DB 저장
         ImageJob job = ImageJob.builder()
@@ -115,11 +113,52 @@ public class PosterServiceImpl implements PosterService {
                 request.title(),
                 request.content(),
                 request.prompt(),
-                sketchKey,
+                backgroundKey,
                 productKey,
-                modelKey,
-                skeletonKey,
-                previousKey
+                modelKey
+        );
+        messagePublisher.sendJob(message);
+
+        // 5. DTO 변환 및 반환
+        return new ImageJobResponse(
+                jobId,
+                job.getStatus(),
+                job.getCreatedAt()
+        );
+    }
+
+    @Override
+    public ImageJobResponse edit(Long userId, Long posterId, String prompt) {
+
+        String jobId = UUID.randomUUID().toString();
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1. Poster 조회
+        Poster poster = posterRepository.findById(posterId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_NOT_FOUND));
+
+        // 2. PosterGroup 조회
+        PosterGroup posterGroup = poster.getPosterGroup();
+
+        // 3. DB 저장
+        ImageJob job = ImageJob.builder()
+                .id(jobId)
+                .status(JobStatus.QUEUED)
+                .createdAt(now)
+                .updatedAt(now)
+                .posterGroup(posterGroup)
+                .build();
+        imageJobRepository.save(job);
+
+        // 4. MQ 발행
+        ImageJobMessage message = new ImageJobMessage(
+                jobId,
+                userId,
+                JobStatus.QUEUED,
+                now,
+                now,
+                posterGroup.getId(),
+                prompt
         );
         messagePublisher.sendJob(message);
 
@@ -240,9 +279,9 @@ public class PosterServiceImpl implements PosterService {
     private MultiValueMap<String, Object> prepareRequestBody(ImageJobMessage message) {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 
-        if (message.sketchKey() != null) {
-            File sketchFile = s3Service.downloadFile(message.sketchKey());
-            body.add("sketchImage", new FileSystemResource(sketchFile));
+        if (message.backgroundKey() != null) {
+            File backgroundFile = s3Service.downloadFile(message.backgroundKey());
+            body.add("backgroundImage", new FileSystemResource(backgroundFile));
         }
         if (message.productKey() != null) {
             File productFile = s3Service.downloadFile(message.productKey());
@@ -251,14 +290,6 @@ public class PosterServiceImpl implements PosterService {
         if (message.modelKey() != null) {
             File modelFile = s3Service.downloadFile(message.modelKey());
             body.add("modelImage", new FileSystemResource(modelFile));
-        }
-        if (message.skeletonKey() != null) {
-            File skeletonFile = s3Service.downloadFile(message.skeletonKey());
-            body.add("skeletonImage", new FileSystemResource(skeletonFile));
-        }
-        if (message.previousKey() != null) {
-            File previousFile = s3Service.downloadFile(message.previousKey());
-            body.add("previousImage", new FileSystemResource(previousFile));
         }
 
         body.add("prompt", message.prompt());

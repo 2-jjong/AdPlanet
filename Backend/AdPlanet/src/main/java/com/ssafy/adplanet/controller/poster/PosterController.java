@@ -2,6 +2,7 @@ package com.ssafy.adplanet.controller.poster;
 
 import com.ssafy.adplanet.dto.ResponseDto;
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
+import com.ssafy.adplanet.dto.poster.request.EditPosterRequest;
 import com.ssafy.adplanet.dto.tag.AssignPosterTagsRequest;
 import com.ssafy.adplanet.dto.poster.response.*;
 import com.ssafy.adplanet.dto.tag.CreateTagRequest;
@@ -28,10 +29,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 @RestController
@@ -57,21 +54,17 @@ public class PosterController {
             @RequestParam(value = "style", required = false) PosterStyle style,
             @Parameter(description = "요청 정보", required = true)
             @RequestPart(value = "request") CreatePosterRequest request,
-            @Parameter(description = "스케치 이미지")
-            @RequestPart(value = "sketchImage", required = false) MultipartFile sketchImage,
+            @Parameter(description = "배경 이미지")
+            @RequestPart(value = "backgroundImage", required = false) MultipartFile backgroundImage,
             @Parameter(description = "제품 이미지")
             @RequestPart(value = "productImage", required = false) MultipartFile productImage,
             @Parameter(description = "모델 이미지")
-            @RequestPart(value = "modelImage", required = false) MultipartFile modelImage,
-            @Parameter(description = "구도 이미지")
-            @RequestPart(value = "skeletonImage", required = false) MultipartFile skeletonImage,
-            @Parameter(description = "이전 이미지")
-            @RequestPart(value = "previousImage", required = false) MultipartFile previousImage
+            @RequestPart(value = "modelImage", required = false) MultipartFile modelImage
     ) {
 
         Long userId = SecurityUtil.getCurrentUserId();
 
-        ImageJobResponse response = posterService.create(userId, style, request, sketchImage, productImage, modelImage, skeletonImage, previousImage);
+        ImageJobResponse response = posterService.create(userId, style, request, backgroundImage, productImage, modelImage);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
@@ -89,6 +82,26 @@ public class PosterController {
     ) {
 
         ImageJobResponse response = posterService.getStatus(jobId);
+
+        return ResponseEntity.ok(ResponseDto.ok(response));
+    }
+
+    @PostMapping(value = "/{posterId}/edit")
+    @Operation(summary = "포스터 수정", description = "포스터 수정을 요청합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "요청 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<ResponseDto<ImageJobResponse>> editPoster(
+            @Parameter(description = "포스터 id", required = true)
+            @PathVariable("posterId") Long posterId,
+            @Parameter(description = "요청 정보", required = true)
+            @Valid @RequestBody EditPosterRequest request
+    ) {
+        Long userId = SecurityUtil.getCurrentUserId();
+
+        ImageJobResponse response = posterService.edit(userId, posterId, request.prompt());
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }

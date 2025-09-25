@@ -13,7 +13,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 public interface PosterService {
-    ImageJobResponse create(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile sketchImage, MultipartFile productImage, MultipartFile modelImage, MultipartFile skeletonImage, MultipartFile previousImage);
+    ImageJobResponse create(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile backgroundImage, MultipartFile productImage, MultipartFile modelImage);
+
+    ImageJobResponse edit(Long userId, Long posterId, String prompt);
 
     void processJob(ImageJobMessage message) throws Exception;
 
