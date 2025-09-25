@@ -2,11 +2,16 @@
 // 유리 프레임
 
 import { RoundedBox } from "@react-three/drei";
-import { CARD_W, CARD_H, CARD_D, CARD_RADIUS, GLASS_IOR, GLASS_OPACITY, GLASS_ROUGHNESS, GLASS_THICKNESS } from "./options";
+import { CARD_D, CARD_RADIUS, GLASS_IOR, GLASS_OPACITY, GLASS_ROUGHNESS, GLASS_THICKNESS } from "./options";
 
-export default function GlassFrame() {
+type Props = {
+  width?: number;
+  height?: number;
+};
+
+export default function GlassFrame({ width = 5.5, height = 3 }: Props) {
   return (
-    <RoundedBox args={[CARD_W, CARD_H, CARD_D]} radius={CARD_RADIUS} smoothness={4} renderOrder={1}>
+    <RoundedBox args={[width, height, CARD_D]} radius={CARD_RADIUS} smoothness={4} renderOrder={1}>
       <meshPhysicalMaterial
         transparent
         opacity={GLASS_OPACITY}

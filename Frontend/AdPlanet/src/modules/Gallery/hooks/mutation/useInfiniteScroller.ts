@@ -1,15 +1,17 @@
 // src/modules/Gallery3D/useInfiniteScroller.ts
+// 무한 스크롤 훅 (휠 + 드래그 + 관성)
+
 import { useEffect, useRef } from "react";
 
 type Opts = {
-  onChange: (pos: number) => void; // 절대 스크롤(누적), 단위=월드 x
+  onChange: (pos: number) => void; // 절대 스크롤
   friction?: number;
   wheelSpeed?: number;
   dragSpeed?: number;
 };
 
 export function useInfiniteScroller(target: HTMLElement | null, opts: Opts) {
-  const { onChange, friction = 0.85, wheelSpeed = 0.6, dragSpeed = 1.0 } = opts;
+  const { onChange, friction = 0.92, wheelSpeed = 0.2, dragSpeed = 0.2 } = opts;  // 감속, 휠/드래그 속도 조절
   const pos = useRef(0);
   const vel = useRef(0);
   const dragging = useRef(false);
@@ -20,7 +22,7 @@ export function useInfiniteScroller(target: HTMLElement | null, opts: Opts) {
     vel.current *= friction;
     if (Math.abs(vel.current) < 0.00001) vel.current = 0;
     if (vel.current !== 0) {
-      pos.current += vel.current;   // ← 래핑 없음
+      pos.current += vel.current;   
       onChange(pos.current);
     }
     raf.current = requestAnimationFrame(loop);
@@ -33,7 +35,9 @@ export function useInfiniteScroller(target: HTMLElement | null, opts: Opts) {
 
     const onWheel = (e: WheelEvent) => {
       const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      vel.current += delta * wheelSpeed * 0.002;
+      // 더 부드러운 스크롤을 위해 델타 값에 smoothing 적용
+      const smoothDelta = Math.sign(delta) * Math.min(Math.abs(delta), 100);
+      vel.current += smoothDelta * wheelSpeed * 0.0001; // 스크롤 감속 보정
       e.preventDefault();
     };
     const onDown = (e: PointerEvent | TouchEvent) => { dragging.current = true; lastX.current = getX(e); };

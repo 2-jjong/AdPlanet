@@ -1,4 +1,7 @@
 // src/modules/Gallery3D/EdgeBlurOverlay.tsx
+// 카드 모서리 블러 오버레이 컴포넌트
+// 3D 모델의 표면에 2D 이미지(텍스처)를 매핑
+
 import * as THREE from "three/src/Three.js"
 import { useEffect, useMemo, useRef } from "react";
 
@@ -10,8 +13,8 @@ export type EdgeBlurProps = {
   opacity: number;
   corner?: number;
   shrink?: number;
-  uvScale?: [number, number];   // ← 추가: 텍스처 UV 스케일(cover 용)
-  uvOffset?: [number, number];  // ← 추가: 텍스처 UV 오프셋(cover 용)
+  uvScale?: [number, number];   // 텍스처 UV 스케일(cover 용)
+  uvOffset?: [number, number];  // 텍스처 UV 오프셋(cover 용)
   materialKey?: string;
 };
 

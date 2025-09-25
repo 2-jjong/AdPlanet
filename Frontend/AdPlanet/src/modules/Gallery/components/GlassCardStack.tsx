@@ -1,7 +1,9 @@
 // src/modules/Gallery3D/GlassCardStack.tsx
+// 3D 카드 스택 갤러리 컴포넌트
+
 import { Suspense, useRef, useState, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Environment, OrthographicCamera } from "@react-three/drei";
+import { Environment, PerspectiveCamera } from "@react-three/drei";
 import * as THREE from "three/src/Three.js"
 import StackedPlanes from "./StackedPlanes";
 import ImageModal from "./ImageModal";
@@ -46,12 +48,12 @@ export default function GlassCardStack({
           gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         }}
       >
-        <OrthographicCamera
+        <PerspectiveCamera
           makeDefault
-          position={[0, 0, 10]}
-          near={-1000}
+          position={[0, 0, 15]}
+          near={0.1}
           far={1000}
-          zoom={120} // 화면 크기에 맞게 조절(카드 크기에 맞춰 줄임)
+          fov={50} // 더 자연스러운 원근감을 위한 시야각
         />
         <Environment preset="city" />
         <Suspense fallback={null}>

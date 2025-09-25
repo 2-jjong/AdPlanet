@@ -16,13 +16,9 @@ const GalleryPage: React.FC = () => {
         pointerEvents: "none",
       }}
     >
-      <h1 style={{ color: "#87DEDA", fontWeight: 700, fontSize: "clamp(2rem,5vw,3rem)" }}>
-        Style Library
-      </h1>
     </div>
 
-      <div>
-
+    <div>
         {/* 배경 Canvas (전체 화면 고정) */}
         <Canvas
           style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}
