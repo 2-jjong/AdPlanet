@@ -53,7 +53,7 @@ public class PosterController {
             @Parameter(description = "포스터 스타일")
             @RequestParam(value = "style", required = false) PosterStyle style,
             @Parameter(description = "요청 정보", required = true)
-            @RequestPart(value = "request") CreatePosterRequest request,
+            @Valid @RequestPart(value = "request") CreatePosterRequest request,
             @Parameter(description = "배경 이미지")
             @RequestPart(value = "backgroundImage", required = false) MultipartFile backgroundImage,
             @Parameter(description = "제품 이미지")

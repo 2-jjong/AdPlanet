@@ -32,6 +32,8 @@ public enum ErrorCode {
     POSTER_JOB_QUEUE_FAILED("PA5002", "이미지 생성 요청에 실패했습니다"),
     COPY_GENERATION_FAILED("PA5003", "포스터 문구 생성에 실패했습니다"),
     POSTER_PROMPT_REFINEMENT_FAILED("PA5004", "프롬프트 정제에 실패했습니다"),
+    POSTER_AI_SERVER_FAILED("PA5005", "포스터 생성 서버 처리에 실패했습니다"),
+    POSTER_IMAGE_EMPTY("PA5006", "생성된 이미지가 비어있습니다"),
 
     // Tag
     TAG_ALREADY_EXISTS("TG4001", "이미 존재하는 태그입니다"),

@@ -1,6 +1,7 @@
 package com.ssafy.adplanet.service.poster;
 
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
+import com.ssafy.adplanet.dto.poster.request.GeneratePosterRequest;
 import com.ssafy.adplanet.dto.poster.request.ImageJobMessage;
 import com.ssafy.adplanet.dto.poster.response.CopyResponse;
 import com.ssafy.adplanet.dto.poster.response.ImageJobResponse;
@@ -16,27 +17,21 @@ import com.ssafy.adplanet.repository.ImageJobRepository;
 import com.ssafy.adplanet.repository.PosterGroupRepository;
 import com.ssafy.adplanet.repository.PosterRepository;
 import com.ssafy.adplanet.repository.UserRepository;
+import com.ssafy.adplanet.service.ai.AiService;
 import com.ssafy.adplanet.service.gms.GmsService;
 import com.ssafy.adplanet.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
@@ -53,6 +48,7 @@ public class PosterServiceImpl implements PosterService {
 
     private final S3Service s3Service;
     private final GmsService gmsService;
+    private final AiService aiService;
     private final JobStatusService jobStatusService;
     private final UserRepository userRepository;
     private final PosterGroupRepository posterGroupRepository;
@@ -217,11 +213,11 @@ public class PosterServiceImpl implements PosterService {
         Thread.sleep(100);
 
         // 5. 이미지 처리 시도
-        boolean success = processImageGeneration(message);
+        byte[] bytes = processImageGeneration(message);
 
         // 6. 상태 업데이트: COMPLETED/FAILED
-        if (success) {
-            saveGenerationResult(message, imageJob);
+        if (bytes != null) {
+            saveGenerationResult(message, imageJob, bytes);
             imageJob.setStatus(JobStatus.COMPLETED);
             log.info("✅ [{}] 작업 완료: {}", imageJob.getStatus().name(), jobId);
         } else {
@@ -232,42 +228,29 @@ public class PosterServiceImpl implements PosterService {
         imageJobRepository.save(imageJob);
     }
 
-    private boolean processImageGeneration(ImageJobMessage message) {
-        String jobId = message.jobId();
+    private byte[] processImageGeneration(ImageJobMessage message) {
+
+        // S3에서 파일 다운로드 및 요청 준비
+        GeneratePosterRequest request = prepareRequestBody(message);
 
         for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
             try {
-                log.info("[POSTER-GEN] 이미지 생성 시도 {}/{}: {}", attempt, MAX_RETRY, jobId);
+                log.info("[POSTER-GEN] 이미지 생성 시도 {}/{}", attempt, MAX_RETRY);
 
-                // S3에서 파일 다운로드 및 요청 준비
-                MultiValueMap<String, Object> body = prepareRequestBody(message);
-                log.info("[POSTER-GEN] 이미지 로드 완료: {}", jobId);
-
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-                HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
-
-                // Python 서버 호출 시뮬레이션 (실제로는 restTemplate.postForEntity 사용)
-                log.info("[POSTER-GEN] 이미지 생성 대기 중: {}", jobId);
-                Thread.sleep(10000);
+                byte[] bytes = aiService.generatePoster(request);
 
                 // 성공 케이스
-                if (true) { // 실제로는 response.getStatusCode().is2xxSuccessful()
-                    log.info("[POSTER-GEN] 이미지 생성 성공: {}", jobId);
-                    return true;
+                if (bytes != null) {
+                    log.info("[POSTER-GEN] 이미지 생성 성공");
+                    return bytes;
                 }
 
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.error("❌ 이미지 생성 중 인터럽트: {}", jobId, e);
-                return false;
-
             } catch (Exception e) {
-                log.error("❌ 이미지 생성 시도 {}/{} 실패: {} - {}", attempt, MAX_RETRY, jobId, e.getMessage());
+                log.error("❌ 이미지 생성 시도 {}/{} 실패: {}", attempt, MAX_RETRY, e.getMessage());
 
                 if (attempt == MAX_RETRY) {
-                    log.error("❌ 최대 재시도 횟수 도달: {}", jobId, e);
-                    return false;
+                    log.error("❌ 최대 재시도 횟수 도달");
+                    return null;
                 }
 
                 // 재시도 전 대기
@@ -275,39 +258,43 @@ public class PosterServiceImpl implements PosterService {
                     Thread.sleep(2000);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    return false;
+                    return null;
                 }
             }
         }
 
-        return false;
+        return null;
     }
 
-    private MultiValueMap<String, Object> prepareRequestBody(ImageJobMessage message) {
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+    private GeneratePosterRequest prepareRequestBody(ImageJobMessage message) {
+
+        byte[] backgroundImage = null;
+        byte[] productImage = null;
+        byte[] modelImage = null;
 
         if (message.backgroundKey() != null) {
-            File backgroundFile = s3Service.downloadFile(message.backgroundKey());
-            body.add("backgroundImage", new FileSystemResource(backgroundFile));
+            backgroundImage = s3Service.download(message.backgroundKey());
         }
         if (message.productKey() != null) {
-            File productFile = s3Service.downloadFile(message.productKey());
-            body.add("productImage", new FileSystemResource(productFile));
+            productImage = s3Service.download(message.productKey());
         }
         if (message.modelKey() != null) {
-            File modelFile = s3Service.downloadFile(message.modelKey());
-            body.add("modelImage", new FileSystemResource(modelFile));
+            modelImage = s3Service.download(message.modelKey());
         }
 
         String refinedPrompt = gmsService.refinePosterPrompt(message.title(), message.content(), message.prompt());
         log.info("[POSTER-GEN] 정제된 프롬프트: {}", refinedPrompt);
-        body.add("prompt", refinedPrompt);
 
-        return body;
+        return GeneratePosterRequest.builder()
+                .prompt(refinedPrompt)
+                .backgroundImage(backgroundImage)
+                .productImage(productImage)
+                .modelImage(modelImage)
+                .build();
     }
 
     @Transactional
-    protected void saveGenerationResult(ImageJobMessage message, ImageJob imageJob) {
+    protected void saveGenerationResult(ImageJobMessage message, ImageJob imageJob, byte[] bytes) {
         String jobId = message.jobId();
 
         // PosterGroup 조회
@@ -324,53 +311,15 @@ public class PosterServiceImpl implements PosterService {
         posterRepository.saveAndFlush(poster);
         log.info("[POSTER-GEN] 포스터 저장: {}", poster.getId());
 
-        // 더미 이미지 생성 및 S3 업로드
-        byte[] imageBytes = generateDummyPng(message.title(), message.prompt());
+        // S3 업로드
         String key = s3Service.buildKey("poster_" + poster.getId() + ".png");
-        s3Service.upload(key, imageBytes, "image/png");
+        s3Service.upload(key, bytes, "image/png");
         poster.setImgUrl(s3Service.toS3Uri(key));
 
         // 대표 포스터 변경
         posterGroup.setMainPoster(poster);
         imageJob.setResultPoster(poster);
         log.info("[POSTER-GEN] 결과 저장 성공: {}", jobId);
-    }
-
-    // --- 더미 이미지 생성 코드 ---
-    private static byte[] generateDummyPng(String title, String slogan) {
-        try {
-            int W = 512, H = 512;
-            BufferedImage img = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g = img.createGraphics();
-            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            g.setColor(new Color(0xF2F7FA));
-            g.fillRect(0, 0, W, H);
-            g.setColor(new Color(0x46A9DB));
-            g.fillOval(W / 2 - 120, H / 2 - 120, 240, 240);
-            g.setColor(new Color(0x193747));
-
-            g.setFont(new Font("SansSerif", Font.BOLD, 28));
-            drawCentered(g, (title == null ? "" : title), W / 2, H / 2 + 10);
-
-            g.setFont(new Font("SansSerif", Font.PLAIN, 16));
-            drawCentered(g, (slogan == null ? "" : slogan), W / 2, H / 2 + 40);
-
-            g.dispose();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(img, "png", baos);
-            return baos.toByteArray();
-        } catch (Exception e) {
-            throw new IllegalStateException("더미 이미지 생성 실패: " + e.getMessage(), e);
-        }
-    }
-
-    private static void drawCentered(Graphics2D g, String text, int cx, int cy) {
-        if (text == null || text.isBlank()) return;
-        var fm = g.getFontMetrics();
-        int x = cx - fm.stringWidth(text) / 2;
-        int y = cy - fm.getHeight() / 2 + fm.getAscent();
-        g.drawString(text, x, y);
     }
 
     @Override
