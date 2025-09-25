@@ -51,9 +51,9 @@ public enum ErrorCode {
 
     // ===== Logo =====
     LOGO_INVALID_REQUEST("LG4001", "잘못된 로고 요청입니다"),
-    LOGO_NOT_FOUND("LG4040", "로고를 찾을 수 없습니다"),
-    LOGO_TAG_NOT_FOUND("LG4041", "존재하지 않는 태그가 포함되어 있습니다"),
-    LOGO_CI_CONFLICT("LG4091", "CI 가이드라인이 이미 생성되어 있습니다"),
+    LOGO_CI_CONFLICT("LG4002", "CI 가이드라인이 이미 생성되어 있습니다"),
+    LOGO_NOT_FOUND("LG4003", "로고를 찾을 수 없습니다"),
+    LOGO_TAG_NOT_FOUND("LG4004", "존재하지 않는 태그가 포함되어 있습니다"),
 
     LOGO_AI_SERVER_FAILED("LG5001", "로고 생성 서버 처리에 실패했습니다"),
     LOGO_IMAGE_EMPTY("LG5002", "생성된 이미지가 비어있습니다"),
