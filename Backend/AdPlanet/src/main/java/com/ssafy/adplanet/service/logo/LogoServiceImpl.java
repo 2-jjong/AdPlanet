@@ -35,7 +35,7 @@ import static com.ssafy.adplanet.exception.ErrorCode.*;
 public class LogoServiceImpl implements LogoService {
 
     private static final int DEFAULT_W = 800;
-    private static final int DEFAULT_H = 600;
+    private static final int DEFAULT_H = 800;
     private static final int MAX_BYTES = 20 * 1024 * 1024;
 
     private final LogoRepository logoRepository;
