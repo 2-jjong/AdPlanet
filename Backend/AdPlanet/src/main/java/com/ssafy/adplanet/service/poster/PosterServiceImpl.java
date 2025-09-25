@@ -292,7 +292,10 @@ public class PosterServiceImpl implements PosterService {
             body.add("modelImage", new FileSystemResource(modelFile));
         }
 
-        body.add("prompt", message.prompt());
+        String refinedPrompt = gmsService.refinePosterPrompt(message.title(), message.content(), message.prompt());
+        log.info("[POSTER-GEN] 정제된 프롬프트: {}", refinedPrompt);
+        body.add("prompt", refinedPrompt);
+
         return body;
     }
 
