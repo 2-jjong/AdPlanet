@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import * as THREE from "three";
+import * as THREE from "three/src/Three.js"
 import { useFrame } from "@react-three/fiber";
 
 interface StarsProps {

@@ -34,17 +34,18 @@ apiClient.interceptors.request.use(
 // 응답 인터셉터: 응답에서 토큰 자동 저장 및 재발급 처리
 apiClient.interceptors.response.use(
   (response) => {
+    // blob(이미지 등) 응답은 표준화하지 않고 원본 데이터 반환
+    const wantsBlob = (response?.config as any)?.responseType === 'blob';
+    const isImage = typeof response?.headers?.['content-type'] === 'string' && response.headers['content-type'].startsWith('image/');
+    if (wantsBlob || isImage) {
+      return response.data as any;
+    }
     // Authorization 헤더에서 토큰 추출하여 AuthContext에 저장
     const authHeader = response.headers.authorization;
-    console.log('응답 헤더:', response.headers);
-    console.log('Authorization 헤더:', authHeader);
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.replace('Bearer ', ''); // 'Bearer ' 정확히 제거
-      console.log('토큰 추출:', token);
-      console.log('authActions.login 호출 전');
       authActions.login(token); // 토큰 설정과 함께 로그인 상태도 설정
-      console.log('authActions.login 호출 후');
     } else {
       // 바디에 accessToken이 담겨오는 경우 대비 (서버 구현 차이 대응)
       try {

@@ -12,7 +12,7 @@ createRoot(document.getElementById("root")!).render(
       <App /> // 개발환경: StrictMode 없이
     ) : (
       <StrictMode>
-        <App /> // 운영환경: StrictMode 포함
+        <App />
       </StrictMode>
     )}
   </QueryClientProvider>
