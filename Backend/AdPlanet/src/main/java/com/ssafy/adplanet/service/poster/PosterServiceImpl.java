@@ -63,7 +63,7 @@ public class PosterServiceImpl implements PosterService {
     private static final int MAX_RETRY = 10;
 
     @Override
-    public ImageJobResponse create(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile sketchImage, MultipartFile productImage, MultipartFile modelImage, MultipartFile skeletonImage, MultipartFile previousImage) {
+    public ImageJobResponse create(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile sketchImage, MultipartFile productImage, MultipartFile modelImage) {
 
         String jobId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
@@ -91,8 +91,6 @@ public class PosterServiceImpl implements PosterService {
         String sketchKey = uploadIfExists(sketchImage, "sketch", jobId);
         String productKey = uploadIfExists(productImage, "product", jobId);
         String modelKey = uploadIfExists(modelImage, "model", jobId);
-        String skeletonKey = uploadIfExists(skeletonImage, "skeleton", jobId);
-        String previousKey = uploadIfExists(previousImage, "previous", jobId);
 
         // 3. DB 저장
         ImageJob job = ImageJob.builder()
@@ -117,9 +115,7 @@ public class PosterServiceImpl implements PosterService {
                 request.prompt(),
                 sketchKey,
                 productKey,
-                modelKey,
-                skeletonKey,
-                previousKey
+                modelKey
         );
         messagePublisher.sendJob(message);
 
@@ -251,14 +247,6 @@ public class PosterServiceImpl implements PosterService {
         if (message.modelKey() != null) {
             File modelFile = s3Service.downloadFile(message.modelKey());
             body.add("modelImage", new FileSystemResource(modelFile));
-        }
-        if (message.skeletonKey() != null) {
-            File skeletonFile = s3Service.downloadFile(message.skeletonKey());
-            body.add("skeletonImage", new FileSystemResource(skeletonFile));
-        }
-        if (message.previousKey() != null) {
-            File previousFile = s3Service.downloadFile(message.previousKey());
-            body.add("previousImage", new FileSystemResource(previousFile));
         }
 
         body.add("prompt", message.prompt());

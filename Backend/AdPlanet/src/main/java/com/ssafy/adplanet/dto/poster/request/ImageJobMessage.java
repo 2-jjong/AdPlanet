@@ -25,11 +25,9 @@ public record ImageJobMessage(
     String prompt,              // 프롬프트
     String sketchKey,        // 스케치 이미지
     String productKey,       // 제품 이미지
-    String modelKey,         // 모델 이미지
-    String skeletonKey,      // 구도 이미지
-    String previousKey       // 이전 이미지
+    String modelKey         // 모델 이미지
 ){
     public ImageJobMessage(String jobId) {
-        this(jobId, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        this(jobId, null, null, null, null, null, null, null, null, null, null, null);
     }
 }

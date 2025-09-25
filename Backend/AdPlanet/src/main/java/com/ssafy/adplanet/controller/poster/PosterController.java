@@ -28,10 +28,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 @RestController
@@ -62,16 +58,12 @@ public class PosterController {
             @Parameter(description = "제품 이미지")
             @RequestPart(value = "productImage", required = false) MultipartFile productImage,
             @Parameter(description = "모델 이미지")
-            @RequestPart(value = "modelImage", required = false) MultipartFile modelImage,
-            @Parameter(description = "구도 이미지")
-            @RequestPart(value = "skeletonImage", required = false) MultipartFile skeletonImage,
-            @Parameter(description = "이전 이미지")
-            @RequestPart(value = "previousImage", required = false) MultipartFile previousImage
+            @RequestPart(value = "modelImage", required = false) MultipartFile modelImage
     ) {
 
         Long userId = SecurityUtil.getCurrentUserId();
 
-        ImageJobResponse response = posterService.create(userId, style, request, sketchImage, productImage, modelImage, skeletonImage, previousImage);
+        ImageJobResponse response = posterService.create(userId, style, request, sketchImage, productImage, modelImage);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
