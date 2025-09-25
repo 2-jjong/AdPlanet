@@ -30,4 +30,8 @@ public record ImageJobMessage(
     public ImageJobMessage(String jobId) {
         this(jobId, null, null, null, null, null, null, null, null, null, null, null);
     }
+
+    public ImageJobMessage(String jobId, Long userId, JobStatus status, LocalDateTime createdAt, LocalDateTime updatedAt, Long groupId, String prompt) {
+        this(jobId, userId, status, createdAt, updatedAt, groupId, null, null, prompt, null, null, null);
+    }
 }

@@ -127,6 +127,49 @@ public class PosterServiceImpl implements PosterService {
         );
     }
 
+    @Override
+    public ImageJobResponse edit(Long userId, Long posterId, String prompt) {
+
+        String jobId = UUID.randomUUID().toString();
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1. Poster 조회
+        Poster poster = posterRepository.findById(posterId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_NOT_FOUND));
+
+        // 2. PosterGroup 조회
+        PosterGroup posterGroup = poster.getPosterGroup();
+
+        // 3. DB 저장
+        ImageJob job = ImageJob.builder()
+                .id(jobId)
+                .status(JobStatus.QUEUED)
+                .createdAt(now)
+                .updatedAt(now)
+                .posterGroup(posterGroup)
+                .build();
+        imageJobRepository.save(job);
+
+        // 4. MQ 발행
+        ImageJobMessage message = new ImageJobMessage(
+                jobId,
+                userId,
+                JobStatus.QUEUED,
+                now,
+                now,
+                posterGroup.getId(),
+                prompt
+        );
+        messagePublisher.sendJob(message);
+
+        // 5. DTO 변환 및 반환
+        return new ImageJobResponse(
+                jobId,
+                job.getStatus(),
+                job.getCreatedAt()
+        );
+    }
+
     private String uploadIfExists(MultipartFile multipartFile, String prefix, String jobId) {
 
         if (multipartFile == null || multipartFile.isEmpty()) return null;

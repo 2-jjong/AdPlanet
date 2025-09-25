@@ -15,6 +15,8 @@ import java.util.List;
 public interface PosterService {
     ImageJobResponse create(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile backgroundImage, MultipartFile productImage, MultipartFile modelImage);
 
+    ImageJobResponse edit(Long userId, Long posterId, String prompt);
+
     void processJob(ImageJobMessage message) throws Exception;
 
     ImageJobResponse getStatus(String jobId);
