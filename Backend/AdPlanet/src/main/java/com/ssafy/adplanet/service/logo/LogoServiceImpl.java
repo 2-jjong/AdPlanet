@@ -188,6 +188,23 @@ public class LogoServiceImpl implements LogoService {
         );
     }
 
+    @Override
+    public byte[] downloadLogoImage(Long userId, Long logoId) {
+        if (userId == null || logoId == null || logoId <= 0) {
+            throw new BusinessException(ErrorCode.LOGO_INVALID_REQUEST);
+        }
+
+        Logo logo = logoRepository.findByIdAndUser_UserId(logoId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.LOGO_NOT_FOUND));
+
+        String s3Uri = logo.getImgUrl();
+        if (s3Uri == null || s3Uri.isBlank()) {
+            throw new BusinessException(ErrorCode.LOGO_NOT_FOUND);
+        }
+
+        return s3Service.downloadFromUri(s3Uri);
+    }
+
     private static byte[] toPng(byte[] src) {
         try (var in = new ByteArrayInputStream(src);
              var out = new ByteArrayOutputStream()) {

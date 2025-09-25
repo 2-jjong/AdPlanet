@@ -13,4 +13,5 @@ public interface LogoService {
     LogoDto createLogo(Long userId, CreateLogoRequest req, LogoStyle style);
     List<LogoListItem> getLogoList(Long userId, List<Long> tagIds, LogoListOrder order);
     LogoDetail getLogoDetail(Long userId, Long logoId);
+    byte[] downloadLogoImage(Long userId, Long logoId);
 }

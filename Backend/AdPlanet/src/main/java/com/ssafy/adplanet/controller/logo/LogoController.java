@@ -157,52 +157,23 @@ public class LogoController {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
-    public ResponseEntity<byte[]> download(@PathVariable Long logoId,
-                                           @RequestParam(defaultValue = "png") String format) {
-        String f = format == null ? "png" : format.trim().toLowerCase();
-        String contentType;
-        byte[] bytes;
+    public ResponseEntity<byte[]> downloadLogo(
+            @Parameter(description = "로고 id", required = true)
+            @PathVariable("logoId") Long logoId
+    ) {
+        Long userId = SecurityUtil.getCurrentUserId();
 
-        switch (f) {
-            case "jpg":
-            case "jpeg":
-                contentType = "image/jpeg";
-                bytes = tinyRaster("jpg");
-                break;
-            case "svg":
-                contentType = "image/svg+xml";
-                bytes = tinySvg(logoId).getBytes(StandardCharsets.UTF_8);
-                break;
-            default:
-                contentType = "image/png";
-                bytes = tinyRaster("png");
-        }
+        byte[] bytes = logoService.downloadLogoImage(userId, logoId);
 
-        String ext = (f.equals("jpg") || f.equals("jpeg")) ? "jpg" : (f.equals("svg") ? "svg" : "png");
-        String filename = "logo_" + logoId + "." + ext;
+        // 파일명: logo_{id}.png  (한글 제목 쓰고 싶으면 아래 주석 참고)
+        String filename = "logo_" + logoId + ".png";
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.attachment().filename(filename).build().toString())
-                .contentType(MediaType.parseMediaType(contentType))
+                        ContentDisposition.attachment()
+                                .filename(filename /*, StandardCharsets.UTF_8*/) // 한글 파일명 필요 시 주석 해제
+                                .build().toString())
+                .contentType(MediaType.parseMediaType("image/png"))
                 .body(bytes);
-    }
-
-    private byte[] tinyRaster(String fmt) {
-        try {
-            BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
-            img.setRGB(0, 0, 0xFFFFFF);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(img, fmt.equals("jpg") ? "jpg" : "png", baos);
-            return baos.toByteArray();
-        } catch (Exception e) { return new byte[0]; }
-    }
-
-    private String tinySvg(Long id) {
-        return """
-            <svg xmlns="http://www.w3.org/2000/svg" width="1" height="1">
-              <rect width="1" height="1" fill="#FFFFFF"/>
-            </svg>
-            """;
     }
 }
