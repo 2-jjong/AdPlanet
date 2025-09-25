@@ -28,7 +28,7 @@ public enum ErrorCode {
     POSTER_IMAGE_UPLOAD_FAILED("PA5001", "이미지 업로드에 실패했습니다"),
     POSTER_JOB_QUEUE_FAILED("PA5002", "이미지 생성 요청에 실패했습니다"),
     COPY_GENERATION_FAILED("PA5003", "포스터 문구 생성에 실패했습니다"),
-    
+
     // Tag
     TAG_ALREADY_EXISTS("TG4001", "이미 존재하는 태그입니다"),
     TAG_LIST_EMPTY("TG4002", "태그 목록이 비어 있습니다"),
@@ -44,7 +44,23 @@ public enum ErrorCode {
     WATERMARK_INVALID_FORMAT("WM4007", "워터마크 형식이 올바르지 않습니다"),
     WATERMARK_INSERTION_FAILED("WM5001", "워터마크 삽입에 실패했습니다"),
     WATERMARK_DETECTION_FAILED("WM5002", "워터마크 검출에 실패했습니다"),
-    WATERMARK_IMAGE_PROCESSING_FAILED("WM5003", "이미지 처리 중 오류가 발생했습니다");
+    WATERMARK_IMAGE_PROCESSING_FAILED("WM5003", "이미지 처리 중 오류가 발생했습니다"),
+
+    IMAGE_UPLOAD_FAILED("PA5001", "이미지 업로드에 실패했습니다"),
+    IMAGE_PROCESSING_FAILED("PA5002", "이미지 생성 작업에 실패했습니다"),
+
+    // ===== Logo =====
+    LOGO_INVALID_REQUEST("LG4001", "잘못된 로고 요청입니다"),
+    LOGO_CI_CONFLICT("LG4002", "CI 가이드라인이 이미 생성되어 있습니다"),
+    LOGO_NOT_FOUND("LG4003", "로고를 찾을 수 없습니다"),
+    LOGO_TAG_NOT_FOUND("LG4004", "존재하지 않는 태그가 포함되어 있습니다"),
+
+    LOGO_AI_SERVER_FAILED("LG5001", "로고 생성 서버 처리에 실패했습니다"),
+    LOGO_IMAGE_EMPTY("LG5002", "생성된 이미지가 비어있습니다"),
+    LOGO_IMAGE_FORMAT_INVALID("LG5003", "유효한 이미지 포맷이 아닙니다"),
+    LOGO_IMAGE_TOO_LARGE("LG5004", "이미지 용량이 제한을 초과했습니다"),
+    LOGO_IMAGE_UPLOAD_FAILED("LG5005", "로고 이미지 업로드에 실패했습니다"),
+    LOGO_PROMPT_REFINEMENT_FAILED("LG5006", "프롬프트 정제에 실패했습니다");
 
     private final String code;
     private final String message;

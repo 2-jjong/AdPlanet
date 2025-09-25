@@ -24,10 +24,6 @@ public record CreateLogoRequest(
         @Schema(description = "이미지 생성 프롬프트", example = "green cabbage, fresh, crisp, minimal logo")
         String prompt,
 
-        @NotNull
-        @Schema(description = "로고 스타일", example = "SIMPLE")
-        LogoStyle style,
-
         @Schema(description = "로고 태그")
         List<Long> tagIds
 ) {}

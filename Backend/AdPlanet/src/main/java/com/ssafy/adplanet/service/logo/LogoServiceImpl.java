@@ -6,6 +6,8 @@ import com.ssafy.adplanet.entity.Logo;
 import com.ssafy.adplanet.entity.User;
 import com.ssafy.adplanet.enums.LogoListOrder;
 import com.ssafy.adplanet.enums.LogoStyle;
+import com.ssafy.adplanet.exception.BusinessException;
+import com.ssafy.adplanet.exception.ErrorCode;
 import com.ssafy.adplanet.repository.LogoRepository;
 import com.ssafy.adplanet.repository.UserRepository;
 import com.ssafy.adplanet.service.ai.AiService;
@@ -23,7 +25,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Comparator;
 import java.util.List;
-import java.util.NoSuchElementException;
+
+import static com.ssafy.adplanet.exception.ErrorCode.*;
 
 @Slf4j
 @Service
@@ -44,10 +47,12 @@ public class LogoServiceImpl implements LogoService {
 
     @Override
     @Transactional
-    public LogoDto logoCreate(Long userId, CreateLogoRequest req, LogoStyle style) {
-        if (userId == null) throw new IllegalArgumentException("userId는 필수입니다.");
-        if (req.title() == null || req.title().isBlank()) throw new IllegalArgumentException("title은 필수입니다.");
-        if (req.prompt() == null || req.prompt().isBlank()) throw new IllegalArgumentException("prompt는 필수입니다.");
+    public LogoDto createLogo(Long userId, CreateLogoRequest req, LogoStyle style) {
+        // 요청 검증
+        if (userId == null || req == null || req.title() == null || req.title().isBlank()
+                || req.prompt() == null || req.prompt().isBlank()) {
+            throw new BusinessException(LOGO_INVALID_REQUEST);
+        }
 
         String slogan = (req.content() == null) ? "" : req.content().trim();
         User userRef = userRepository.getReferenceById(userId);
@@ -63,59 +68,79 @@ public class LogoServiceImpl implements LogoService {
         logoRepository.saveAndFlush(logo);
 
         try {
+            // 1) 프롬프트 정제
             String refinedPrompt;
             try {
-                String styleStr = (style == null ? null : style.name()); // SIMPLE→"simple"
+                String styleStr = (style == null ? null : style.name());
                 refinedPrompt = gmsService.refineLogoPrompt(req.title(), slogan, req.prompt(), styleStr);
-                if (log.isInfoEnabled()) {
-                    log.info("[LOGO] refined prompt: {}", refinedPrompt);
-                }
+                log.info("[LOGO] refined prompt: {}", refinedPrompt);
+            } catch (BusinessException ex) {
+                // GMS에서 이미 도메인 예외로 래핑됨 → 정책에 따라 원문 진행
+                log.warn("[LOGO] refineLogoPrompt 실패. 원문 사용: {}", ex.getMessage());
+                refinedPrompt = req.prompt();
             } catch (Exception ex) {
-                if (log.isWarnEnabled()) {
-                    log.warn("[LOGO] refineLogoPrompt 실패. 원문 프롬프트 사용: {}", ex.toString());
-                }
+                log.warn("[LOGO] refineLogoPrompt 실패(일반 예외). 원문 사용: {}", ex.toString());
                 refinedPrompt = req.prompt();
             }
 
-            // 2) Python 서버 호출 → 바이트 수신 (정제된 프롬프트 사용)
+            // 2) Python 서버 호출
             var genReq = new LogoGenerateRequest(
-                    req.title(),
-                    slogan,
-                    refinedPrompt,     // ★ 변경: 정제 프롬프트로 교체
+                    refinedPrompt,
                     DEFAULT_W, DEFAULT_H,
                     style
             );
-            byte[] rawBytes = aiService.generateLogo(genReq);
+
+            final byte[] rawBytes;
+            try {
+                rawBytes = aiService.generateLogo(genReq);
+            } catch (Exception ex) {
+                throw new BusinessException(LOGO_AI_SERVER_FAILED, ex);
+            }
 
             if (rawBytes == null || rawBytes.length == 0) {
-                throw new IllegalStateException("AI 서버에서 빈 이미지를 반환했습니다.");
+                throw new BusinessException(LOGO_IMAGE_EMPTY);
             }
             if (rawBytes.length > MAX_BYTES) {
-                throw new IllegalStateException("이미지 용량 초과(" + rawBytes.length + " bytes)");
+                throw new BusinessException(LOGO_IMAGE_TOO_LARGE);
             }
 
-            byte[] pngBytes = toPng(rawBytes);
+            // 3) PNG 변환
+            final byte[] pngBytes;
+            try {
+                pngBytes = toPng(rawBytes);
+            } catch (IllegalStateException ex) {
+                throw new BusinessException(LOGO_IMAGE_FORMAT_INVALID, ex);
+            }
 
             // 워터마크 삽입
             byte[] watermarkedBytes = watermarkService.insertWatermark(pngBytes, userRef.getEmail(), req.title());
 
-            // 4) S3 업로드 & URL 갱신 (png 고정)
+            // 4) S3 업로드 & URL 갱신
             String key = s3Service.buildKey("logos/logo_" + logo.getId() + ".png");
             s3Service.upload(key, watermarkedBytes, "image/png");
             logo.changeImgUrl(s3Service.toS3Uri(key));
+            try {
+                s3Service.upload(key, pngBytes, "image/png");
+                logo.changeImgUrl(s3Service.toS3Uri(key));
+            } catch (Exception ex) {
+                throw new BusinessException(LOGO_IMAGE_UPLOAD_FAILED, ex);
+            }
 
             String presignedUrl = s3Service.presignGet(key);
             return new LogoDto(logo.getId(), presignedUrl);
 
+        } catch (BusinessException be) {
+            logoRepository.delete(logo);
+            throw be;
         } catch (Exception e) {
             logoRepository.delete(logo);
-            throw e;
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e);
         }
     }
 
     @Override
-    public List<LogoListItem> logoList(Long userId, List<Long> tagIds, LogoListOrder order) {
-        if (userId == null) throw new IllegalArgumentException("userId는 필수입니다.");
+    public List<LogoListItem> getLogoList(Long userId, List<Long> tagIds, LogoListOrder order) {
+        if (userId == null) throw new BusinessException(LOGO_INVALID_REQUEST);
         Sort sort = (order == null ? LogoListOrder.NEWEST : order).toSort();
 
         List<Logo> logos;
@@ -146,12 +171,13 @@ public class LogoServiceImpl implements LogoService {
     }
 
     @Override
-    public LogoDetail logoDetail(Long userId, Long logoId) {
-        if (userId == null) throw new IllegalArgumentException("userId는 필수입니다.");
-        if (logoId == null || logoId <= 0) throw new IllegalArgumentException("logoId가 유효하지 않습니다.");
+    public LogoDetail getLogoDetail(Long userId, Long logoId) {
+        if (userId == null || logoId == null || logoId <= 0) {
+            throw new BusinessException(LOGO_INVALID_REQUEST);
+        }
 
         Logo logo = logoRepository.findByIdAndUser_UserId(logoId, userId)
-                .orElseThrow(() -> new NoSuchElementException("해당 사용자의 로고를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(LOGO_NOT_FOUND));
 
         String imageUrl = s3Service.toHttpUrl(logo.getImgUrl());
         return new LogoDetail(

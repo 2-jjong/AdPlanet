@@ -5,6 +5,8 @@ import com.ssafy.adplanet.dto.ci.CiGuidelineResponse;
 import com.ssafy.adplanet.entity.CiGuideline;
 import com.ssafy.adplanet.entity.CiGuidelineTemplate;
 import com.ssafy.adplanet.entity.Logo;
+import com.ssafy.adplanet.exception.BusinessException;
+import com.ssafy.adplanet.exception.ErrorCode;
 import com.ssafy.adplanet.mapper.CiGuidelineMapper;
 import com.ssafy.adplanet.repository.CiGuidelineRepository;
 import com.ssafy.adplanet.repository.CiGuidelineTemplateRepository;
@@ -21,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.util.Optional;
 
+import static com.ssafy.adplanet.exception.ErrorCode.*;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -35,24 +39,44 @@ public class CiGuidelineServiceImpl implements CiGuidelineService {
 
     @Transactional
     public CiGuidelineResponse createWithImageAi(Long logoId) {
-        Logo logo = logoRepo.findById(logoId)
-                .orElseThrow(() -> new IllegalArgumentException("logo not found: " + logoId));
-        if (ciRepo.existsByLogoId(logoId)) {
-            throw new IllegalStateException("이미 CI 가이드라인이 존재합니다.");
+        // 0) 요청 검증
+        if (logoId == null || logoId <= 0) {
+            throw new BusinessException(LOGO_INVALID_REQUEST);
         }
 
-        // 1) 로고 이미지 프리사인 URL (20분)
-        String imageUrl = s3Service.presignFromUri(logo.getImgUrl(), Duration.ofMinutes(20));
+        // 1) 로고 조회
+        Logo logo = logoRepo.findById(logoId)
+                .orElseThrow(() -> new BusinessException(LOGO_NOT_FOUND));
 
+        // 2) 중복 생성 방지
+        if (ciRepo.existsByLogoId(logoId)) {
+            throw new BusinessException(LOGO_CI_CONFLICT);
+        }
+
+        // 3) 로고 이미지 프리사인 URL (20분)
+        String imageUrl;
+        try {
+            imageUrl = s3Service.presignFromUri(logo.getImgUrl(), Duration.ofMinutes(20));
+        } catch (Exception e) {
+            // presign 실패는 내부 오류로 처리
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e);
+        }
+
+        // 4) GMS로 팔레트 요청 (실패 시 기본값 폴백)
         PalettePayload p;
         try {
-            log.info("[CI] GMS 요청 시작: brand='{}', slogan='{}', img='{}'", logo.getName(), logo.getSlogan(), imageUrl);
+            log.info("[CI] GMS 요청 시작: brand='{}', slogan='{}', img='{}'",
+                    logo.getName(), logo.getSlogan(), imageUrl);
+
             p = gms.generatePaletteByImage(logo.getName(), logo.getSlogan(), imageUrl);
+
             log.info("[CI] GMS 응답 수신: primary={}, secondary={}, neutral={}",
                     p.getPrimaryColor(), p.getSecondaryColor(), p.getNeutralColor());
         } catch (Exception e) {
+
             log.warn("[CI] GMS 실패로 기본값 사용: {} (cause: {})",
                     e.getMessage(), (e.getCause() != null ? e.getCause().getClass().getSimpleName() : "-"));
+
             p = new PalettePayload();
             p.setPrimaryColor(CiGuidelineDefaults.PRIMARY_COLOR);
             p.setSecondaryColor(CiGuidelineDefaults.SECONDARY_COLOR);
@@ -69,11 +93,11 @@ public class CiGuidelineServiceImpl implements CiGuidelineService {
             p.setNeutralGuide(CiGuidelineDefaults.NEUTRAL_GUIDE);
         }
 
-        // 3) 최신 템플릿
+        // 5) 최신 템플릿
         CiGuidelineTemplate tpl = tplRepo.findTopByOrderByIdDesc()
-                .orElseThrow(() -> new IllegalStateException("CI 템플릿이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR));
 
-        // 4) 엔티티 저장 (가이드는 문자열 블록으로 변환하여 저장)
+        // 6) 엔티티 저장
         CiGuideline entity = CiGuideline.builder()
                 .logo(logo)
                 .template(tpl)
@@ -85,18 +109,27 @@ public class CiGuidelineServiceImpl implements CiGuidelineService {
                 .neutralGuide(p.getNeutralGuide())
                 .build();
 
-        return CiGuidelineMapper.toResponse(ciRepo.save(entity));
+        try {
+            return CiGuidelineMapper.toResponse(ciRepo.save(entity));
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e);
+        }
     }
 
+    /**
+     * 로고 ID로 CI 가이드라인 조회
+     */
     @Override
     @Transactional(readOnly = true)
     public Optional<CiGuidelineResponse> getByLogoId(Long logoId) {
-        if (logoId == null || logoId <= 0) throw new IllegalArgumentException("logoId가 유효하지 않습니다.");
+        if (logoId == null || logoId <= 0) {
+            throw new BusinessException(LOGO_INVALID_REQUEST);
+        }
         return ciRepo.findByLogoIdWithTemplate(logoId)
                 .map(CiGuidelineMapper::toResponse);
     }
 
-    // ---- helpers ----
+    // ----------------- helpers -----------------
 
     private static String fixHex(String hex) {
         if (hex == null) return null;
@@ -105,7 +138,7 @@ public class CiGuidelineServiceImpl implements CiGuidelineService {
         return h;
     }
 
-    // ColorGuide 객체 → 우리가 쓰던 문자열 블록으로 변환
+    /** ColorGuide → 저장용 문자열 블록 */
     private static String guideToBlock(ColorGuide g) {
         if (g == null) return null;
         String hex   = safe(g.getHex());
