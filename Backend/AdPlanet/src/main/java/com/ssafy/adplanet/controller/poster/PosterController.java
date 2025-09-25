@@ -64,7 +64,7 @@ public class PosterController {
 
         Long userId = SecurityUtil.getCurrentUserId();
 
-        ImageJobResponse response = posterService.create(userId, style, request, backgroundImage, productImage, modelImage);
+        ImageJobResponse response = posterService.createPoster(userId, style, request, backgroundImage, productImage, modelImage);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
@@ -100,7 +100,7 @@ public class PosterController {
     ) {
         Long userId = SecurityUtil.getCurrentUserId();
 
-        ImageJobResponse response = posterService.edit(userId, posterId, request.prompt());
+        ImageJobResponse response = posterService.editPoster(userId, posterId, request.prompt());
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }

@@ -169,10 +169,8 @@ public class GmsServiceImpl implements GmsService {
     }
 
     @Override
-    public String refinePosterPrompt(String title, String slogan, String userPrompt) {
+    public String refinePosterPrompt(String userPrompt) {
         try {
-            title = orEmptyIfBlank(title);
-            slogan  = orEmptyIfBlank(slogan);
             String raw   = (userPrompt == null) ? "" : userPrompt.trim();
             if (raw.length() > 2000) raw = raw.substring(0, 2000);
 
@@ -233,8 +231,6 @@ public class GmsServiceImpl implements GmsService {
             if (out == null || out.isBlank()) {
                 out = stripCodeFence(respBody).trim();
             }
-
-            out = finalizeSdKeywords(out, title, slogan, 77);
 
             if (out.length() > 800) out = out.substring(0, 800);
             return out;

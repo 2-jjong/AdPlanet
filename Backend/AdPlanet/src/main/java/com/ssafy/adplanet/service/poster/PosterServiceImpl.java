@@ -1,8 +1,9 @@
 package com.ssafy.adplanet.service.poster;
 
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
+import com.ssafy.adplanet.dto.poster.request.EditPosterJobMessage;
 import com.ssafy.adplanet.dto.poster.request.GeneratePosterRequest;
-import com.ssafy.adplanet.dto.poster.request.ImageJobMessage;
+import com.ssafy.adplanet.dto.poster.request.CreatePosterJobMessage;
 import com.ssafy.adplanet.dto.poster.response.CopyResponse;
 import com.ssafy.adplanet.dto.poster.response.ImageJobResponse;
 import com.ssafy.adplanet.dto.poster.response.PosterGroupResponse;
@@ -28,10 +29,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
@@ -59,7 +56,7 @@ public class PosterServiceImpl implements PosterService {
     private static final int MAX_RETRY = 10;
 
     @Override
-    public ImageJobResponse create(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile backgroundImage, MultipartFile productImage, MultipartFile modelImage) {
+    public ImageJobResponse createPoster(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile backgroundImage, MultipartFile productImage, MultipartFile modelImage) {
 
         String jobId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
@@ -103,10 +100,8 @@ public class PosterServiceImpl implements PosterService {
         imageJobRepository.save(job);
 
         // 4. MQ 발행
-        ImageJobMessage message = new ImageJobMessage(
+        CreatePosterJobMessage message = new CreatePosterJobMessage(
                 jobId,
-                userId,
-                JobStatus.QUEUED,
                 now,
                 now,
                 posterGroup.getId(),
@@ -117,7 +112,7 @@ public class PosterServiceImpl implements PosterService {
                 productKey,
                 modelKey
         );
-        messagePublisher.sendJob(message);
+        messagePublisher.sendCreateJob(message);
 
         // 5. DTO 변환 및 반환
         return new ImageJobResponse(
@@ -128,7 +123,7 @@ public class PosterServiceImpl implements PosterService {
     }
 
     @Override
-    public ImageJobResponse edit(Long userId, Long posterId, String prompt) {
+    public ImageJobResponse editPoster(Long userId, Long posterId, String prompt) {
 
         String jobId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
@@ -154,16 +149,15 @@ public class PosterServiceImpl implements PosterService {
         imageJobRepository.save(job);
 
         // 4. MQ 발행
-        ImageJobMessage message = new ImageJobMessage(
+        EditPosterJobMessage message = new EditPosterJobMessage(
                 jobId,
-                userId,
-                JobStatus.QUEUED,
                 now,
                 now,
                 posterGroup.getId(),
-                prompt
+                prompt,
+                poster.getImgUrl()
         );
-        messagePublisher.sendJob(message);
+        messagePublisher.sendEditJob(message);
 
         // 5. DTO 변환 및 반환
         return new ImageJobResponse(
@@ -190,7 +184,7 @@ public class PosterServiceImpl implements PosterService {
 
     @Override
     @Transactional
-    public void processJob(ImageJobMessage message) throws Exception {
+    public void processCreateJob(CreatePosterJobMessage message) throws Exception {
 
         String jobId = message.jobId();
 
@@ -217,7 +211,7 @@ public class PosterServiceImpl implements PosterService {
 
         // 6. 상태 업데이트: COMPLETED/FAILED
         if (bytes != null) {
-            saveGenerationResult(message, imageJob, bytes);
+            saveGenerationResult(message.groupId(), message.prompt(), imageJob, bytes);
             imageJob.setStatus(JobStatus.COMPLETED);
             log.info("✅ [{}] 작업 완료: {}", imageJob.getStatus().name(), jobId);
         } else {
@@ -228,7 +222,7 @@ public class PosterServiceImpl implements PosterService {
         imageJobRepository.save(imageJob);
     }
 
-    private byte[] processImageGeneration(ImageJobMessage message) {
+    private byte[] processImageGeneration(CreatePosterJobMessage message) {
 
         // S3에서 파일 다운로드 및 요청 준비
         GeneratePosterRequest request = prepareRequestBody(message);
@@ -266,7 +260,7 @@ public class PosterServiceImpl implements PosterService {
         return null;
     }
 
-    private GeneratePosterRequest prepareRequestBody(ImageJobMessage message) {
+    private GeneratePosterRequest prepareRequestBody(CreatePosterJobMessage message) {
 
         byte[] backgroundImage = null;
         byte[] productImage = null;
@@ -282,7 +276,7 @@ public class PosterServiceImpl implements PosterService {
             modelImage = s3Service.download(message.modelKey());
         }
 
-        String refinedPrompt = gmsService.refinePosterPrompt(message.title(), message.content(), message.prompt());
+        String refinedPrompt = gmsService.refinePosterPrompt(message.prompt());
         log.info("[POSTER-GEN] 정제된 프롬프트: {}", refinedPrompt);
 
         return GeneratePosterRequest.builder()
@@ -293,20 +287,99 @@ public class PosterServiceImpl implements PosterService {
                 .build();
     }
 
+    @Override
     @Transactional
-    protected void saveGenerationResult(ImageJobMessage message, ImageJob imageJob, byte[] bytes) {
+    public void processEditJob(EditPosterJobMessage message) throws Exception {
+
         String jobId = message.jobId();
 
+        // 1. 작업 조회
+        ImageJob imageJob = imageJobRepository.findById(jobId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.IMAGE_JOB_NOT_FOUND));
+
+        log.info("[POSTER-GEN] DB 조회 성공: {})", jobId);
+
+        // 2. 상태 체크: 이미 처리중이면 무시
+        if (imageJob.getStatus() != JobStatus.QUEUED) {
+            log.warn("[POSTER-GEN] 이미 처리 중인 작업: {} (현재 상태: {})", jobId, imageJob.getStatus().name());
+            return;
+        }
+
+        // 3. 상태 업데이트: PROCESSING
+        jobStatusService.markProcessing(imageJob);
+
+        // 4. 상태 변경 확인을 위한 대기
+        Thread.sleep(100);
+
+        // 5. 이미지 처리 시도
+        byte[] bytes = processImageEditing(message);
+
+        // 6. 상태 업데이트: COMPLETED/FAILED
+        if (bytes != null) {
+            saveGenerationResult(message.groupId(), message.prompt(), imageJob, bytes);
+            imageJob.setStatus(JobStatus.COMPLETED);
+            log.info("✅ [{}] 작업 완료: {}", imageJob.getStatus().name(), jobId);
+        } else {
+            imageJob.setStatus(JobStatus.FAILED);
+            log.info("❌ [{}] 작업 실패: {}", imageJob.getStatus().name(), jobId);
+        }
+        imageJob.setUpdatedAt(LocalDateTime.now());
+        imageJobRepository.save(imageJob);
+    }
+
+    private byte[] processImageEditing(EditPosterJobMessage message) {
+
+        // S3에서 파일 다운로드 및 요청 준비
+        byte[] bytes = s3Service.downloadFromUri(message.previousImgUrl());
+        String refinedPrompt = gmsService.refinePosterPrompt(message.prompt());
+        log.info("[POSTER-GEN] 정제된 프롬프트: {}", refinedPrompt);
+
+        for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+            try {
+                log.info("[POSTER-GEN] 이미지 생성 시도 {}/{}", attempt, MAX_RETRY);
+
+                byte[] result = aiService.editPoster(refinedPrompt, bytes);
+
+                // 성공 케이스
+                if (result != null) {
+                    log.info("[POSTER-GEN] 이미지 생성 성공");
+                    return result;
+                }
+
+            } catch (Exception e) {
+                log.error("❌ 이미지 생성 시도 {}/{} 실패: {}", attempt, MAX_RETRY, e.getMessage());
+
+                if (attempt == MAX_RETRY) {
+                    log.error("❌ 최대 재시도 횟수 도달");
+                    return null;
+                }
+
+                // 재시도 전 대기
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    @Transactional
+    protected void saveGenerationResult(Long groupId, String prompt, ImageJob imageJob, byte[] bytes) {
+
         // PosterGroup 조회
-        PosterGroup posterGroup = posterGroupRepository.findById(message.groupId())
+        PosterGroup posterGroup = posterGroupRepository.findById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
 
         // Poster 엔티티 생성
         Poster poster = Poster.builder()
                 .posterGroup(posterGroup)
-                .prompt(message.prompt())
+                .prompt(prompt)
                 .imgUrl("s3:pending")
-                .createdAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
+                .createdAt(LocalDateTime.now())
                 .build();
         posterRepository.saveAndFlush(poster);
         log.info("[POSTER-GEN] 포스터 저장: {}", poster.getId());
@@ -319,7 +392,7 @@ public class PosterServiceImpl implements PosterService {
         // 대표 포스터 변경
         posterGroup.setMainPoster(poster);
         imageJob.setResultPoster(poster);
-        log.info("[POSTER-GEN] 결과 저장 성공: {}", jobId);
+        log.info("[POSTER-GEN] 결과 저장 성공: {}", imageJob.getId());
     }
 
     @Override

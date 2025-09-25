@@ -29,7 +29,8 @@ import java.util.concurrent.TimeoutException;
 public class AiServiceImpl implements AiService {
 
     private static final String LOGO_PATH = "/api/logo/generate";
-    private static final String POSTER_PATH = "/api/poster/generate";
+    private static final String POSTER_GENERATE_PATH = "/api/poster/generate";
+    private static final String POSTER_EDIT_PATH = "/api/poster/edit";
     private static final Duration REQ_TIMEOUT = Duration.ofSeconds(120);
 
     private final @Qualifier("aiWebClient") WebClient aiWebClient;
@@ -74,7 +75,9 @@ public class AiServiceImpl implements AiService {
         }
     }
 
-    /** 2xx면 바이트 수신, 그 외는 상태/본문 로깅 후 BusinessException */
+    /**
+     * 2xx면 바이트 수신, 그 외는 상태/본문 로깅 후 BusinessException
+     */
     private Mono<byte[]> handleLogoResponse(ClientResponse res) {
         HttpStatusCode status = res.statusCode();
         MediaType ct = res.headers().contentType().orElse(null);
@@ -126,7 +129,7 @@ public class AiServiceImpl implements AiService {
 
     @Override
     public byte[] generatePoster(GeneratePosterRequest request) {
-        log.info("[AI] POST {}", POSTER_PATH);
+        log.info("[AI] POST {}", POSTER_GENERATE_PATH);
 
         try {
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
@@ -137,24 +140,33 @@ public class AiServiceImpl implements AiService {
             // 이미지 필드
             if (request.backgroundImage() != null) {
                 builder.part("background_image", new ByteArrayResource(request.backgroundImage()) {
-                    @Override public String getFilename() { return "background.png"; }
+                    @Override
+                    public String getFilename() {
+                        return "background.png";
+                    }
                 }).contentType(MediaType.IMAGE_PNG);
             }
 
             if (request.productImage() != null) {
                 builder.part("product_image", new ByteArrayResource(request.productImage()) {
-                    @Override public String getFilename() { return "product.png"; }
+                    @Override
+                    public String getFilename() {
+                        return "product.png";
+                    }
                 }).contentType(MediaType.IMAGE_PNG);
             }
 
             if (request.modelImage() != null) {
                 builder.part("person_image", new ByteArrayResource(request.modelImage()) {
-                    @Override public String getFilename() { return "person.png"; }
+                    @Override
+                    public String getFilename() {
+                        return "person.png";
+                    }
                 }).contentType(MediaType.IMAGE_PNG);
             }
 
             return aiWebClient.post()
-                    .uri(POSTER_PATH)
+                    .uri(POSTER_GENERATE_PATH)
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .accept(MediaType.IMAGE_PNG, MediaType.IMAGE_JPEG)
                     .body(BodyInserters.fromMultipartData(builder.build()))
@@ -185,7 +197,59 @@ public class AiServiceImpl implements AiService {
         }
     }
 
-    /** 2xx면 바이트 수신, 그 외는 상태/본문 로깅 후 BusinessException */
+    @Override
+    public byte[] editPoster(String prompt, byte[] previousImage) {
+        log.info("[AI] POST {}", POSTER_GENERATE_PATH);
+
+        try {
+            MultipartBodyBuilder builder = new MultipartBodyBuilder();
+
+            // 텍스트 필드
+            builder.part("prompt", prompt);
+
+            // 이미지 필드
+            builder.part("previous_image", new ByteArrayResource(previousImage) {
+                @Override
+                public String getFilename() {
+                    return "previous.png";
+                }
+            }).contentType(MediaType.IMAGE_PNG);
+
+            return aiWebClient.post()
+                    .uri(POSTER_EDIT_PATH)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .accept(MediaType.IMAGE_PNG, MediaType.IMAGE_JPEG)
+                    .body(BodyInserters.fromMultipartData(builder.build()))
+                    .exchangeToMono(this::handlePosterResponse)
+                    .timeout(REQ_TIMEOUT)
+                    .block();
+
+        } catch (WebClientResponseException ex) {
+            // 서버가 4xx/5xx를 정상 응답으로 반환한 경우
+            log.warn("[AI/generate] HTTP {} body={} headers={}",
+                    ex.getRawStatusCode(), trim(ex.getResponseBodyAsString()), ex.getHeaders());
+            throw new BusinessException(ErrorCode.POSTER_AI_SERVER_FAILED, ex);
+
+        } catch (WebClientRequestException ex) {
+            // 네트워크/연결 오류(Connect, DNS, SSL 등) 모두 여기로 들어옴
+            log.error("[AI/generate] request error: type={} msg={}",
+                    ex.getClass().getSimpleName(), ex.getMessage());
+            throw new BusinessException(ErrorCode.POSTER_AI_SERVER_FAILED, ex);
+
+        } catch (RuntimeException ex) {
+            Throwable root = rootCause(ex);
+            if (root instanceof TimeoutException) {
+                log.error("[AI/generate] timeout after {}s", REQ_TIMEOUT.getSeconds());
+            } else {
+                log.error("[AI/generate] unexpected error: {} - {}", root.getClass().getSimpleName(), root.getMessage());
+            }
+            throw new BusinessException(ErrorCode.POSTER_AI_SERVER_FAILED, ex);
+        }
+    }
+
+    /**
+     * 2xx면 바이트 수신, 그 외는 상태/본문 로깅 후 BusinessException
+     */
     private Mono<byte[]> handlePosterResponse(ClientResponse res) {
         HttpStatusCode status = res.statusCode();
         MediaType ct = res.headers().contentType().orElse(null);
