@@ -101,6 +101,17 @@ public class S3ServiceImpl implements S3Service {
     }
 
     @Override
+    public byte[] downloadFromUri(String s3Uri) {
+        S3Ref ref = parseS3(s3Uri);
+        GetObjectRequest get = GetObjectRequest.builder()
+                .bucket(ref.bucket)
+                .key(ref.key)
+                .build();
+        ResponseBytes<GetObjectResponse> bytes = s3.getObjectAsBytes(get);
+        return bytes.asByteArray();
+    }
+
+    @Override
     public File downloadFile(String key) {
         GetObjectRequest get = GetObjectRequest.builder().bucket(bucket).key(key).build();
 

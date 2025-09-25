@@ -40,6 +40,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.UUID;
 import java.util.List;
@@ -65,7 +66,7 @@ public class PosterServiceImpl implements PosterService {
     public ImageJobResponse create(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile sketchImage, MultipartFile productImage, MultipartFile modelImage, MultipartFile skeletonImage, MultipartFile previousImage) {
 
         String jobId = UUID.randomUUID().toString();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
 
         // 1. PosterGroup 생성 or 조회
         User userRef = userRepository.getReferenceById(userId);
@@ -80,7 +81,7 @@ public class PosterServiceImpl implements PosterService {
                     .user(userRef)
                     .title(request.title())
                     .content(request.content())
-                    .createdAt(LocalDateTime.now())
+                    .createdAt(now)
                     .build();
             posterGroupRepository.saveAndFlush(posterGroup);
             log.info("[POSTER-GEN] 포스터 그룹 생성: {}", posterGroup.getId());
@@ -181,7 +182,7 @@ public class PosterServiceImpl implements PosterService {
             imageJob.setStatus(JobStatus.FAILED);
             log.info("❌ [{}] 작업 실패: {}", imageJob.getStatus().name(), jobId);
         }
-        imageJob.setUpdatedAt(LocalDateTime.now());
+        imageJob.setUpdatedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")));
         imageJobRepository.save(imageJob);
     }
 
@@ -202,7 +203,7 @@ public class PosterServiceImpl implements PosterService {
 
                 // Python 서버 호출 시뮬레이션 (실제로는 restTemplate.postForEntity 사용)
                 log.info("[POSTER-GEN] 이미지 생성 대기 중: {}", jobId);
-                Thread.sleep(30000);
+                Thread.sleep(10000);
 
                 // 성공 케이스
                 if (true) { // 실제로는 response.getStatusCode().is2xxSuccessful()
@@ -277,7 +278,7 @@ public class PosterServiceImpl implements PosterService {
                 .posterGroup(posterGroup)
                 .prompt(message.prompt())
                 .imgUrl("s3:pending")
-                .createdAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
                 .build();
         posterRepository.saveAndFlush(poster);
         log.info("[POSTER-GEN] 포스터 저장: {}", poster.getId());
@@ -388,7 +389,9 @@ public class PosterServiceImpl implements PosterService {
         return groups.stream()
                 .map(group -> new PosterGroupResponse(
                         group.getId(),
-                        s3Service.toHttpUrl(group.getMainPoster().getImgUrl()),
+                        group.getMainPoster() != null
+                                ? s3Service.toHttpUrl(group.getMainPoster().getImgUrl())
+                                : null,
                         group.getTitle(),
                         group.getContent(),
                         group.getCreatedAt()
@@ -402,17 +405,20 @@ public class PosterServiceImpl implements PosterService {
         PosterGroup group = posterGroupRepository.findByIdWithMainPosterAndTags(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_GROUP_NOT_FOUND));
 
-        List<PosterResponse> history = posterRepository.findByPosterGroup_Id(groupId).stream()
+        List<PosterResponse> history = posterRepository.findByPosterGroup_IdOrderByCreatedAtAsc(groupId).stream()
                 .map(poster -> new PosterResponse(
                         poster.getId(),
                         s3Service.toHttpUrl(poster.getImgUrl()),
-                        poster.getPrompt()
+                        poster.getPrompt(),
+                        poster.getCreatedAt()
                 ))
                 .toList();
 
         return new PosterGroupResponse(
                 group.getId(),
-                s3Service.toHttpUrl(group.getMainPoster().getImgUrl()),
+                group.getMainPoster() != null
+                        ? s3Service.toHttpUrl(group.getMainPoster().getImgUrl())
+                        : null,
                 group.getTitle(),
                 group.getContent(),
                 group.getMainPoster() != null ? group.getMainPoster().getPrompt() : null,
@@ -473,7 +479,7 @@ public class PosterServiceImpl implements PosterService {
                 .posterGroup(posterGroup)
                 .prompt("")
                 .imgUrl("s3:pending")
-                .createdAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
                 .build();
         posterRepository.saveAndFlush(poster);
 
@@ -485,5 +491,13 @@ public class PosterServiceImpl implements PosterService {
                 poster.getId(),
                 s3Service.toHttpUrl(poster.getImgUrl())
         );
+    }
+
+    @Override
+    public byte[] downloadPosterImage(Long posterId) {
+        Poster poster = posterRepository.findById(posterId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POSTER_NOT_FOUND));
+
+        return s3Service.downloadFromUri(poster.getImgUrl());
     }
 }

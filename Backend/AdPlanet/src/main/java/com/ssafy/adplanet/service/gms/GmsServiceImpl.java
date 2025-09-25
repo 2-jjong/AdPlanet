@@ -372,8 +372,9 @@ public class GmsServiceImpl implements GmsService {
                     JsonNode contents = msg.path("content");
                     if (!contents.isArray()) continue;
                     for (JsonNode c : contents) {
-                        text = c.path("text").asText();
-                        if ("output_text".equals(text)) {
+                        String type = c.path("type").asText();
+                        if ("output_text".equals(type)) {
+                            text = c.path("text").asText();
                             log.info("[GMS Response Text] {}", text);
                             return text;
                         }

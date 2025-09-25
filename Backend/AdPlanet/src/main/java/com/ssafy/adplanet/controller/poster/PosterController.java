@@ -285,4 +285,32 @@ public class PosterController {
         tagService.setPosterTags(groupId, request.tagIds());
         return ResponseEntity.ok(ResponseDto.ok());
     }
+
+    @GetMapping("/{posterId}/image")
+    @Operation(summary = "포스터 이미지 조회", description = "포스터 ID로 이미지를 `image/png` 바이너리 형식으로 조회합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "다운로드 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "500", description = "서버 에러")
+    })
+    public ResponseEntity<byte[]> downloadPosterImage(
+            @Parameter(description = "포스터 id", required = true)
+            @PathVariable Long posterId
+    ) {
+        try {
+            byte[] imageData = posterService.downloadPosterImage(posterId);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.IMAGE_PNG);
+            headers.setContentLength(imageData.length);
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(imageData);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body(("Error: " + e.getMessage()).getBytes());
+        }
+    }
 }

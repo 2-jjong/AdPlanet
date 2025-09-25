@@ -30,4 +30,6 @@ public interface PosterService {
     CopyResponse getCopy(Long posterId);
 
     PosterResponse saveImage(Long groupId, MultipartFile image);
+
+    byte[] downloadPosterImage(Long posterId);
 }
