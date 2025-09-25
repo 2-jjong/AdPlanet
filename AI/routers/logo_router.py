@@ -10,11 +10,70 @@ from diffusers import DiffusionPipeline
 from PIL import Image
 import gc
 from models.logo_models import LogoRequest, LogoStyle
+import tempfile
 
 router = APIRouter()
 
 # 전역 변수로 파이프라인 저장 (메모리 효율성을 위해)
 _pipeline = None
+
+def load_lora_with_filter(pipe, lora_path: str, adapter_name: str = None) -> bool:
+    """
+    LoRA 로딩 시 Diffusers가 지원하지 않는 레이어(예: label_emb)를 필터링하여 로드 시도.
+    adapter_name 미지원 환경도 고려하여 폴백 처리.
+    """
+    if not os.path.exists(lora_path):
+        print(f"Warning: LoRA 파일을 찾을 수 없습니다: {lora_path}")
+        return False
+
+    # 1차: 그대로 로드 시도
+    try:
+        if adapter_name is not None:
+            pipe.load_lora_weights(lora_path, adapter_name=adapter_name)
+        else:
+            pipe.load_lora_weights(lora_path)
+        return True
+    except TypeError:
+        # adapter_name 미지원 -> adapter 없이 로드 재시도
+        try:
+            pipe.load_lora_weights(lora_path)
+            return True
+        except Exception as e:
+            print(f"Info: LoRA 기본 로드 실패, 필터링 시도 예정: {e}")
+    except Exception as e:
+        print(f"Info: LoRA 로드 실패, 필터링 시도 예정: {e}")
+
+    # 2차: safetensors를 열어 미지원 키 필터링 후 임시 파일로 저장하여 로드
+    try:
+        try:
+            from safetensors.torch import load_file, save_file
+        except Exception as e:
+            print(f"Warning: safetensors 모듈을 사용할 수 없어 필터링을 건너뜁니다: {e}")
+            return False
+
+        tensors = load_file(lora_path)
+        # label_emb 등 미지원 키 제거
+        filtered = {k: v for k, v in tensors.items() if "label_emb" not in k}
+        if not filtered:
+            print("Warning: 필터링 후 남는 LoRA 키가 없습니다.")
+            return False
+
+        tmp_dir = os.path.join(tempfile.gettempdir(), "lora_filtered")
+        os.makedirs(tmp_dir, exist_ok=True)
+        tmp_path = os.path.join(tmp_dir, os.path.basename(lora_path) + ".filtered.safetensors")
+        save_file(filtered, tmp_path)
+
+        if adapter_name is not None:
+            try:
+                pipe.load_lora_weights(tmp_path, adapter_name=adapter_name)
+            except TypeError:
+                pipe.load_lora_weights(tmp_path)
+        else:
+            pipe.load_lora_weights(tmp_path)
+        return True
+    except Exception as e:
+        print(f"Warning: LoRA 필터링 로드 실패: {e}")
+        return False
 
 def get_pipeline():
     """
@@ -31,13 +90,17 @@ def get_pipeline():
                 variant="fp16",
                 use_safetensors=True
             ).to("cuda")
-            
-            # 2. LoRA 가중치 적용
-            lora_path = os.path.join("assets", "lora", "LogoRedmondV2-Logo-LogoRedmAF.safetensors")
-            if os.path.exists(lora_path):
-                _pipeline.load_lora_weights(lora_path)
-            else:
-                print(f"Warning: LoRA 파일을 찾을 수 없습니다: {lora_path}")
+
+            # 초기화 시 SIMPLE LoRA는 항상 로드해 둡니다. (기본 어댑터)
+            simple_lora_path = os.path.join("assets", "lora", "LogoRedmondV2-Logo-LogoRedmAF.safetensors")
+            if not load_lora_with_filter(_pipeline, simple_lora_path, adapter_name="simple"):
+                print("Warning: SIMPLE LoRA 기본 로드 실패")
+
+            # 기본은 비활성화하고, 요청 시 활성화
+            try:
+                _pipeline.disable_lora()
+            except Exception:
+                pass
                 
         except Exception as e:
             raise HTTPException(
@@ -49,39 +112,123 @@ def get_pipeline():
 
 async def generate_logo_image(prompt: str, negative_prompt: str, style: LogoStyle, width: int = 800, height: int = 600) -> bytes:
     """
-    Stable Diffusion XL을 사용하여 실제 로고 이미지를 생성하는 함수
+    Stable Diffusion XL을 사용하여 실제 로고 이미지를 생성하는 함수 (수정된 버전)
     """
     try:
         # 파이프라인 가져오기
         pipe = get_pipeline()
+
+        # 1. 스타일에 따른 프롬프트 및 LoRA 설정
+        lora_adapter_name = None
+        lora_trigger = ""
         
-        # 3. 프롬프트 및 생성 파라미터 설정 (LoRA 트리거 포함)
-        lora_trigger = "logo, logoredmaf"  # LoRA 트리거 단어
-        
-        # 스타일에 따른 추가 프롬프트 설정
         style_prompts = {
             LogoStyle.SIMPLE: "simple, clean, minimalist, modern",
             LogoStyle.MONO: "monochrome, black and white, grayscale, elegant",
             LogoStyle.PUNK: "punk, edgy, bold, rebellious, dark",
             LogoStyle.CARTOON: "cartoon, colorful, playful, fun, animated"
         }
-        
         style_prompt = style_prompts.get(style, "simple, clean")
-        enhanced_prompt = f"{lora_trigger}, {prompt}, {style_prompt}, award-winning photograph, masterpiece, best quality, insanely detailed, photorealistic, 8K UHD"
+
+        # 2. 스타일에 맞춰 사용할 LoRA 어댑터 이름과 트리거 단어 결정
+        if style == LogoStyle.SIMPLE:
+            lora_adapter_name = "simple"
+            lora_trigger = "logo, logoredmaf"
+        elif style == LogoStyle.MONO:
+            lora_adapter_name = "mono"
+            lora_trigger = "logo"
+        elif style == LogoStyle.CARTOON: 
+            lora_adapter_name = "cartoon"
+            lora_trigger = "logomkrdsxl, vector, logo"
         
-        enhanced_negative_prompt = f"{negative_prompt}, painting, drawing, illustration, cartoon, 3d render, anime, blurry, low resolution, ugly, deformed, disfigured, text, watermark, signature, people, oversaturated, bad composition"
+        # 3. 결정된 LoRA 활성화 (요청 스타일에 해당하는 것만 로드)
+        # 전역으로 미리 로드하지 않고, 여기서 필요한 것만 로드/활성화
+        style_to_lora_path = {
+            LogoStyle.SIMPLE: os.path.join("assets", "lora", "LogoRedmondV2-Logo-LogoRedmAF.safetensors"),
+            LogoStyle.MONO: os.path.join("assets", "lora", "mono_logo.safetensors"),
+            LogoStyle.CARTOON: os.path.join("assets", "lora", "logomkrdsxl.safetensors"),
+        }
+
+        # 항상 먼저 비활성화하여 잔여 어댑터 영향 제거
+        try:
+            if hasattr(pipe, "disable_lora"):
+                pipe.disable_lora()
+        except Exception:
+            pass
+
+        # 항상 simple 어댑터를 기본으로 포함
+        active_adapters = ["simple"]
+        adapter_weights = [1.0]
+
+        # 스타일 전용 어댑터를 추가
+        if lora_adapter_name and lora_adapter_name != "simple":
+            active_adapters.append(lora_adapter_name)
+            adapter_weights.append(1.0)
+
+        # 필요 시 해당 스타일 LoRA 파일을 로드
+        for adapter in active_adapters:
+            # simple은 초기화 시 로드했지만, 누락/미지원인 경우를 대비해 재확인
+            if adapter == "simple":
+                lora_path = style_to_lora_path.get(LogoStyle.SIMPLE)
+            elif adapter == "mono":
+                lora_path = style_to_lora_path.get(LogoStyle.MONO)
+            elif adapter == "cartoon":
+                lora_path = style_to_lora_path.get(LogoStyle.CARTOON)
+            else:
+                lora_path = None
+
+            if lora_path:
+                # 어댑터 세팅 전에, 아직 로드 안 되어 있으면 로드 시도
+                try:
+                    if hasattr(pipe, "set_adapters"):
+                        # set_adapters 사용 시에는 사전 로드가 되어 있어야 함. 실패하면 로드 시도
+                        pipe.set_adapters([adapter], adapter_weights=[1.0])
+                    else:
+                        raise Exception("set_adapters not available")
+                except Exception:
+                    # 해당 어댑터 로드 시도 (필터 포함)
+                    load_lora_with_filter(pipe, lora_path, adapter_name=adapter)
+
+        # 모든 대상 어댑터를 한 번에 활성화
+        if hasattr(pipe, "set_adapters"):
+            try:
+                pipe.set_adapters(active_adapters, adapter_weights=adapter_weights)
+            except Exception:
+                # 구버전: enable_lora로 대체
+                try:
+                    if hasattr(pipe, "enable_lora"):
+                        pipe.enable_lora()
+                except Exception:
+                    pass
+        else:
+            # 구버전: enable_lora만 수행
+            try:
+                if hasattr(pipe, "enable_lora"):
+                    pipe.enable_lora()
+            except Exception:
+                pass
+
+        # 4. 프롬프트 조립
+        prompt_parts = [lora_trigger, prompt, style_prompt, "award-winning photograph, masterpiece, best quality, insanely detailed, photorealistic, 8K UHD"]
+        enhanced_prompt = ", ".join(p for p in prompt_parts if p)
+
+        # 네거티브 프롬프트 조립
+        base_negative_prompt = negative_prompt # API에서 받은 기본 네거티브 사용
+        if style == LogoStyle.MONO:
+            mono_extra_negative = "text, watermark, blurry, deformed, depth of field, realistic, 3d render, outline, extra leg"
+            base_negative_prompt = f"{base_negative_prompt}, {mono_extra_negative}"
         
-        # 4. 이미지 생성
+        # 5. 이미지 생성
         image = pipe(
             prompt=enhanced_prompt,
-            negative_prompt=enhanced_negative_prompt,
+            negative_prompt=base_negative_prompt,
             num_inference_steps=40,
             guidance_scale=7.5,
             width=width,
             height=height
         ).images[0]
         
-        # 5. PIL Image를 bytes로 변환
+        # PIL Image를 bytes로 변환
         img_byte_arr = io.BytesIO()
         image.save(img_byte_arr, format='PNG')
         img_byte_arr = img_byte_arr.getvalue()
@@ -94,7 +241,6 @@ async def generate_logo_image(prompt: str, negative_prompt: str, style: LogoStyl
         return img_byte_arr
         
     except Exception as e:
-        # 메모리 정리
         gc.collect()
         torch.cuda.empty_cache()
         raise HTTPException(
@@ -109,18 +255,13 @@ async def generate_logo(request: LogoRequest):
     """
     try:
         # 입력 검증
-        if not request.title.strip():
-            raise HTTPException(status_code=400, detail="제목은 필수입니다.")
-        
-        if not request.content.strip():
-            raise HTTPException(status_code=400, detail="내용은 필수입니다.")
-        
         if not request.prompt.strip():
             raise HTTPException(status_code=400, detail="프롬프트는 필수입니다.")
-        
+        print(request.prompt)
+        print()
+        print()
         # 기본 네거티브 프롬프트 설정
-        negative_prompt = "painting, drawing, illustration, cartoon, 3d render, anime, blurry, low resolution, ugly, deformed, disfigured, text, watermark, signature, people, oversaturated, bad composition"
-        
+        negative_prompt = "text, watermark, signature, logo, username, typography, printed words, painting, drawing, illustration, cartoon, 3d render, anime, blurry, low resolution, ugly, deformed, disfigured, people, oversaturated, bad composition"
         # 실제 로고 이미지 생성
         image_bytes = await generate_logo_image(
             prompt=request.prompt,

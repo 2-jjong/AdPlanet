@@ -37,7 +37,7 @@ async def load_dummy_poster_image() -> bytes:
 async def generate_poster(
     # --- 텍스트 및 숫자 필드는 Form으로 받습니다. ---
     title: str = Form(..., description="포스터 제목", min_length=1, max_length=100),
-    content: str = Form(..., description="포스터 내용", min_length=1, max_length=50),
+    content: Optional[str] = Form(default=None, description="포스터 내용", max_length=50),
     prompt: str = Form(..., description="포스터 생성 프롬프트", min_length=1, max_length=150),
     width: int = Form(default=1024, description="이미지 너비", ge=100, le=1024),
     height: int = Form(default=1024, description="이미지 높이", ge=100, le=1024),
@@ -70,9 +70,6 @@ async def generate_poster(
         # 예: request.title -> title
         if not title.strip():
             raise HTTPException(status_code=400, detail="제목은 필수입니다.")
-        
-        if not content.strip():
-            raise HTTPException(status_code=400, detail="내용은 필수입니다.")
         
         if not prompt.strip():
             raise HTTPException(status_code=400, detail="프롬프트는 필수입니다.")
