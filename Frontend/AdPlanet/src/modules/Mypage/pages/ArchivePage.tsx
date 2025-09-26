@@ -1,9 +1,9 @@
 // src/modules/Mypage/pages/ArchivePage.tsx
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import Navigation from "../../../components/Layout/Navigation";
 import ArchiveToolbar from "../components/ArchiveToolbar";
-import LogoCardList from "../components/LogoCardList";
+import LogoCardList, { type LogoCardListHandle } from "../components/LogoCardList";
 import PosterCardList from "../components/PosterCardList";
 import LogoTagBar from "../components/LogoTagBar";
 import type { LogoTagItem } from "../components/LogoTagBar";
@@ -21,6 +21,9 @@ import { Canvas } from '@react-three/fiber';
 const ArchivePage: React.FC = () => {
   const { kind: kindParam } = useParams();
   const [sp, setSp] = useSearchParams();
+
+  // LogoCardList ref
+  const logoCardListRef = useRef<LogoCardListHandle>(null);
 
   // URL 파라미터/쿼리를 단일 소스로 사용
   const kind = (kindParam === "poster" ? "poster" : "logo") as ArchiveKind;
@@ -100,6 +103,20 @@ const ArchivePage: React.FC = () => {
     setSp(next, { replace: false });
   };
 
+  // 상위 컨테이너에서 스크롤 이벤트 처리
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    // LogoCardList가 표시되고 있을 때만 처리
+    if (kind === "logo" && !tagsMode && logoCardListRef.current) {
+      // 세로 스크롤만 처리
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      logoCardListRef.current.handleExternalWheel(e.deltaY);
+    }
+  };
+
   return (
     <section className="relative w-screen h-screen">
       <Canvas className="absolute inset-0 !w-full !h-full" camera={{ position: [0, 0, 10], fov: 50 }}>
@@ -108,7 +125,7 @@ const ArchivePage: React.FC = () => {
         <Stars size={3} />
       </Canvas>
 
-    <div className="min-h-screen items-center justify-center absolute inset-0">
+    <div className="min-h-screen items-center justify-center absolute inset-0" onWheel={handleWheel}>
       <Navigation />
       <main className="font-jamsil relative z-10 flex flex-col items-center justify-start min-h-[calc(100vh-80px)] lg:px-12 text-center">
         <h1 className="text-4xl lg:text-5xl font-bold text-white mt-6">Archive</h1>
@@ -149,7 +166,7 @@ const ArchivePage: React.FC = () => {
               <PosterTagGrid tagIds={selectedTagIds} />   
             )
           ) : kind === "logo" ? (
-            <LogoCardList />
+            <LogoCardList ref={logoCardListRef} />
           ) : (
             <PosterCardList />
           )}

@@ -1,5 +1,5 @@
 // src/pages/archive/components/LogoCardList.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Mousewheel, Scrollbar } from "swiper/modules";
@@ -23,7 +23,11 @@ function parseTagId(v: string | null): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
-export default function LogoCardList() {
+export interface LogoCardListHandle {
+  handleExternalWheel: (deltaY: number) => void;
+}
+
+const LogoCardList = forwardRef<LogoCardListHandle>((props, ref) => {
   console.debug("[LogoCardList] mount");
 
   const [items, setItems] = useState<LogoCardType[]>([]);
@@ -219,6 +223,20 @@ export default function LogoCardList() {
     else sw.slidePrev();
   };
 
+  // 전체 컨테이너 영역에서 휠 이벤트 캐치
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // 외부에서 호출할 수 있는 함수 노출
+  useImperativeHandle(ref, () => ({
+    handleExternalWheel: (deltaY: number) => {
+      const sw = swiperRef.current;
+      if (!sw) return;
+
+      if (deltaY > 0) sw.slideNext();
+      else sw.slidePrev();
+    }
+  }), []);
+
   const Overlay = () => {
     if (loading) return (
       <div className="absolute inset-0 z-30 flex items-center justify-center">
@@ -241,11 +259,19 @@ export default function LogoCardList() {
   return (
     <div className="space-y-4">
       <div
+        ref={containerRef}
         className="relative overflow-visible"
         style={{ width: WRAP_W, height: WRAP_H }}
         onWheel={handleWheel}         // 휠 이벤트 포워딩
       >
         <Overlay />
+
+        {/* 전체 영역에서 스크롤 감지를 위한 투명 배경 */}
+        <div
+          className="absolute inset-0 z-15"
+          onWheel={handleWheel}
+          style={{ pointerEvents: 'auto' }}
+        />
 
         {/* ====== 카드 스택(오버레이) ====== */}
         <div className="absolute inset-0 z-20 pointer-events-none">
@@ -289,7 +315,6 @@ export default function LogoCardList() {
                     hoverTimer.current = null;
                   }
                 }}
-                onWheel={handleWheel}   // hover 중에도 슬라이드 전환
                 onClick={goDetail}      // 클릭 시 상세로 이동
                 role="button"
                 aria-label="상세 보기"
@@ -336,4 +361,8 @@ export default function LogoCardList() {
       </div>
     </div>
   );
-}
+});
+
+LogoCardList.displayName = 'LogoCardList';
+
+export default LogoCardList;
