@@ -21,6 +21,7 @@ import com.ssafy.adplanet.repository.UserRepository;
 import com.ssafy.adplanet.service.ai.AiService;
 import com.ssafy.adplanet.service.gms.GmsService;
 import com.ssafy.adplanet.service.s3.S3Service;
+import com.ssafy.adplanet.service.watermark.WatermarkService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +47,7 @@ public class PosterServiceImpl implements PosterService {
     private final S3Service s3Service;
     private final GmsService gmsService;
     private final AiService aiService;
+    private final WatermarkService watermarkService;
     private final JobStatusService jobStatusService;
     private final UserRepository userRepository;
     private final PosterGroupRepository posterGroupRepository;
@@ -384,9 +386,12 @@ public class PosterServiceImpl implements PosterService {
         posterRepository.saveAndFlush(poster);
         log.info("[POSTER-GEN] 포스터 저장: {}", poster.getId());
 
+        // 워터마크 삽입
+        byte[] watermarkedBytes = watermarkService.insertWatermark(bytes, posterGroup.getUser().getEmail(), posterGroup.getTitle());
+
         // S3 업로드
         String key = s3Service.buildKey("poster_" + poster.getId() + ".png");
-        s3Service.upload(key, bytes, "image/png");
+        s3Service.upload(key, watermarkedBytes, "image/png");
         poster.setImgUrl(s3Service.toS3Uri(key));
 
         // 대표 포스터 변경
@@ -546,8 +551,12 @@ public class PosterServiceImpl implements PosterService {
                 .build();
         posterRepository.saveAndFlush(poster);
 
+        // 워터마크 삽입
+        byte[] watermarkedBytes = watermarkService.insertWatermark(image, posterGroup.getUser().getEmail(), posterGroup.getTitle());
+
         // 이미지 S3 업로드
-        String key = uploadIfExists(image, "poster", poster.getId().toString());
+        String key = s3Service.buildKey("poster_" + poster.getId() + ".png");
+        s3Service.upload(key, watermarkedBytes, "image/png");
         poster.setImgUrl(s3Service.toS3Uri(key));
 
         return new PosterResponse(
