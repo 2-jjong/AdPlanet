@@ -19,7 +19,7 @@ public record CreatePosterJobMessage(
 
         /* 이미지 생성 요청 값 */
     String prompt,              // 프롬프트
-    String backgroundKey,        // 배경 이미지
+    String poseKey,        // 배경 이미지
     String productKey,       // 제품 이미지
     String modelKey         // 모델 이미지
 ){

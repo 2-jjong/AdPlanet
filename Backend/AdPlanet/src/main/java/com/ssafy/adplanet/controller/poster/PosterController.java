@@ -54,8 +54,8 @@ public class PosterController {
             @RequestParam(value = "style", required = false) PosterStyle style,
             @Parameter(description = "요청 정보", required = true)
             @Valid @RequestPart(value = "request") CreatePosterRequest request,
-            @Parameter(description = "배경 이미지")
-            @RequestPart(value = "backgroundImage", required = false) MultipartFile backgroundImage,
+            @Parameter(description = "포즈 이미지")
+            @RequestPart(value = "poseImage", required = false) MultipartFile poseImage,
             @Parameter(description = "제품 이미지")
             @RequestPart(value = "productImage", required = false) MultipartFile productImage,
             @Parameter(description = "모델 이미지")
@@ -64,7 +64,7 @@ public class PosterController {
 
         Long userId = SecurityUtil.getCurrentUserId();
 
-        ImageJobResponse response = posterService.createPoster(userId, style, request, backgroundImage, productImage, modelImage);
+        ImageJobResponse response = posterService.createPoster(userId, style, request, poseImage, productImage, modelImage);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }

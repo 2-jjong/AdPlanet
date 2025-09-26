@@ -58,7 +58,7 @@ public class PosterServiceImpl implements PosterService {
     private static final int MAX_RETRY = 10;
 
     @Override
-    public ImageJobResponse createPoster(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile backgroundImage, MultipartFile productImage, MultipartFile modelImage) {
+    public ImageJobResponse createPoster(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile poseImage, MultipartFile productImage, MultipartFile modelImage) {
 
         String jobId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
@@ -87,7 +87,7 @@ public class PosterServiceImpl implements PosterService {
         }
 
         // 2. 이미지 S3 저장 & Key 발급
-        String backgroundKey = uploadIfExists(backgroundImage, "background", jobId);
+        String poseKey = uploadIfExists(poseImage, "pose", jobId);
         String productKey = uploadIfExists(productImage, "product", jobId);
         String modelKey = uploadIfExists(modelImage, "model", jobId);
 
@@ -110,7 +110,7 @@ public class PosterServiceImpl implements PosterService {
                 request.title(),
                 request.content(),
                 request.prompt(),
-                backgroundKey,
+                poseKey,
                 productKey,
                 modelKey
         );
@@ -264,12 +264,12 @@ public class PosterServiceImpl implements PosterService {
 
     private GeneratePosterRequest prepareRequestBody(CreatePosterJobMessage message) {
 
-        byte[] backgroundImage = null;
+        byte[] poseImage = null;
         byte[] productImage = null;
         byte[] modelImage = null;
 
-        if (message.backgroundKey() != null) {
-            backgroundImage = s3Service.download(message.backgroundKey());
+        if (message.poseKey() != null) {
+            poseImage = s3Service.download(message.poseKey());
         }
         if (message.productKey() != null) {
             productImage = s3Service.download(message.productKey());
@@ -283,7 +283,7 @@ public class PosterServiceImpl implements PosterService {
 
         return GeneratePosterRequest.builder()
                 .prompt(refinedPrompt)
-                .backgroundImage(backgroundImage)
+                .poseImage(poseImage)
                 .productImage(productImage)
                 .modelImage(modelImage)
                 .build();

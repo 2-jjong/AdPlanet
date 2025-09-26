@@ -138,11 +138,11 @@ public class AiServiceImpl implements AiService {
             builder.part("prompt", request.prompt());
 
             // 이미지 필드
-            if (request.backgroundImage() != null) {
-                builder.part("background_image", new ByteArrayResource(request.backgroundImage()) {
+            if (request.poseImage() != null) {
+                builder.part("pose_image", new ByteArrayResource(request.poseImage()) {
                     @Override
                     public String getFilename() {
-                        return "background.png";
+                        return "pose.png";
                     }
                 }).contentType(MediaType.IMAGE_PNG);
             }
