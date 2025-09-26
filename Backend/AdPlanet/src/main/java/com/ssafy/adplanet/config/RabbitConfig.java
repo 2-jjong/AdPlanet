@@ -17,12 +17,20 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitConfig {
 
-    @Value("${app.queue.poster}")
-    private String posterQueue;
+    @Value("${app.queue.poster.create}")
+    private String posterCreateQueue;
+
+    @Value("${app.queue.poster.edit}")
+    private String posterEditQueue;
 
     @Bean
-    public Queue posterQueue() {
-        return new Queue(posterQueue, true, false, false);
+    public Queue posterCreateQueue() {
+        return new Queue(posterCreateQueue, true, false, false);
+    }
+
+    @Bean
+    public Queue posterEditQueue() {
+        return new Queue(posterEditQueue, true, false, false);
     }
 
     @Bean
@@ -31,8 +39,13 @@ public class RabbitConfig {
     }
 
     @Bean
-    public Binding binding(Queue posterQueue, DirectExchange posterExchange) {
-        return BindingBuilder.bind(posterQueue).to(posterExchange).with("poster.key");
+    public Binding bindingPosterCreate(Queue posterCreateQueue, DirectExchange posterExchange) {
+        return BindingBuilder.bind(posterCreateQueue).to(posterExchange).with("poster.create.key");
+    }
+
+    @Bean
+    public Binding bindingPosterEdit(Queue posterEditQueue, DirectExchange posterExchange) {
+        return BindingBuilder.bind(posterEditQueue).to(posterExchange).with("poster.edit.key");
     }
 
     @Bean

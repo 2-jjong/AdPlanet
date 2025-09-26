@@ -6,6 +6,8 @@ public interface GmsService {
     PalettePayload generatePaletteByImage(String brandName, String slogan, String imageUrl);
     String refineLogoPrompt(String brandName, String slogan, String userPrompt, String style);
 
+    String refinePosterPrompt(String userPrompt);
+
     String generateCopyByImage(String brandName, String slogan, String imageUrl);
 
     @Data
