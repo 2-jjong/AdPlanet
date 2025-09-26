@@ -174,7 +174,7 @@ public class GmsServiceImpl implements GmsService {
             String raw   = (userPrompt == null) ? "" : userPrompt.trim();
             if (raw.length() > 2000) raw = raw.substring(0, 2000);
 
-            // 1) 요청 바디 구성 (텍스트 출력)
+            // 요청 바디 구성 (텍스트 출력)
             ObjectNode root = om.createObjectNode();
             root.put("model", "gpt-5-nano");
 
@@ -186,20 +186,20 @@ public class GmsServiceImpl implements GmsService {
             ObjectNode user = input.addObject().put("role", "user");
             ArrayNode content = user.putArray("content");
 
-            // 지시문 (영문화 + 로고용으로 구조화)
+            // Qwen 모델용 지시문 (구조화된 광고 문장 생성)
             String instruction = """
-            당신은 스테이블 디퓨전(Stable Diffusion)을 위한 전문 포스터 디자인 프롬프트 엔지니어입니다.
-            사용자의 프롬프트를 감각적인 포스터를 만들기 위한, 쉼표로 구분된 간결한 키워드 목록으로 재작성하세요.
+            You are an expert prompt generator for Qwen-based image generation.
             
-            **엄격한 규칙:**
-            - 영어로 대답해야 합니다.
-            - 예를 들어 0xFF537FE7와 같은 색상 코드는 영어로 색을 표현해야 합니다.
-            - 결과물은 반드시 쉼표로 구분된 키워드만 포함해야 합니다. 문장, 따옴표, 설명, 마크다운은 사용하지 마세요.
-            - 최종 결과물은 정확히 5개의 키워드로 구성되어야 합니다.
-            - 제목(title)이나 슬로건(slogan)은 결과물에 포함하지 마세요.
-            - 사용자 원본 프롬프트에 명시된 주제, 스타일, 분위기를 나타내는 키워드를 최우선으로 고려하세요.
+            Task:
+            - Rewrite the user's request into a clear, structured English sentence for advertisement creation.
+            - The format should be:
+              "Generate an advertisement where the person from image 1 is posing like image 3, with image 2."
+            - Image 1 = model (person)
+            - Image 2 = product
+            - Image 3 = pose reference
+            - Do not add explanations, quotes, or extra words. Just output the single sentence.
             
-            **사용자 원본 프롬프트 (한국어 허용):**
+            Original user prompt:
             %s
             """.formatted(raw);
 
