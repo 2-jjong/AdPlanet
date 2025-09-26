@@ -4,6 +4,7 @@ import { loginWithAuthCode, extractAuthCode } from "../../../services/authServic
 import type { ApiResponse } from "../../../types/api";
 import { PATHS } from "../../../constants/paths";
 import SuccessMsg from "../components/SuccessMsg";
+import FailMsg from "../components/FailMsg";
 
 const AuthCallbackPage: React.FC = () => {
   const navigate = useNavigate();
@@ -85,9 +86,9 @@ const AuthCallbackPage: React.FC = () => {
 
         {status === "error" && (
           <>
-            <div className='text-6xl mb-4'>❌</div>
-            <p className='text-red-400 text-lg font-semibold'>{message}</p>
-            <p className='text-gray-300 text-sm mt-2'>잠시 후 홈페이지로 이동합니다...</p>
+            <div>
+              <FailMsg /> 
+            </div>
           </>
         )}
       </div>
@@ -95,35 +96,5 @@ const AuthCallbackPage: React.FC = () => {
   );
 };
 
-
-  // return (
-  //   <div className='min-h-screen bg-background from-slate-900 via-blue-900 to-indigo-900 flex items-center justify-center'>
-  //     <div className='text-center'>
-  //       {status === "loading" && (
-  //         <>
-  //           <div className='animate-spin rounded-full h-16 w-16 border-b-2 border-cyan-400 mx-auto mb-4'></div>
-  //           <p className='text-white text-lg'>로그인 처리 중...</p>
-  //         </>
-  //       )}
-
-  //       {status === "success" && (
-  //         <>
-  //           <div className='text-6xl mb-4'>✅</div>
-  //           <p className='text-green-400 text-lg font-semibold'>{message}</p>
-  //           <p className='text-gray-300 text-sm mt-2'>잠시 후 홈페이지로 이동합니다...</p>
-  //         </>
-  //       )}
-
-  //       {status === "error" && (
-  //         <>
-  //           <div className='text-6xl mb-4'>❌</div>
-  //           <p className='text-red-400 text-lg font-semibold'>{message}</p>
-  //           <p className='text-gray-300 text-sm mt-2'>잠시 후 홈페이지로 이동합니다...</p>
-  //         </>
-  //       )}
-  //     </div>
-  //   </div>
-  // );
-// };
 
 export default AuthCallbackPage;
