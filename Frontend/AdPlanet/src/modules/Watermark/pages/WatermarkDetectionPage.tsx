@@ -103,151 +103,160 @@ const WatermarkDetectionPage: React.FC = () => {
   }, [file, showToast, detect]);
 
   return (
-    <div className='min-h-screen bg-background relative'>
+    <div className='h-screen bg-background relative overflow-hidden'>
       <Navigation />
-      {/* 별 배경 - 네비게이션 아래 전체 영역을 채움 */}
+
+      {/* 별 배경 - 전체 화면에 꽉 차도록 */}
       <div className='fixed top-0 left-0 w-full h-full -z-10'>
         <Canvas>
           <Stars size={1} />
         </Canvas>
       </div>
-      <main className='relative z-10 px-4 lg:px-12 transition-opacity duration-500'>
-        <section className='antialiased max-w-[1200px] mx-auto grid grid-cols-1 lg:[grid-template-columns:1fr_520px] gap-10 py-12'>
-          {/* 좌측 카피 영역 */}
-          <div className='flex flex-col h-full min-h-[520px]'>
-            <div className='flex items-center gap-3 mb-4'>
-              <img
-                src={scanningFileImg}
-                alt='scanning'
-                className={`w-9 h-9 transition-opacity duration-300 ${
-                  state === "loading" ? "opacity-0" : "opacity-50"
-                }`}
-              />
-              <span className='font-jamsil text-primary text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight tracking-tight whitespace-nowrap'>
-                디지털 워터마크
-              </span>
-              <span className='font-jamsil text-text-color text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight tracking-tight whitespace-nowrap'>
-                확인하기
-              </span>
+
+      <main className='relative z-10 w-full h-full'>
+        <div className='w-full h-screen flex flex-col lg:flex-row'>
+          {/* 좌측 카피 영역 - 모든 패딩 제거 */}
+          <div className='flex-1 flex flex-col justify-center'>
+            <div className='absolute top-20 left-6 lg:left-12 z-20 max-w-2xl'>
+              <div className='flex items-center gap-3 mb-4'>
+                <img
+                  src={scanningFileImg}
+                  alt='scanning'
+                  className={`w-9 h-9 transition-opacity duration-300 ${
+                    state === "loading" ? "opacity-0" : "opacity-50"
+                  }`}
+                />
+                <span className='font-jamsil text-primary text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight tracking-tight whitespace-nowrap'>
+                  디지털 워터마크
+                </span>
+                <span className='font-jamsil text-text-color text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight tracking-tight whitespace-nowrap'>
+                  확인하기
+                </span>
+              </div>
+              <p className='text-gray-300 leading-relaxed mb-3'>
+                AdPlanet은 비가시성 디지털 워터마크로 소유자의 권리를 안전하게 지켜드립니다.
+              </p>
+              <p className='text-gray-300 leading-relaxed'>
+                본 검증을 통해 해당 콘텐츠의 소유권을 확인하세요.
+              </p>
             </div>
-            <p className='text-gray-300 leading-relaxed mb-3'>
-              AdPlanet은 비가시성 디지털 워터마크로 소유자의 권리를 안전하게 지켜드립니다.
-            </p>
-            <p className='text-gray-300 leading-relaxed mb-6'>
-              본 검증을 통해 해당 콘텐츠의 소유권을 확인하세요.
-            </p>
-            <div className='flex-1 w-full min-h-[300px]'>
+
+            {/* Planet 영역 - 전체 공간 사용 */}
+            <div className='absolute inset-0 w-full h-full'>
               <Planet />
             </div>
           </div>
 
-          {/* 우측 드롭존 */}
-          <div
-            {...dropZoneProps}
-            className='relative justify-self-end rounded-3xl border-2 border-dotted border-primary 
-              p-8 lg:p-10 w-full lg:w-[520px] h-[520px] flex flex-col items-center 
-              justify-center text-center bg-transparent'
-            onClick={() => document.getElementById("wm-image-input")?.click()}
-          >
-            {previewUrl ? (
-              <>
-                <div className='w-full h-[340px] flex items-center justify-center overflow-hidden rounded-lg bg-white/5 border border-white/10 mb-3'>
-                  <img
-                    src={previewUrl}
-                    alt='preview'
-                    className='max-h-full max-w-full object-contain'
-                  />
-                </div>
-                <p className='text-gray-300 text-xs mb-3'>
-                  첨부된 이미지를 확인하세요. 클릭하면 다른 파일로 교체할 수 있어요.
-                </p>
-              </>
-            ) : (
-              <>
-                <img src={addFileImg} alt='add file' className='w-16 h-16 mb-6' />
-                <p className='text-gray-200 mb-8 whitespace-nowrap'>
-                  파일을 드래그하여 첨부해 주세요.
-                </p>
-              </>
-            )}
-            <div className='w-full max-w-xs mx-auto'>
-              <Button
-                text='검증하기'
-                size='md'
-                variant='fill'
-                className='w-full font-jamsil'
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDetect();
-                }}
-                disabled={state === "loading"}
-              />
-            </div>
-            <input
-              id='wm-image-input'
-              type='file'
-              accept='image/*'
-              className='hidden'
-              onChange={handleFileInput}
-            />
-            {isLoadingOverlayVisible && (
-              <div
-                className='absolute inset-0 z-10 flex flex-col items-center justify-center 
-                  bg-gray-800/70 rounded-3xl'
-              >
-                <Lottie
-                  animationData={detectAnimation}
-                  loop
-                  play
-                  style={{ width: "100%", height: "340px" }} // 프리뷰 영역 크기와 동일
+          {/* 우측 드롭존 - 패딩 최소화 */}
+          <div className='w-full lg:w-[520px] flex items-center justify-center p-6'>
+            <div
+              {...dropZoneProps}
+              className='relative rounded-3xl border-2 border-dotted border-primary 
+                p-8 lg:p-10 w-full max-w-[520px] h-[520px] flex flex-col items-center 
+                justify-center text-center bg-transparent cursor-pointer'
+              onClick={() => document.getElementById("wm-image-input")?.click()}
+            >
+              {previewUrl ? (
+                <>
+                  <div className='w-full h-[340px] flex items-center justify-center overflow-hidden rounded-lg bg-white/5 border border-white/10 mb-3'>
+                    <img
+                      src={previewUrl}
+                      alt='preview'
+                      className='max-h-full max-w-full object-contain'
+                    />
+                  </div>
+                  <p className='text-gray-300 text-xs mb-3'>
+                    첨부된 이미지를 확인하세요. 클릭하면 다른 파일로 교체할 수 있어요.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <img src={addFileImg} alt='add file' className='w-16 h-16 mb-6' />
+                  <p className='text-gray-200 mb-8 whitespace-nowrap'>
+                    파일을 드래그하여 첨부해 주세요.
+                  </p>
+                </>
+              )}
+              <div className='w-full max-w-xs mx-auto'>
+                <Button
+                  text='검증하기'
+                  size='md'
+                  variant='fill'
+                  className='w-full font-jamsil'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDetect();
+                  }}
+                  disabled={state === "loading"}
                 />
-                <p className='text-white font-bold mt-4'>검증 중...</p>
               </div>
-            )}
-          </div>
-        </section>
-        {/* 결과 오버레이: 성공 */}
-        <div
-          className={`fixed inset-0 z-50 flex items-center justify-center duration-500 ${
-            state === "success" ? "opacity-100" : "opacity-0 pointer-events-none"
-          } bg-background`}
-        >
-          <div className='bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-8 w-[min(560px,90vw)] text-center'>
-            <h3 className='text-3xl font-bold text-primary mb-2'>워터마크 검증 완료</h3>
-            <p className='text-gray-200 mb-6'>
-              디지털 워터마크가 정상적으로 검증되었습니다. 본 콘텐츠는 우리 서비스가 생성한
-              이미지입니다.
-            </p>
-            <div>
-              <p className='text-gray-200 mb-6 text-xl font-bold'>검출된 내용</p>
-              <p className='text-gray-200 mb-6 text-xl font-bold'>
-                {data?.data.creator}, {data?.data.content}
-              </p>
-            </div>
-
-            <div className='flex gap-3 justify-center'>
-              <Button text='닫기' size='md' variant='fill' onClick={() => setState("idle")} />
-            </div>
-          </div>
-        </div>
-
-        {/* 결과 오버레이: 실패 */}
-        <div
-          className={`fixed inset-0 z-50 flex items-center justify-center duration-500 ${
-            state === "failure" ? "opacity-100" : "opacity-0 pointer-events-none"
-          }  bg-background`}
-        >
-          <div className='bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-8 w-[min(560px,90vw)] text-center'>
-            <h3 className='text-3xl font-bold text-red-400 mb-2'>워터마크 검증 실패</h3>
-            <p className='text-gray-200 mb-6'>
-              디지털 워터마크가 검증되지 않았습니다. 우리 서비스가 생성한 이미지가 아닐 수 있습니다.
-            </p>
-            <div className='flex gap-3 justify-center'>
-              <Button text='다시 시도' size='md' variant='fill' onClick={() => setState("idle")} />
+              <input
+                id='wm-image-input'
+                type='file'
+                accept='image/*'
+                className='hidden'
+                onChange={handleFileInput}
+              />
+              {isLoadingOverlayVisible && (
+                <div
+                  className='absolute inset-0 z-10 flex flex-col items-center justify-center 
+                    bg-gray-800/70 rounded-3xl'
+                >
+                  <Lottie
+                    animationData={detectAnimation}
+                    loop
+                    play
+                    style={{ width: "100%", height: "340px" }}
+                  />
+                  <p className='text-white font-bold mt-4'>검증 중...</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </main>
+
+      {/* 결과 오버레이: 성공 */}
+      <div
+        className={`fixed inset-0 z-50 flex items-center justify-center duration-500 ${
+          state === "success" ? "opacity-100" : "opacity-0 pointer-events-none"
+        } bg-background`}
+      >
+        <div className='bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-8 w-[min(560px,90vw)] text-center'>
+          <h3 className='text-3xl font-bold text-primary mb-2'>워터마크 검증 완료</h3>
+          <p className='text-gray-200 mb-6'>
+            디지털 워터마크가 정상적으로 검증되었습니다. 본 콘텐츠는 우리 서비스가 생성한
+            이미지입니다.
+          </p>
+          <div>
+            <p className='text-gray-200 mb-6 text-xl font-bold'>검출된 내용</p>
+            <p className='text-gray-200 mb-6 text-xl font-bold'>
+              {data?.data.creator}, {data?.data.content}
+            </p>
+          </div>
+          <div className='flex gap-3 justify-center'>
+            <Button text='닫기' size='md' variant='fill' onClick={() => setState("idle")} />
+          </div>
+        </div>
+      </div>
+
+      {/* 결과 오버레이: 실패 */}
+      <div
+        className={`fixed inset-0 z-50 flex items-center justify-center duration-500 ${
+          state === "failure" ? "opacity-100" : "opacity-0 pointer-events-none"
+        } bg-background`}
+      >
+        <div className='bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-8 w-[min(560px,90vw)] text-center'>
+          <h3 className='text-3xl font-bold text-red-400 mb-2'>워터마크 검증 실패</h3>
+          <p className='text-gray-200 mb-6'>
+            디지털 워터마크가 검증되지 않았습니다. 우리 서비스가 생성한 이미지가 아닐 수 있습니다.
+          </p>
+          <div className='flex gap-3 justify-center'>
+            <Button text='다시 시도' size='md' variant='fill' onClick={() => setState("idle")} />
+          </div>
+        </div>
+      </div>
+
       {/* 토스트 */}
       <div
         className={`fixed top-6 left-1/2 -translate-x-1/2 z-[60] transition-all duration-300 ${
