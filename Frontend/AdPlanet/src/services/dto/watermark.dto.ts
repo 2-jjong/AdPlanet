@@ -1,9 +1,4 @@
-// src/services/dto/watermark.dto.ts
+// 서버 DTO 묶음을 request/response로 분리하고, 이 파일에서는 재노출만 합니다.
+export type { WatermarkDetectionReq } from "./watermark.request";
 
-export interface WatermarkDetectResult {
-  verified: boolean;
-  reason?: string;
-  [key: string]: unknown;
-}
-
-
+export type { WatermarkDetectionRes } from "./watermark.response";
