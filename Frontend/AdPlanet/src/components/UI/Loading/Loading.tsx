@@ -8,7 +8,7 @@ import ShootingStar from "./ShootingStar";
 
 const WalkModel: React.FC = () => {
   const group = useRef<THREE.Group>(null);
-  const { scene, animations } = useGLTF("/walk.glb"); // ✅ public 폴더라 /walk.glb 가능
+  const { scene, animations } = useGLTF("/walk.glb");
   const { actions } = useAnimations(animations, group);
 
   useEffect(() => {

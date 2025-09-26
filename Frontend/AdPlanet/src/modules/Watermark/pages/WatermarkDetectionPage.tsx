@@ -9,7 +9,9 @@ import Lottie from "react-lottie-player";
 import detectAnimation from "../../../assets/animation/detect.json";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import PlanetModel from "../components/PlanetModel";
+import austronaut from "../../../assets/images/astronaut_watermark.png";
+import Stars from "../../Home/components/Stars";
+import Planet from "../components/Planet";
 
 const WatermarkDetectionPage: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -101,80 +103,18 @@ const WatermarkDetectionPage: React.FC = () => {
   }, [file, showToast, detect]);
 
   return (
-    <div className='min-h-screen bg-background overflow-hidden'>
+    <div className='min-h-screen bg-background relative'>
       <Navigation />
-      <div className='fixed bottom-0 left-0 z-20'>
-        <Canvas camera={{ position: [2, 0, 5], fov: 50 }}>
-          <PlanetModel />
-          <OrbitControls enableZoom={false} autoRotate />
+      {/* 별 배경 - 네비게이션 아래 전체 영역을 채움 */}
+      <div className='fixed top-0 left-0 w-full h-full -z-10'>
+        <Canvas>
+          <Stars size={1} />
         </Canvas>
       </div>
-
-      {/* 토스트 */}
-      <div
-        className={`fixed top-6 left-1/2 -translate-x-1/2 z-[60] transition-all duration-300 ${
-          toast.visible
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 -translate-y-3 pointer-events-none"
-        }`}
-      >
-        <div className='bg-white/90 text-background font-medium px-4 py-2 rounded-lg shadow-lg border border-white/50'>
-          {toast.text}
-        </div>
-      </div>
-      {/* 떠오르는 행성 이미지: 기본 좌하단*/}
-      {/* <img
-        src={planetImg}
-        alt='planet'
-        className={`fixed select-none transition-all duration-700 ease-out`}
-      /> */}
-
-      {/* 결과 오버레이: 성공 */}
-      <div
-        className={`fixed inset-0 z-50 flex items-center justify-center duration-500 ${
-          state === "success" ? "opacity-100" : "opacity-0 pointer-events-none"
-        } bg-background`}
-      >
-        <div className='bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-8 w-[min(560px,90vw)] text-center'>
-          <h3 className='text-3xl font-bold text-primary mb-2'>워터마크 검증 완료</h3>
-          <p className='text-gray-200 mb-6'>
-            디지털 워터마크가 정상적으로 검증되었습니다. 본 콘텐츠는 우리 서비스가 생성한
-            이미지입니다.
-          </p>
-          <div>
-            <p className='text-gray-200 mb-6 text-xl font-bold'>검출된 내용</p>
-            <p className='text-gray-200 mb-6 text-xl font-bold'>
-              {data?.data.creator}, {data?.data.content}
-            </p>
-          </div>
-
-          <div className='flex gap-3 justify-center'>
-            <Button text='닫기' size='md' variant='fill' onClick={() => setState("idle")} />
-          </div>
-        </div>
-      </div>
-
-      {/* 결과 오버레이: 실패 */}
-      <div
-        className={`fixed inset-0 z-50 flex items-center justify-center duration-500 ${
-          state === "failure" ? "opacity-100" : "opacity-0 pointer-events-none"
-        }  bg-background`}
-      >
-        <div className='bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-8 w-[min(560px,90vw)] text-center'>
-          <h3 className='text-3xl font-bold text-red-400 mb-2'>워터마크 검증 실패</h3>
-          <p className='text-gray-200 mb-6'>
-            디지털 워터마크가 검증되지 않았습니다. 우리 서비스가 생성한 이미지가 아닐 수 있습니다.
-          </p>
-          <div className='flex gap-3 justify-center'>
-            <Button text='다시 시도' size='md' variant='fill' onClick={() => setState("idle")} />
-          </div>
-        </div>
-      </div>
-
-      <main className='px-4 lg:px-12 transition-opacity duration-500'>
+      <main className='relative z-10 px-4 lg:px-12 transition-opacity duration-500'>
         <section className='antialiased max-w-[1200px] mx-auto grid grid-cols-1 lg:[grid-template-columns:1fr_520px] gap-10 py-12'>
           {/* 좌측 카피 영역 */}
-          <div>
+          <div className='flex flex-col h-full min-h-[520px]'>
             <div className='flex items-center gap-3 mb-4'>
               <img
                 src={scanningFileImg}
@@ -193,9 +133,12 @@ const WatermarkDetectionPage: React.FC = () => {
             <p className='text-gray-300 leading-relaxed mb-3'>
               AdPlanet은 비가시성 디지털 워터마크로 소유자의 권리를 안전하게 지켜드립니다.
             </p>
-            <p className='text-gray-300 leading-relaxed'>
+            <p className='text-gray-300 leading-relaxed mb-6'>
               본 검증을 통해 해당 콘텐츠의 소유권을 확인하세요.
             </p>
+            <div className='flex-1 w-full min-h-[300px]'>
+              <Planet />
+            </div>
           </div>
 
           {/* 우측 드롭존 */}
@@ -263,7 +206,60 @@ const WatermarkDetectionPage: React.FC = () => {
             )}
           </div>
         </section>
+        {/* 결과 오버레이: 성공 */}
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center duration-500 ${
+            state === "success" ? "opacity-100" : "opacity-0 pointer-events-none"
+          } bg-background`}
+        >
+          <div className='bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-8 w-[min(560px,90vw)] text-center'>
+            <h3 className='text-3xl font-bold text-primary mb-2'>워터마크 검증 완료</h3>
+            <p className='text-gray-200 mb-6'>
+              디지털 워터마크가 정상적으로 검증되었습니다. 본 콘텐츠는 우리 서비스가 생성한
+              이미지입니다.
+            </p>
+            <div>
+              <p className='text-gray-200 mb-6 text-xl font-bold'>검출된 내용</p>
+              <p className='text-gray-200 mb-6 text-xl font-bold'>
+                {data?.data.creator}, {data?.data.content}
+              </p>
+            </div>
+
+            <div className='flex gap-3 justify-center'>
+              <Button text='닫기' size='md' variant='fill' onClick={() => setState("idle")} />
+            </div>
+          </div>
+        </div>
+
+        {/* 결과 오버레이: 실패 */}
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center duration-500 ${
+            state === "failure" ? "opacity-100" : "opacity-0 pointer-events-none"
+          }  bg-background`}
+        >
+          <div className='bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-8 w-[min(560px,90vw)] text-center'>
+            <h3 className='text-3xl font-bold text-red-400 mb-2'>워터마크 검증 실패</h3>
+            <p className='text-gray-200 mb-6'>
+              디지털 워터마크가 검증되지 않았습니다. 우리 서비스가 생성한 이미지가 아닐 수 있습니다.
+            </p>
+            <div className='flex gap-3 justify-center'>
+              <Button text='다시 시도' size='md' variant='fill' onClick={() => setState("idle")} />
+            </div>
+          </div>
+        </div>
       </main>
+      {/* 토스트 */}
+      <div
+        className={`fixed top-6 left-1/2 -translate-x-1/2 z-[60] transition-all duration-300 ${
+          toast.visible
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 -translate-y-3 pointer-events-none"
+        }`}
+      >
+        <div className='bg-white/90 text-background font-medium px-4 py-2 rounded-lg shadow-lg border border-white/50'>
+          {toast.text}
+        </div>
+      </div>
     </div>
   );
 };
