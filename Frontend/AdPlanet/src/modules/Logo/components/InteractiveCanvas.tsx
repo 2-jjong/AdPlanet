@@ -1,5 +1,5 @@
 import React from "react";
-import * as THREE from "three";
+import * as THREE from "three/src/Three.js"
 
 interface InteractiveCanvasProps {
   className?: string;
