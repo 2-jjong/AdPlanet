@@ -14,8 +14,9 @@ async def load_dummy_poster_image() -> bytes:
     """
     더미 포스터 이미지를 로드하는 함수
     """
-    # dummy_images 폴더의 poster.jpg 파일 로드
-    dummy_path = os.path.join("dummy_images", "poster.jpg")
+    # 현재 스크립트 파일의 디렉토리를 기준으로 절대 경로 구성
+    current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    dummy_path = os.path.join(current_dir, "dummy_images", "poster.png")
     
     if not os.path.exists(dummy_path):
         raise HTTPException(
@@ -35,16 +36,10 @@ async def load_dummy_poster_image() -> bytes:
 @router.post("/generate")
 # 1. Pydantic 모델 대신 각 필드를 Form과 File로 직접 받도록 수정합니다.
 async def generate_poster(
-    # --- 텍스트 및 숫자 필드는 Form으로 받습니다. ---
-    title: str = Form(..., description="포스터 제목", min_length=1, max_length=100),
-    content: Optional[str] = Form(default=None, description="포스터 내용", max_length=50),
     prompt: str = Form(..., description="포스터 생성 프롬프트", min_length=1, max_length=150),
-    width: int = Form(default=1024, description="이미지 너비", ge=100, le=1024),
-    height: int = Form(default=1024, description="이미지 높이", ge=100, le=1024),
-    
     person_image: Optional[Union[UploadFile, str]] = File(None, description="인물 사진"),
     product_image: Optional[Union[UploadFile, str]] = File(None, description="제품 이미지"),
-    sketch_image: Optional[Union[UploadFile, str]] = File(None, description="스케치 이미지")
+    구도_이미지: Optional[Union[UploadFile, str]] = File(None, description="구도 이미지")
 ):
     """
     포스터 이미지를 생성하고 파일로 반환하는 API (이미지 파일 업로드 포함)
@@ -61,15 +56,10 @@ async def generate_poster(
         elif product_image and hasattr(product_image, 'filename') and product_image.filename == "":
             product_image = None
             
-        if isinstance(sketch_image, str) and sketch_image == "":
-            sketch_image = None
-        elif sketch_image and hasattr(sketch_image, 'filename') and sketch_image.filename == "":
-            sketch_image = None
-            
-        # 2. request 객체 대신 직접 파라미터 변수를 사용합니다.
-        # 예: request.title -> title
-        if not title.strip():
-            raise HTTPException(status_code=400, detail="제목은 필수입니다.")
+        if isinstance(구도_이미지, str) and 구도_이미지 == "":
+            구도_이미지 = None
+        elif 구도_이미지 and hasattr(구도_이미지, 'filename') and 구도_이미지.filename == "":
+            구도_이미지 = None
         
         if not prompt.strip():
             raise HTTPException(status_code=400, detail="프롬프트는 필수입니다.")
@@ -80,22 +70,20 @@ async def generate_poster(
             uploaded_files.append(f"인물 사진: {person_image.filename}")
         if product_image:
             uploaded_files.append(f"상품 사진: {product_image.filename}")
-        if sketch_image:
-            uploaded_files.append(f"스케치 사진: {sketch_image.filename}")
+        if 구도_이미지:
+            uploaded_files.append(f"구도 사진: {구도_이미지.filename}")
         
         print(f"업로드된 파일들: {uploaded_files}")
-        
-        # 포스터 생성 시뮬레이션
-        await asyncio.sleep(10)
+    
         
         image_bytes = await load_dummy_poster_image()
         
         file_id = str(uuid.uuid4())[:8]
-        filename = f"poster_{file_id}.jpg"
+        filename = f"poster_{file_id}.png"
         
         return StreamingResponse(
             io.BytesIO(image_bytes),
-            media_type="image/jpeg",
+            media_type="image/png",
             headers={
                 "Content-Disposition": f"attachment; filename={filename}",
                 "X-Filename": filename,
@@ -108,3 +96,74 @@ async def generate_poster(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"이미지 생성 중 오류가 발생했습니다: {str(e)}")
+
+
+
+@router.post("/edit")
+async def edit_poster(
+    prompt: str = Form(..., description="포스터 수정 프롬프트", min_length=1, max_length=150),
+    image: UploadFile = File(..., description="편집할 이미지 파일")
+):
+    """
+    업로드된 단일 이미지를 받아 간단 편집(검증/형식 유지) 후 반환하는 API
+    - 필수 필드: prompt, image
+    - 현재는 베이스라인으로 입력 이미지를 그대로 반환합니다.
+    """
+    try:
+        if not prompt.strip():
+            raise HTTPException(status_code=400, detail="프롬프트는 필수입니다.")
+
+        if not image or not getattr(image, 'filename', None):
+            raise HTTPException(status_code=400, detail="이미지 파일은 필수입니다.")
+
+        # 파일 읽기
+        image_bytes = await image.read()
+        if not image_bytes:
+            raise HTTPException(status_code=400, detail="이미지 파일이 비어 있습니다.")
+
+        # 이미지 검증 및 최소 전처리
+        try:
+            pil_image = Image.open(io.BytesIO(image_bytes))
+        except Exception:
+            raise HTTPException(status_code=400, detail="유효하지 않은 이미지 파일입니다.")
+
+        # 원본 포맷 유지(가능 시), JPEG 투명 채널 보정
+        original_format = (pil_image.format or "PNG").upper()
+        if original_format in ("JPG", "JPEG"):
+            if pil_image.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', pil_image.size, (255, 255, 255))
+                if pil_image.mode == 'P':
+                    pil_image = pil_image.convert('RGBA')
+                background.paste(pil_image, mask=pil_image.split()[-1] if pil_image.mode == 'RGBA' else None)
+                pil_image = background
+            save_format = "JPEG"
+            media_type = "image/jpeg"
+            file_ext = "jpg"
+        else:
+            # PNG 기본
+            if pil_image.mode == 'P':
+                pil_image = pil_image.convert('RGBA')
+            save_format = "PNG"
+            media_type = "image/png"
+            file_ext = "png"
+
+        output = io.BytesIO()
+        pil_image.save(output, format=save_format)
+        edited_bytes = output.getvalue()
+
+        file_id = str(uuid.uuid4())[:8]
+        filename = f"edited_poster_{file_id}.{file_ext}"
+
+        return StreamingResponse(
+            io.BytesIO(edited_bytes),
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "X-Filename": filename,
+                "X-File-ID": file_id
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"이미지 편집 중 오류가 발생했습니다: {str(e)}")

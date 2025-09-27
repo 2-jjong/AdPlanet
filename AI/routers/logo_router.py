@@ -6,7 +6,8 @@ import uuid
 import asyncio
 import os
 import torch
-from diffusers import DiffusionPipeline
+# DPMSolverMultistepScheduler 추가
+from diffusers import DiffusionPipeline, DPMSolverMultistepScheduler
 from PIL import Image
 import gc
 from models.logo_models import LogoRequest, LogoStyle
@@ -77,7 +78,7 @@ def load_lora_with_filter(pipe, lora_path: str, adapter_name: str = None) -> boo
 
 def get_pipeline():
     """
-    Stable Diffusion XL 파이프라인을 가져오거나 생성하는 함수
+    Stable Diffusion XL 파이프라인을 가져오거나 생성하는 함수 (샘플러 수정됨)
     """
     global _pipeline
     
@@ -89,7 +90,16 @@ def get_pipeline():
                 torch_dtype=torch.float16,
                 variant="fp16",
                 use_safetensors=True
-            ).to("cuda")
+            )
+
+            # 2. DPM++ 2M SDE Karras 샘플러 설정
+            _pipeline.scheduler = DPMSolverMultistepScheduler.from_config(
+                _pipeline.scheduler.config,
+                use_karras_sigmas=True,
+                algorithm_type="sde-dpmsolver++"  # SDE Karras 설정
+            )
+            
+            _pipeline.to("cuda")
 
             # 초기화 시 SIMPLE LoRA는 항상 로드해 둡니다. (기본 어댑터)
             simple_lora_path = os.path.join("assets", "lora", "LogoRedmondV2-Logo-LogoRedmAF.safetensors")
@@ -136,10 +146,14 @@ async def generate_logo_image(prompt: str, negative_prompt: str, style: LogoStyl
             lora_trigger = "logo, logoredmaf"
         elif style == LogoStyle.MONO:
             lora_adapter_name = "mono"
-            lora_trigger = "logo"
+            lora_trigger = "logo, only black and white"
         elif style == LogoStyle.CARTOON: 
             lora_adapter_name = "cartoon"
             lora_trigger = "logomkrdsxl, vector, logo"
+        elif style == LogoStyle.PUNK: 
+            lora_adapter_name = "punk"
+            lora_trigger = "logo, logoredmaf, cyberpunk, punk"
+            
         
         # 3. 결정된 LoRA 활성화 (요청 스타일에 해당하는 것만 로드)
         # 전역으로 미리 로드하지 않고, 여기서 필요한 것만 로드/활성화
@@ -157,7 +171,7 @@ async def generate_logo_image(prompt: str, negative_prompt: str, style: LogoStyl
             pass
 
         # 항상 simple 어댑터를 기본으로 포함
-        active_adapters = ["simple"]
+        active_adapters = []
         adapter_weights = [1.0]
 
         # 스타일 전용 어댑터를 추가
@@ -208,8 +222,8 @@ async def generate_logo_image(prompt: str, negative_prompt: str, style: LogoStyl
             except Exception:
                 pass
 
-        # 4. 프롬프트 조립
-        prompt_parts = [lora_trigger, prompt, style_prompt, "award-winning photograph, masterpiece, best quality, insanely detailed, photorealistic, 8K UHD"]
+        # 4. 프롬프트 조립 (로라 트리거만 사용)
+        prompt_parts = [lora_trigger, prompt]
         enhanced_prompt = ", ".join(p for p in prompt_parts if p)
 
         # 네거티브 프롬프트 조립
@@ -218,12 +232,14 @@ async def generate_logo_image(prompt: str, negative_prompt: str, style: LogoStyl
             mono_extra_negative = "text, watermark, blurry, deformed, depth of field, realistic, 3d render, outline, extra leg"
             base_negative_prompt = f"{base_negative_prompt}, {mono_extra_negative}"
         
+        #... (print 문들은 생략) ...
+
         # 5. 이미지 생성
         image = pipe(
-            prompt=enhanced_prompt,
+            prompt=enhanced_prompt, # enhanced_prompt 사용
             negative_prompt=base_negative_prompt,
-            num_inference_steps=40,
-            guidance_scale=7.5,
+            num_inference_steps=30,
+            guidance_scale=7,
             width=width,
             height=height
         ).images[0]
@@ -257,11 +273,13 @@ async def generate_logo(request: LogoRequest):
         # 입력 검증
         if not request.prompt.strip():
             raise HTTPException(status_code=400, detail="프롬프트는 필수입니다.")
+
+        # 기본 네거티브 프롬프트 설정
+        negative_prompt = "text, letter, text logo, bad art, ugly, deformed, watermark, duplicated"
         print(request.prompt)
         print()
         print()
-        # 기본 네거티브 프롬프트 설정
-        negative_prompt = "text, watermark, signature, logo, username, typography, printed words, painting, drawing, illustration, cartoon, 3d render, anime, blurry, low resolution, ugly, deformed, disfigured, people, oversaturated, bad composition"
+        print()
         # 실제 로고 이미지 생성
         image_bytes = await generate_logo_image(
             prompt=request.prompt,
@@ -286,7 +304,7 @@ async def generate_logo(request: LogoRequest):
             }
         )
         
-    except HTTPException:
+    except HTTPException: 
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"이미지 생성 중 오류가 발생했습니다: {str(e)}")
