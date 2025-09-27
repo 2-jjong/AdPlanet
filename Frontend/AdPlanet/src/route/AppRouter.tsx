@@ -9,7 +9,6 @@ import { PATHS } from "../constants/paths";
 import LogoPage from "../modules/Logo/pages/LogoPage";
 import PosterPage from "../modules/Poster/pages/PosterPage";
 import AuthCallbackPage from "../modules/Auth/pages/AuthCallbackPage";
-import PageTransitionLayout from "../components/Layout/PageTransitionLayout";
 
 const routeConfig = [
   {
@@ -56,9 +55,9 @@ const routeConfig = [
   },
 ] as RouteObject[];
 // 라우터 설정
-const router = createBrowserRouter([
-  { element: <PageTransitionLayout />, children: routeConfig }
-]);
+const router = createBrowserRouter(
+  routeConfig
+);
 
 const AppRouter = () => {
   return <RouterProvider router={router} />;
