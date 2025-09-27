@@ -168,7 +168,7 @@ public class AiServiceImpl implements AiService {
             return aiWebClient.post()
                     .uri(POSTER_GENERATE_PATH)
                     .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .accept(MediaType.IMAGE_PNG, MediaType.IMAGE_JPEG, MediaType.APPLICATION_OCTET_STREAM)
+                    .accept(MediaType.IMAGE_PNG, MediaType.IMAGE_JPEG)
                     .body(BodyInserters.fromMultipartData(builder.build()))
                     .exchangeToMono(this::handlePosterResponse)
                     .timeout(REQ_TIMEOUT)
