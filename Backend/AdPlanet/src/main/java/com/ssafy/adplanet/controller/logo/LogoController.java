@@ -153,21 +153,21 @@ public class LogoController {
     }
 
     @GetMapping("/{logoId}/download")
+    @Operation(summary = "로고 다운로드", description = "PNG, JPG, JPEG, SVG 형태로 로고를 다운 할 수 있습니다.")
     public ResponseEntity<byte[]> download(
             @PathVariable Long logoId,
-            @RequestParam(name = "format", defaultValue = "png") String format,
+            @RequestParam(name = "format", defaultValue = "PNG") ImageFormat format,
             @RequestParam(name = "quality", required = false) Integer quality
     ) {
         Long userId = SecurityUtil.getCurrentUserId();
-        ImageFormat f = ImageFormat.from(format);
 
-        byte[] bytes = logoService.downloadLogo(userId, logoId, f, quality);
+        byte[] bytes = logoService.downloadLogo(userId, logoId, format, quality);
 
-        String filename = "logo_" + logoId + "." + f.ext;
+        String filename = "logo_" + logoId + "." + format.ext;
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename(filename).build().toString())
-                .contentType(MediaType.parseMediaType(f.contentType))
+                .contentType(MediaType.parseMediaType(format.contentType))
                 .body(bytes);
     }
 }
