@@ -10,6 +10,9 @@ import { RoundButton } from "../../../components/UI/Button/RoundButton";
 import { getLogoDetail, getCiGuideline, createCiGuideline } from "../../../services/logoService";
 import type { LogoDetail as DetailDto, CiGuideline as CiDto } from "../../../services/dto/logo.dto";
 
+import { Canvas } from '@react-three/fiber';
+import Stars from "../../Home/components/Stars";
+
 // Fullpage
 ("use client");
 import { FullpageContainer, FullpageSection } from "@shinyongjun/react-fullpage";
@@ -107,10 +110,6 @@ export default function LogoDetailPage() {
       <div className="min-h-screen bg-[#12141f] text-slate-200">
         <Navigation />
         <main className="px-6 pt-6 pb-24 max-w-7xl mx-auto space-y-4">
-          <header className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">로고 상세</h1>
-            <Link to="/archive/logo" className="rounded-xl px-3 py-2 bg-slate-800 hover:bg-slate-700">뒤로</Link>
-          </header>
           <div className="rounded-2xl bg-red-900/20 border border-red-800 px-4 py-3 text-red-200 text-sm">
             {error ?? "상세 정보를 불러오지 못했습니다."}
           </div>
@@ -121,8 +120,21 @@ export default function LogoDetailPage() {
 
   return (
     <div className="min-h-screen bg-background text-slate-200">
-      <Navigation />
-      <FullpageContainer activeIndex={activeIndex} setActiveIndex={setActiveIndex}>
+      {/* 배경 Canvas (전체 화면 고정) */}
+      <Canvas
+        style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}
+        gl={{ alpha: true }}
+        camera={{ position: [0, 0, 10], fov: 50 }}
+      >
+        <ambientLight intensity={0.5} />
+        <directionalLight position={[10, 10, 5]} />
+        <Stars size={3} />
+      </Canvas>
+
+      <div style={{ position: "relative", zIndex: 10 }}>
+        <Navigation />
+      </div>
+      <FullpageContainer activeIndex={activeIndex} setActiveIndex={setActiveIndex} style={{ position: "relative", zIndex: 10 }}>
         {/* SECTION 1 */}
         <FullpageSection>
           <div className="font-jamsil mx-auto w-full max-w-7xl px-6 py-8">

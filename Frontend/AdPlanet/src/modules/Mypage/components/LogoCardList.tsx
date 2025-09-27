@@ -78,7 +78,7 @@ const LogoCardList = forwardRef<LogoCardListHandle>((props, ref) => {
   }, [items.length, active]);
 
   // ===== 치수/스택 =====
-  const WRAP_W = 480, WRAP_H = 480, STACK_W = 400;
+  const WRAP_W = 480, WRAP_H = 420, STACK_W = 400;
   const OFFSET = 28, SCALE_STEP = 0.055, OP_STEP = 0.2, LAYERS = 4;
 
   const stack = useMemo(() => {

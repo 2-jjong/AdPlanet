@@ -10,7 +10,7 @@ export function LogoCard({
   return (
     <div
       className={[
-        "h-[400px] w-full rounded-2xl overflow-hidden shadow-lg",
+        "h-full w-full rounded-2xl overflow-hidden shadow-lg",
         "bg-gray-100 text-black flex items-center justify-center",
         "transition-transform duration-300",
         isActive ? "ring-2 ring-primary" : "",
@@ -21,7 +21,7 @@ export function LogoCard({
         <img
           src={imgUrl}
           alt={title}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
           loading="lazy"
         />
       ) : (
