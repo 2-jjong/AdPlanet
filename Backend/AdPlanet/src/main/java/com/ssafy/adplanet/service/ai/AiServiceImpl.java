@@ -97,69 +97,55 @@ public class AiServiceImpl implements AiService {
         log.info("[AI/convert] bytes={} fmt={} filename={}",
                 bytes.length, req.targetFormat(), req.filename());
 
-        // 파일 파트 (최소 구성)
-        ByteArrayResource fileRes = new ByteArrayResource(bytes) {
-            @Override public String getFilename() {
-                String fn = req.filename();
-                return (fn == null || fn.isBlank()) ? "image.png" : fn;
-            }
-        };
-//
-//        log.info("[AI/convert] multipart summary: field=file, filename={}, size={} bytes, part-ct=image/png",
-//                fileRes.getFilename(), req.fileBytes().length);
-//
-//        Map<String, Object> form = new HashMap<>();
-//        form.put("file", fileRes);
-//        log.info("이 놈이 이상한가요 ? body={}", fileRes.getFilename());
-//        HttpHeaders headers = new HttpHeaders();
-//        headers.setAccept(List.of(MediaType.IMAGE_PNG, MediaType.valueOf("image/svg+xml")));
-//        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(form, headers);
-
-        // 3) 파트 헤더 (파일 파트의 Content-Type/Content-Disposition)
-        HttpHeaders fileHeaders = new HttpHeaders();
-        fileHeaders.setContentDispositionFormData("file", fileRes.getFilename());
-        HttpEntity<Resource> filePart = new HttpEntity<>(fileRes, fileHeaders);
-
-        // 4) multipart 바디는 MultiValueMap으로
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", filePart);
-        // body.add("extra", someTextPart); // 필요 시 추가
-
-        // 5) 전체 요청 헤더 (multipart/form-data)
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-        // 이미지 바이트를 받을 거면 Accept는 생략하거나 image/* 권장
-        // headers.setAccept(List.of(MediaType.ALL)); // 혹은 image/*
-
-        HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
-
-        String url = UriComponentsBuilder
-                .fromHttpUrl(aiBaseUrl)
-                .path(CONVERT_PATH)
-                .queryParam("target_format", req.targetFormat().ext)
-                .queryParamIfPresent("quality",
-                        (req.targetFormat().isJpegLike() ? Optional.ofNullable(req.quality()) : Optional.empty()))
-                .build(true)
-                .toUriString();
-
-        log.info("[AI/convert] POST {}", url);
         try {
-            RestTemplate rt = new RestTemplate();
-            ResponseEntity<byte[]> res = rt.postForEntity(url, request, byte[].class);
+            MultipartBodyBuilder builder = new MultipartBodyBuilder();
 
-            if (!res.getStatusCode().is2xxSuccessful()) {
-                log.warn("[AI/convert] non-2xx status={} headers={}", res.getStatusCode(), res.getHeaders());
-                throw new BusinessException(ErrorCode.LOGO_AI_SERVER_FAILED);
-            }
-            byte[] responseBody = res.getBody();
-            if (responseBody == null || responseBody.length == 0) throw new BusinessException(ErrorCode.LOGO_IMAGE_EMPTY);
-            return responseBody;
+            // 파일 파트 추가
+            builder.part("file", new ByteArrayResource(bytes) {
+                @Override
+                public String getFilename() {
+                    String fn = req.filename();
+                    return (fn == null || fn.isBlank()) ? "image.png" : fn;
+                }
+            }).contentType(MediaType.IMAGE_PNG);
 
-        } catch (RestClientResponseException ex) {
-            log.warn("[AI/convert] HTTP {} body={}", ex.getRawStatusCode(), trim(ex.getResponseBodyAsString()));
+            // URI 구성 (쿼리 파라미터 포함)
+            String uri = UriComponentsBuilder
+                    .fromPath(CONVERT_PATH)
+                    .queryParam("target_format", req.targetFormat().ext)
+                    .queryParamIfPresent("quality",
+                            (req.targetFormat().isJpegLike() ? Optional.ofNullable(req.quality()) : Optional.empty()))
+                    .build()
+                    .toUriString();
+
+            log.info("[AI/convert] POST {}", uri);
+
+            return aiWebClient.post()
+                    .uri(uri)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .accept(MediaType.IMAGE_PNG, MediaType.IMAGE_JPEG, MediaType.valueOf("image/svg+xml"))
+                    .body(BodyInserters.fromMultipartData(builder.build()))
+                    .exchangeToMono(this::handleConvertResponse)
+                    .timeout(REQ_TIMEOUT)
+                    .block();
+
+        } catch (WebClientResponseException ex) {
+            log.warn("[AI/convert] HTTP {} body={} headers={}",
+                    ex.getRawStatusCode(), trim(ex.getResponseBodyAsString()), ex.getHeaders());
             throw new BusinessException(ErrorCode.LOGO_AI_SERVER_FAILED, ex);
+
+        } catch (WebClientRequestException ex) {
+            log.error("[AI/convert] request error: type={} msg={}",
+                    ex.getClass().getSimpleName(), ex.getMessage());
+            throw new BusinessException(ErrorCode.LOGO_AI_SERVER_FAILED, ex);
+
         } catch (RuntimeException ex) {
-            log.error("[AI/convert] request error: {} - {}", ex.getClass().getSimpleName(), ex.getMessage());
+            Throwable root = rootCause(ex);
+            if (root instanceof TimeoutException) {
+                log.error("[AI/convert] timeout after {}s", REQ_TIMEOUT.getSeconds());
+            } else {
+                log.error("[AI/convert] unexpected error: {} - {}", root.getClass().getSimpleName(), root.getMessage());
+            }
             throw new BusinessException(ErrorCode.LOGO_AI_SERVER_FAILED, ex);
         }
     }
@@ -211,6 +197,33 @@ public class AiServiceImpl implements AiService {
             cur = cur.getCause();
         }
         return cur;
+    }
+
+    private Mono<byte[]> handleConvertResponse(ClientResponse res) {
+        HttpStatusCode status = res.statusCode();
+        MediaType ct = res.headers().contentType().orElse(null);
+
+        if (status.is2xxSuccessful()) {
+            return res.bodyToMono(byte[].class)
+                    .switchIfEmpty(Mono.defer(() -> {
+                        log.warn("[AI/convert] empty body with 2xx (ct={})", ct);
+                        return Mono.error(new BusinessException(ErrorCode.LOGO_IMAGE_EMPTY));
+                    }))
+                    .map(bytes -> {
+                        if (bytes.length == 0) {
+                            throw new BusinessException(ErrorCode.LOGO_IMAGE_EMPTY);
+                        }
+                        return bytes;
+                    });
+        }
+
+        return res.bodyToMono(String.class)
+                .defaultIfEmpty("")
+                .flatMap(body -> {
+                    log.warn("[AI/convert] non-2xx status={} ct={} body={}",
+                            status.value(), ct, trim(body));
+                    return Mono.error(new BusinessException(ErrorCode.LOGO_AI_SERVER_FAILED));
+                });
     }
 
     @Override
