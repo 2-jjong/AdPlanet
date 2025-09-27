@@ -202,19 +202,15 @@ const LogoPage: React.FC = () => {
         <section className="mt-4 grid grid-cols-1 md:grid-cols-[160px,1fr] gap-5 flex-1 min-h-0">
           {/* 로고 추천 영역 - 전체 높이 사용 */}
           <aside className="w-full rounded-xl p-3 md:p-4 flex flex-col items-center bg-white/5 border border-white/10 backdrop-blur h-full">
-            <h2 className="text-lg font-jamsil text-text-color text-center flex-shrink-0">
+            <h2 className="text-lg font-jamsil text-text-color text-center flex-shrink-0 p-3">
               Recommend
             </h2>
 
-            <div className="mt-3 grid grid-cols-2 md:grid-cols-1 gap-3 w-full flex-1">
+            <div className="flex flex-col gap-4 w-full flex-1 justify-between">
               {recommends.map((item, idx) => (
                 <TiltCard
                   key={idx}
-                  className={`w-full cursor-pointer rounded-2xl overflow-hidden transition-all duration-200 p-2 ${
-                    selectedIdx === idx
-                      ? "ring-2 ring-primary"
-                      : "ring-1 ring-white/10 hover:ring-white/20"
-                  }`}
+                  className={`relative w-full flex-1 rounded-2xl transition-all duration-200 `}
                   onClick={(e) => {
                     setSelectedIdx(idx);
                     setStyle(item.value);
@@ -252,7 +248,12 @@ const LogoPage: React.FC = () => {
                   <img
                     src={item.src}
                     alt={item.label}
-                    className="w-full aspect-square h-auto rounded-2xl object-contain"
+                    className={`w-full h-auto object-contain
+                    ${
+                      selectedIdx === idx
+                        ? "ring-[4px] ring-primary rounded-[40px]"
+                        : "hover:ring-white/20"
+                    }`}
                     loading="lazy"
                   />
                 </TiltCard>
