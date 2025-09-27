@@ -4,7 +4,6 @@ import com.ssafy.adplanet.dto.logo.LogoGenerateRequest;
 import com.ssafy.adplanet.dto.poster.request.GeneratePosterRequest;
 import com.ssafy.adplanet.exception.BusinessException;
 import com.ssafy.adplanet.exception.ErrorCode;
-import com.ssafy.adplanet.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -34,8 +33,6 @@ public class AiServiceImpl implements AiService {
     private static final Duration REQ_TIMEOUT = Duration.ofSeconds(120);
 
     private final @Qualifier("aiWebClient") WebClient aiWebClient;
-
-    private final S3Service s3Service;
 
     @Override
     public byte[] generateLogo(LogoGenerateRequest req) {
@@ -102,7 +99,7 @@ public class AiServiceImpl implements AiService {
         return res.bodyToMono(String.class)
                 .defaultIfEmpty("")
                 .flatMap(body -> {
-                    log.warn("[AI/generate] non-2xx status={} ct={} body={}",
+                    log.warn("[AI] non-2xx status={} ct={} body={}",
                             status.value(), ct, trim(body));
                     return Mono.error(new BusinessException(ErrorCode.LOGO_AI_SERVER_FAILED));
                 });
@@ -165,10 +162,13 @@ public class AiServiceImpl implements AiService {
                 }).contentType(MediaType.IMAGE_PNG);
             }
 
+            // 로그로 multipart 필드 확인
+            builder.build().forEach((k, v) -> log.info("[AI/multipart] {} -> {}", k, v));
+
             return aiWebClient.post()
                     .uri(POSTER_GENERATE_PATH)
                     .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .accept(MediaType.IMAGE_PNG, MediaType.IMAGE_JPEG)
+                    .accept(MediaType.IMAGE_PNG, MediaType.IMAGE_JPEG, MediaType.APPLICATION_OCTET_STREAM)
                     .body(BodyInserters.fromMultipartData(builder.build()))
                     .exchangeToMono(this::handlePosterResponse)
                     .timeout(REQ_TIMEOUT)
@@ -215,6 +215,9 @@ public class AiServiceImpl implements AiService {
                 }
             }).contentType(MediaType.IMAGE_PNG);
 
+            // 로그로 multipart 필드 확인
+            builder.build().forEach((k, v) -> log.info("[AI/multipart] {} -> {}", k, v));
+
             return aiWebClient.post()
                     .uri(POSTER_EDIT_PATH)
                     .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -257,7 +260,7 @@ public class AiServiceImpl implements AiService {
         if (status.is2xxSuccessful()) {
             return res.bodyToMono(byte[].class)
                     .switchIfEmpty(Mono.defer(() -> {
-                        log.warn("[AI/edit] empty body with 2xx (ct={})", ct);
+                        log.warn("[AI] empty body with 2xx (ct={})", ct);
                         return Mono.error(new BusinessException(ErrorCode.POSTER_IMAGE_EMPTY));
                     }))
                     .map(bytes -> {
@@ -265,7 +268,7 @@ public class AiServiceImpl implements AiService {
                             throw new BusinessException(ErrorCode.POSTER_IMAGE_EMPTY);
                         }
                         if (ct != null && !isImageLike(ct)) {
-                            log.warn("[AI/edit] suspicious content-type: {}", ct);
+                            log.warn("[AI] suspicious content-type: {}", ct);
                         }
                         return bytes;
                     });
@@ -274,7 +277,7 @@ public class AiServiceImpl implements AiService {
         return res.bodyToMono(String.class)
                 .defaultIfEmpty("")
                 .flatMap(body -> {
-                    log.warn("[AI/edit] non-2xx status={} ct={} body={}",
+                    log.warn("[AI] non-2xx status={} ct={} body={}",
                             status.value(), ct, trim(body));
                     return Mono.error(new BusinessException(ErrorCode.POSTER_AI_SERVER_FAILED));
                 });
