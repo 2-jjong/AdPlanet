@@ -39,7 +39,7 @@ async def generate_poster(
     prompt: str = Form(..., description="포스터 생성 프롬프트", min_length=1, max_length=150),
     person_image: Optional[Union[UploadFile, str]] = File(None, description="인물 사진"),
     product_image: Optional[Union[UploadFile, str]] = File(None, description="제품 이미지"),
-    구도_이미지: Optional[Union[UploadFile, str]] = File(None, description="구도 이미지")
+    pose_image: Optional[Union[UploadFile, str]] = File(None, description="포즈 이미지")
 ):
     """
     포스터 이미지를 생성하고 파일로 반환하는 API (이미지 파일 업로드 포함)
@@ -56,10 +56,10 @@ async def generate_poster(
         elif product_image and hasattr(product_image, 'filename') and product_image.filename == "":
             product_image = None
             
-        if isinstance(구도_이미지, str) and 구도_이미지 == "":
-            구도_이미지 = None
-        elif 구도_이미지 and hasattr(구도_이미지, 'filename') and 구도_이미지.filename == "":
-            구도_이미지 = None
+        if isinstance(pose_image, str) and pose_image == "":
+            pose_image = None
+        elif pose_image and hasattr(pose_image, 'filename') and pose_image.filename == "":
+            pose_image = None
         
         if not prompt.strip():
             raise HTTPException(status_code=400, detail="프롬프트는 필수입니다.")
@@ -70,8 +70,8 @@ async def generate_poster(
             uploaded_files.append(f"인물 사진: {person_image.filename}")
         if product_image:
             uploaded_files.append(f"상품 사진: {product_image.filename}")
-        if 구도_이미지:
-            uploaded_files.append(f"구도 사진: {구도_이미지.filename}")
+        if pose_image:
+            uploaded_files.append(f"포즈 사진: {pose_image.filename}")
         
         print(f"업로드된 파일들: {uploaded_files}")
     
