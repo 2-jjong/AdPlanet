@@ -181,61 +181,74 @@ const LogoPage: React.FC = () => {
   };
 
   return (
-    <div className='flex flex-row w-full h-screen overflow-hidden'>
-      <div className='flex-1 flex flex-col md:p-6 overflow-hidden'>
+    <div className="flex flex-row w-full h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col md:p-6 overflow-hidden">
         {/* Header */}
-        <header className='flex items-start justify-between'>
+        <header className="flex flex-shrink-0 items-start justify-between">
           {/* <h1 className='text-4xl md:text-5xl font-bold text-primary'>AdPlanet</h1> */}
           <Header />
-          <div className='flex items-center gap-2 md:gap-3 flex-nowrap'>
+          <div className="flex items-center gap-2 md:gap-3 flex-nowrap">
             <Button
-              text='다운로드'
+              text="다운로드"
               variant={data?.data.imgUrl ? "fill" : "outline"}
-              size='xs'
+              size="xs"
               onClick={() => setIsDownloadModalOpen(true)}
             />
             <Button
-              text='Archive 바로가기'
-              variant='outline'
-              size='xs'
+              text="Archive 바로가기"
+              variant="outline"
+              size="xs"
               onClick={() => navigate("/archive")}
             />
           </div>
         </header>
 
         {/* 로고 추천, 캔버스 영역 */}
-        <section className='mt-4 grid grid-cols-1 md:grid-cols-[160px,1fr] gap-5 overflow-hidden'>
+        <section className="flex-1 min-h-0 mt-4 grid grid-cols-1 md:grid-cols-[160px,1fr] gap-5 overflow-hidden">
           {/* 로고 추천 영역 */}
-          <aside className='w-full rounded-xl p-3 md:p-4 flex flex-col items-center bg-white/5 border border-white/10 backdrop-blur'>
-            <h2 className='text-lg font-jamsil text-text-color text-center'>Recommend</h2>
+          <aside className="w-full h-full rounded-xl p-3 md:p-4 flex flex-col items-center bg-white/5 border border-white/10 backdrop-blur">
+            <h2 className="text-lg font-jamsil text-text-color text-center">
+              Recommend
+            </h2>
 
-            <div className='mt-3 grid grid-cols-2 md:grid-cols-1 gap-4 w-full'>
+            <div className="mt-3 grid grid-cols-2 md:grid-cols-1 gap-3 w-full flex-1">
               {recommends.map((item, idx) => (
                 <TiltCard
                   key={idx}
-                  className={`w-full cursor-pointer rounded-[50px] overflow-hidden ${
+                  className={`w-full cursor-pointer rounded-2xl overflow-hidden transition-all duration-200 p-2 ${
                     selectedIdx === idx
-                      ? "border-[5px] border-primary"
-                      : "border border-transparent"
+                      ? "ring-2 ring-primary"
+                      : "ring-1 ring-white/10 hover:ring-white/20"
                   }`}
                   onClick={(e) => {
                     setSelectedIdx(idx);
                     setStyle(item.value);
                     const meta =
                       styleMeta[item.value] ??
-                      ({ title: item.label, description: "", tips: [] } as unknown);
+                      ({
+                        title: item.label,
+                        description: "",
+                        tips: [],
+                      } as unknown);
                     const r =
                       (
                         e.currentTarget.querySelector("img") as HTMLImageElement
                       )?.getBoundingClientRect?.() ||
-                      (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                      (
+                        e.currentTarget as HTMLDivElement
+                      ).getBoundingClientRect();
                     setStyleInfo({
                       imageSrc: item.src,
                       title: meta.title,
                       description: meta.description,
                       tips: [...(meta.tips ?? [])],
                       origin: r
-                        ? { left: r.left, top: r.top, width: r.width, height: r.height }
+                        ? {
+                            left: r.left,
+                            top: r.top,
+                            width: r.width,
+                            height: r.height,
+                          }
                         : null,
                     });
                     setStyleInfoOpen(true);
@@ -244,8 +257,8 @@ const LogoPage: React.FC = () => {
                   <img
                     src={item.src}
                     alt={item.label}
-                    className='w-full aspect-square h-auto rounded-2xl object-contain ring-1 ring-white/10'
-                    loading='lazy'
+                    className="w-full h-full object-contain"
+                    loading="lazy"
                   />
                 </TiltCard>
               ))}
@@ -253,19 +266,19 @@ const LogoPage: React.FC = () => {
           </aside>
 
           {/* Canvas */}
-          <main className='relative overflow-hidden'>
-            <div className='h-[340px] md:h-[500px] lg:h-[520px] w-full flex items-center justify-center rounded-2xl overflow-hidden relative bg-white/5 border border-white/10'>
+          <main className="relative overflow-hidden h-full">
+            <div className="h-full w-full flex items-center justify-center rounded-2xl overflow-hidden relative bg-white/5 border border-white/10">
               {/* <AdPlanetLoaderOverlay
                 show={isPending || showLoader}
                 tip='로고를 멋지게 만드는 중...'
               /> */}
-              {error && <p className='text-red-500 text-sm'>{error.message}</p>}
+              {error && <p className="text-red-500 text-sm">{error.message}</p>}
               {(isPending || showLoader) && <Loading />}
               {imageUrl && (
                 <img
                   src={imageUrl}
-                  alt='Generated Logo'
-                  className='max-h-full max-w-full rounded-xl'
+                  alt="Generated Logo"
+                  className="max-h-full max-w-full rounded-xl"
                 />
               )}
             </div>
@@ -274,43 +287,51 @@ const LogoPage: React.FC = () => {
       </div>
 
       {/* 오른쪽 프롬프트 영역 */}
-      <aside className='w-[320px] md:w-[360px] bg-[#12131F] border-l border-white/10 p-4 flex flex-col gap-5 overflow-auto'>
+      <aside className="w-[320px] md:w-[360px] bg-[#12131F] border-l border-white/10 p-4 flex flex-col gap-5 overflow-auto">
         {/* 기본 정보 */}
-        <section className='flex flex-col gap-3 mt-6'>
-          <h3 className='text-lg font-semibold border-b border-white/20 pb-1'>기본 정보</h3>
+        <section className="flex flex-col gap-3 mt-6">
+          <h3 className="text-lg font-semibold border-b border-white/20 pb-1">
+            기본 정보
+          </h3>
           <input
-            type='text'
-            placeholder='회사/브랜드 명'
+            type="text"
+            placeholder="회사/브랜드 명"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className='w-full rounded-md bg-transparent border border-primary px-3 py-2 text-sm'
+            className="w-full rounded-md bg-transparent border border-primary px-3 py-2 text-sm"
           />
           <input
-            type='text'
-            placeholder='슬로건 (선택사항)'
+            type="text"
+            placeholder="슬로건 (선택사항)"
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className='w-full rounded-md bg-transparent border border-primary px-3 py-2 text-sm'
+            className="w-full rounded-md bg-transparent border border-primary px-3 py-2 text-sm"
           />
         </section>
 
         {/* 로고 설명 */}
-        <section className='flex flex-col gap-3 flex-1'>
-          <h3 className='text-lg font-semibold border-b border-white/20 pb-1'>로고 설명</h3>
+        <section className="flex flex-col gap-3 flex-1">
+          <h3 className="text-lg font-semibold border-b border-white/20 pb-1">
+            로고 설명
+          </h3>
           <textarea
-            placeholder='원하는 로고의 모양, 스타일, 분위기를 자세히 설명해주세요.'
-            className='w-full h-40 resize-none rounded-md bg-transparent border border-primary px-3 py-2 text-sm'
+            placeholder="원하는 로고의 모양, 스타일, 분위기를 자세히 설명해주세요."
+            className="w-full h-40 resize-none rounded-md bg-transparent border border-primary px-3 py-2 text-sm"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             maxLength={199}
           />
-          <div className='flex justify-end text-xs opacity-70'>
+          <div className="flex justify-end text-xs opacity-70">
             <span>{prompt.length} / 200</span>
           </div>
         </section>
 
         {/* 버튼 */}
-        <GenerateButton onClick={handleGenerate} disabled={isPending} loading={isPending}>
+        <GenerateButton
+          onClick={handleGenerate}
+          disabled={isPending}
+          loading={isPending}
+        >
           {isPending ? "생성 중..." : "로고 생성하기"}
         </GenerateButton>
       </aside>
