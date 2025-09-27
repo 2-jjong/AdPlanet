@@ -6,6 +6,7 @@ import com.ssafy.adplanet.dto.logo.*;
 import com.ssafy.adplanet.dto.tag.AssignLogoTagsRequest;
 import com.ssafy.adplanet.dto.tag.CreateTagRequest;
 import com.ssafy.adplanet.dto.tag.TagDto;
+import com.ssafy.adplanet.enums.ImageFormat;
 import com.ssafy.adplanet.enums.LogoListOrder;
 import com.ssafy.adplanet.enums.LogoStyle;
 import com.ssafy.adplanet.service.ci.CiGuidelineServiceImpl;
@@ -151,58 +152,22 @@ public class LogoController {
         return ResponseEntity.ok(ResponseDto.ok(opt.get()));
     }
 
-    @GetMapping(value = "/{logoId}/download")
-    @Operation(summary="로고 다운로드", description="logoId의 로고 파일을 지정한 형식(png/jpg/svg)으로 다운로드합니다.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청")
-    })
-    public ResponseEntity<byte[]> download(@PathVariable Long logoId,
-                                           @RequestParam(defaultValue = "png") String format) {
-        String f = format == null ? "png" : format.trim().toLowerCase();
-        String contentType;
-        byte[] bytes;
+    @GetMapping("/{logoId}/download")
+    @Operation(summary = "로고 다운로드", description = "PNG, JPG, JPEG, SVG 형태로 로고를 다운 할 수 있습니다.")
+    public ResponseEntity<byte[]> download(
+            @PathVariable Long logoId,
+            @RequestParam(name = "format", defaultValue = "PNG") ImageFormat format,
+            @RequestParam(name = "quality", required = false) Integer quality
+    ) {
+        Long userId = SecurityUtil.getCurrentUserId();
 
-        switch (f) {
-            case "jpg":
-            case "jpeg":
-                contentType = "image/jpeg";
-                bytes = tinyRaster("jpg");
-                break;
-            case "svg":
-                contentType = "image/svg+xml";
-                bytes = tinySvg(logoId).getBytes(StandardCharsets.UTF_8);
-                break;
-            default:
-                contentType = "image/png";
-                bytes = tinyRaster("png");
-        }
+        byte[] bytes = logoService.downloadLogo(userId, logoId, format, quality);
 
-        String ext = (f.equals("jpg") || f.equals("jpeg")) ? "jpg" : (f.equals("svg") ? "svg" : "png");
-        String filename = "logo_" + logoId + "." + ext;
-
+        String filename = "logo_" + logoId + "." + format.ext;
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename(filename).build().toString())
-                .contentType(MediaType.parseMediaType(contentType))
+                .contentType(MediaType.parseMediaType(format.contentType))
                 .body(bytes);
-    }
-
-    private byte[] tinyRaster(String fmt) {
-        try {
-            BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
-            img.setRGB(0, 0, 0xFFFFFF);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(img, fmt.equals("jpg") ? "jpg" : "png", baos);
-            return baos.toByteArray();
-        } catch (Exception e) { return new byte[0]; }
-    }
-
-    private String tinySvg(Long id) {
-        return """
-            <svg xmlns="http://www.w3.org/2000/svg" width="1" height="1">
-              <rect width="1" height="1" fill="#FFFFFF"/>
-            </svg>
-            """;
     }
 }
