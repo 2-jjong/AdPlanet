@@ -1,11 +1,12 @@
 import React, { useState, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { PATHS } from "../../constants/paths";
 import { loginWithSSAFY } from "../../services/authService";
-
+import logo from "../../assets/images/logo.png";
 const Navigation: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isGeneratorHovered, setIsGeneratorHovered] = useState(false);
   // setTimeout의 타이머 ID를 저장하기 위한 useRef
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -18,7 +19,9 @@ const Navigation: React.FC = () => {
   };
 
   const isGeneratorActive = () => {
-    return location.pathname === PATHS.LOGO || location.pathname === PATHS.POSTER;
+    return (
+      location.pathname === PATHS.LOGO || location.pathname === PATHS.POSTER
+    );
   };
 
   // 마우스가 들어왔을 때 실행할 함수
@@ -48,24 +51,32 @@ const Navigation: React.FC = () => {
   };
 
   return (
-    <header className='relative z-50 flex justify-between items-center p-4 lg:px-12'>
+    <header className="relative z-50 flex justify-between items-center p-7 lg:px-12 font-jamsil">
       <Link
         to={PATHS.HOME}
-        className='text-xl lg:text-2xl font-bold text-cyan-400 hover:text-cyan-300 transition-colors'
+        className="text-xl lg:text-2xl font-bold text-primary hover:text-primary transition-colors"
       >
-        AdPlanet
+        <button className="">
+          <img src={logo} className="w-[150px]" onClick={() => navigate("/")} />
+        </button>
       </Link>
 
-      <nav className='hidden md:flex space-x-6 lg:space-x-8 text-white'>
+      <nav className="hidden md:flex space-x-6 lg:space-x-8 text-white">
         {/* Generator 드롭다운: 새로운 마우스 핸들러 적용 */}
-        <div className='relative' onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+        <div
+          className="relative"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
           <div
             className={`transition-colors text-sm lg:text-base cursor-pointer ${
-              isGeneratorActive() ? "text-cyan-400 font-semibold" : "hover:text-cyan-400"
+              isGeneratorActive()
+                ? "text-primary font-semibold"
+                : "hover:text-primary"
             }`}
           >
             Generator
-            <span className='ml-1'>▼</span>
+            <span className="ml-1">▼</span>
           </div>
 
           <div
@@ -79,8 +90,8 @@ const Navigation: React.FC = () => {
               to={PATHS.LOGO}
               className={`block px-4 py-3 text-sm transition-colors ${
                 isActive(PATHS.LOGO)
-                  ? "text-cyan-400 bg-slate-700/50"
-                  : "text-white hover:text-cyan-400 hover:bg-slate-700/30"
+                  ? "text-primary bg-slate-700/50"
+                  : "text-white hover:text-primary hover:bg-slate-700/30"
               }`}
             >
               로고 생성
@@ -89,8 +100,8 @@ const Navigation: React.FC = () => {
               to={PATHS.POSTER}
               className={`block px-4 py-3 text-sm transition-colors ${
                 isActive(PATHS.POSTER)
-                  ? "text-cyan-400 bg-slate-700/50"
-                  : "text-white hover:text-cyan-400 hover:bg-slate-700/30"
+                  ? "text-primary bg-slate-700/50"
+                  : "text-white hover:text-primary hover:bg-slate-700/30"
               }`}
             >
               포스터 생성
@@ -102,8 +113,8 @@ const Navigation: React.FC = () => {
           to={PATHS.WATERMARK_DETECTION}
           className={`transition-colors text-sm lg:text-base ${
             isActive(PATHS.WATERMARK_DETECTION)
-              ? "text-cyan-400 font-semibold"
-              : "hover:text-cyan-400"
+              ? "text-primary font-semibold"
+              : "hover:text-primary"
           }`}
         >
           Watermark Detection
@@ -111,7 +122,9 @@ const Navigation: React.FC = () => {
         <Link
           to={PATHS.ARCHIVE}
           className={`transition-colors text-sm lg:text-base ${
-            isActive(PATHS.ARCHIVE) ? "text-cyan-400 font-semibold" : "hover:text-cyan-400"
+            isActive(PATHS.ARCHIVE)
+              ? "text-primary font-semibold"
+              : "hover:text-primary"
           }`}
         >
           Archive
@@ -120,7 +133,7 @@ const Navigation: React.FC = () => {
 
       <button
         onClick={handleLoginClick}
-        className='bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 lg:px-6 rounded-lg transition-colors text-sm lg:text-base'
+        className="bg-primary hover:bg-cyan-400 text-white px-4 py-2 lg:px-6 rounded-lg transition-colors text-sm lg:text-base"
       >
         {isLoggedIn ? "Sign out" : "Sign in"}
       </button>
