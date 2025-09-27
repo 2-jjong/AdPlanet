@@ -382,7 +382,7 @@ public class GmsServiceImpl implements GmsService {
     }
 
     @Override
-    public String generateCopyByImage(String brandName, String slogan, String imageUrl) {
+    public String generateCopyByImage(String posterTitle, String posterContent, String imageUrl) {
         try {
             ObjectNode root = om.createObjectNode();
             root.put("model", "gpt-5-nano");
@@ -399,10 +399,10 @@ public class GmsServiceImpl implements GmsService {
                 업로드된 포스터 이미지에 들어갈 카피 문구를 만들어주세요.
                 소비자에게 매력적으로 다가갈 수 있는 짧고 굵은 한 줄로 만들어주세요.
 
-                - 브랜드명: %s
-                - 슬로건: %s
+                - 포스터 제목: %s
+                - 포스터 내용: %s
                 - 결과는 한국어로, 1문장.
-                """.formatted(orEmptyIfBlank(brandName), orEmptyIfBlank(slogan)));
+                """.formatted(orEmptyIfBlank(posterTitle), orEmptyIfBlank(posterContent)));
 
             String respBody = gmsWebClient.post()
                     .uri("/responses")
@@ -422,7 +422,6 @@ public class GmsServiceImpl implements GmsService {
             if (respBody == null || respBody.isBlank()) {
                 throw new IllegalStateException("GMS 빈 응답(카피)");
             }
-            log.info("[GMS Response Raw] {}", respBody);
 
             JsonNode rootNode = om.readTree(respBody);
             log.info("[GMS Response Output] {}", rootNode.path("output"));
