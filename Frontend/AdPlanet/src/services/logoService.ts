@@ -17,7 +17,6 @@ import type {
   AssignedLogoTag,
 } from "./dto/logo.response";
 
-
 /** 로고 태그 부여 (일괄) */
 export async function assignLogoTags(
   logoId: number,
@@ -35,9 +34,9 @@ export async function getLogoList(
   params: LogoListQuery
 ): Promise<ApiResponse<LogoListItem[]>> {
   const query: Record<string, any> = {};
-  if (params.order) query.order = params.order;            // NEWEST는 생략 가능
+  if (params.order) query.order = params.order; // NEWEST는 생략 가능
   if (params.tagIds && params.tagIds.length > 0) {
-    query.tagIds = params.tagIds.join(",");                // CSV로 고정
+    query.tagIds = params.tagIds.join(","); // CSV로 고정
   }
   const { data } = await apiClient.get<ApiResponse<LogoListItem[]>>(
     "/api/logos",
@@ -110,6 +109,11 @@ export async function getLogoDetail(
 export async function logoDownload(
   req: LogoDownloadRequest
 ): Promise<AxiosResponse<Blob>> {
+  const res = await apiClient.get(`/api/logos/${req.logoId}/download`, {
+    params: { format: "png" },
+    responseType: "blob",
+  });
+  console.log("다운로드 응답", res);
   return await apiClient.get<Blob>(`/api/logos/${req.logoId}/download`, {
     params: { format: req.format },
     responseType: "blob",

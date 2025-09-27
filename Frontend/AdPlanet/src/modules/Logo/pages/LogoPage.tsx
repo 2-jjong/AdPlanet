@@ -35,7 +35,6 @@ const LogoPage: React.FC = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [logoId, setLogoId] = useState<number | null>(null);
   const [showLoader, setShowLoader] = useState(false);
-  // const minDelayRef = useRef<number | null>(null);
   const [styleInfoOpen, setStyleInfoOpen] = useState(false);
   const [styleInfo, setStyleInfo] = useState<{
     imageSrc: string;
@@ -140,21 +139,19 @@ const LogoPage: React.FC = () => {
   };
 
   const handleDownload = (ext: string) => {
-    if (!data?.data.logoId) {
+    if (!logoId) {
       alert("로고 ID가 없습니다.");
       return;
     }
 
     downloadLogo(
-      { logoId: data.data.logoId, format: ext },
+      { logoId: logoId, format: ext },
       {
         onSuccess: (res) => {
-          // Blob 생성
           const blob = new Blob([res.data], {
             type: res.headers["content-type"],
           });
 
-          // 파일명 추출 (Content-Disposition)
           let filename = "download.png";
           const disposition = res.headers["content-disposition"];
           if (disposition) {
@@ -162,7 +159,6 @@ const LogoPage: React.FC = () => {
             if (match?.[1]) filename = match[1];
           }
 
-          // 가짜 링크 생성해서 다운로드 실행
           const url = window.URL.createObjectURL(blob);
           const link = document.createElement("a");
           link.href = url;
@@ -184,8 +180,7 @@ const LogoPage: React.FC = () => {
     <div className="flex flex-row w-full h-screen overflow-hidden">
       <div className="flex-1 flex flex-col md:p-6 overflow-hidden">
         {/* Header */}
-        <header className="flex flex-shrink-0 items-start justify-between">
-          {/* <h1 className='text-4xl md:text-5xl font-bold text-primary'>AdPlanet</h1> */}
+        <header className="flex items-start justify-between flex-shrink-0">
           <Header />
           <div className="flex items-center gap-2 md:gap-3 flex-nowrap">
             <Button
@@ -203,11 +198,11 @@ const LogoPage: React.FC = () => {
           </div>
         </header>
 
-        {/* 로고 추천, 캔버스 영역 */}
-        <section className="flex-1 min-h-0 mt-4 grid grid-cols-1 md:grid-cols-[160px,1fr] gap-5 overflow-hidden">
-          {/* 로고 추천 영역 */}
-          <aside className="w-full h-full rounded-xl p-3 md:p-4 flex flex-col items-center bg-white/5 border border-white/10 backdrop-blur">
-            <h2 className="text-lg font-jamsil text-text-color text-center">
+        {/* 로고 추천, 캔버스 영역 - 남은 공간을 모두 차지 */}
+        <section className="mt-4 grid grid-cols-1 md:grid-cols-[160px,1fr] gap-5 flex-1 min-h-0">
+          {/* 로고 추천 영역 - 전체 높이 사용 */}
+          <aside className="w-full rounded-xl p-3 md:p-4 flex flex-col items-center bg-white/5 border border-white/10 backdrop-blur h-full">
+            <h2 className="text-lg font-jamsil text-text-color text-center flex-shrink-0">
               Recommend
             </h2>
 
@@ -257,7 +252,7 @@ const LogoPage: React.FC = () => {
                   <img
                     src={item.src}
                     alt={item.label}
-                    className="w-full h-full object-contain"
+                    className="w-full aspect-square h-auto rounded-2xl object-contain"
                     loading="lazy"
                   />
                 </TiltCard>
@@ -265,13 +260,9 @@ const LogoPage: React.FC = () => {
             </div>
           </aside>
 
-          {/* Canvas */}
+          {/* Canvas - 전체 높이 사용 */}
           <main className="relative overflow-hidden h-full">
             <div className="h-full w-full flex items-center justify-center rounded-2xl overflow-hidden relative bg-white/5 border border-white/10">
-              {/* <AdPlanetLoaderOverlay
-                show={isPending || showLoader}
-                tip='로고를 멋지게 만드는 중...'
-              /> */}
               {error && <p className="text-red-500 text-sm">{error.message}</p>}
               {(isPending || showLoader) && <Loading />}
               {imageUrl && (
