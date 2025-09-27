@@ -36,7 +36,7 @@ async def load_dummy_poster_image() -> bytes:
 @router.post("/generate")
 # 1. Pydantic 모델 대신 각 필드를 Form과 File로 직접 받도록 수정합니다.
 async def generate_poster(
-    prompt: str = Form(..., description="포스터 생성 프롬프트", min_length=1, max_length=150),
+    prompt: str = Form(..., description="포스터 생성 프롬프트", min_length=1, max_length=250),
     person_image: Optional[Union[UploadFile, str]] = File(None, description="인물 사진"),
     product_image: Optional[Union[UploadFile, str]] = File(None, description="제품 이미지"),
     pose_image: Optional[Union[UploadFile, str]] = File(None, description="포즈 이미지")
@@ -67,11 +67,11 @@ async def generate_poster(
         # 업로드된 파일 정보 로깅
         uploaded_files = []
         if person_image:
-            uploaded_files.append(f"인물 사진: {person_image.filename}")
+            uploaded_files.append(f"person image: {person_image.filename}")
         if product_image:
-            uploaded_files.append(f"상품 사진: {product_image.filename}")
+            uploaded_files.append(f"product image: {product_image.filename}")
         if pose_image:
-            uploaded_files.append(f"포즈 사진: {pose_image.filename}")
+            uploaded_files.append(f"pose image: {pose_image.filename}")
         
         print(f"업로드된 파일들: {uploaded_files}")
     
