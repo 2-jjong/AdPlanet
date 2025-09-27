@@ -1,37 +1,12 @@
 package com.ssafy.adplanet.service.poster;
 
-import com.ssafy.adplanet.dto.poster.request.ImageJobMessage;
-import com.ssafy.adplanet.entity.ImageJob;
-import com.ssafy.adplanet.entity.Poster;
-import com.ssafy.adplanet.entity.PosterGroup;
-import com.ssafy.adplanet.entity.User;
-import com.ssafy.adplanet.enums.JobStatus;
-import com.ssafy.adplanet.repository.ImageJobRepository;
-import com.ssafy.adplanet.repository.PosterGroupRepository;
-import com.ssafy.adplanet.repository.PosterRepository;
-import com.ssafy.adplanet.repository.UserRepository;
-import com.ssafy.adplanet.service.s3.S3Service;
+import com.ssafy.adplanet.dto.poster.request.EditPosterJobMessage;
+import com.ssafy.adplanet.dto.poster.request.CreatePosterJobMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
-
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -41,13 +16,26 @@ public class MessageListener {
 
     private final PosterService posterService;
 
-    @RabbitListener(queues = "${app.queue.poster}")
-    public void receiveJob(ImageJobMessage message) {
+    @RabbitListener(queues = "${app.queue.poster.create}.${app.server-id}")
+    public void receiveCreateJob(CreatePosterJobMessage message) {
         String jobId = message.jobId();
-        log.info("🐰 [MQ-RECEIVE] 새로운 작업: {}", jobId);
+        log.info("🐰 [MQ-RECEIVE] 새로운 포스터 생성 작업: {}", jobId);
 
         try {
-            posterService.processJob(message);
+            posterService.processCreateJob(message);
+            log.info("🐰 [MQ-RECEIVE] 메시지 처리 완료: {}", jobId);
+        } catch (Exception e) {
+            log.error("❌ [MQ-RECEIVE] 메시지 처리 중 오류: {}", jobId, e);
+        }
+    }
+
+    @RabbitListener(queues = "${app.queue.poster.edit}.${app.server-id}")
+    public void receiveEditJob(EditPosterJobMessage message) {
+        String jobId = message.jobId();
+        log.info("🐰 [MQ-RECEIVE] 새로운 포스터 수정 작업: {}", jobId);
+
+        try {
+            posterService.processEditJob(message);
             log.info("🐰 [MQ-RECEIVE] 메시지 처리 완료: {}", jobId);
         } catch (Exception e) {
             log.error("❌ [MQ-RECEIVE] 메시지 처리 중 오류: {}", jobId, e);

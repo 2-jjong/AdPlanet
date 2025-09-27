@@ -118,10 +118,8 @@ public class LogoServiceImpl implements LogoService {
 
             // 4) S3 업로드 & URL 갱신
             String key = s3Service.buildKey("logos/logo_" + logo.getId() + ".png");
-            s3Service.upload(key, watermarkedBytes, "image/png");
-            logo.changeImgUrl(s3Service.toS3Uri(key));
             try {
-                s3Service.upload(key, pngBytes, "image/png");
+                s3Service.upload(key, watermarkedBytes, "image/png");
                 logo.changeImgUrl(s3Service.toS3Uri(key));
             } catch (Exception ex) {
                 throw new BusinessException(LOGO_IMAGE_UPLOAD_FAILED, ex);

@@ -25,9 +25,15 @@ public enum ErrorCode {
     IMAGE_JOB_NOT_FOUND("PA4001", "작업을 찾을 수 없습니다"),
     POSTER_GROUP_NOT_FOUND("PA4002", "포스터 그룹을 찾을 수 없습니다"),
     POSTER_NOT_FOUND("PA4003", "포스터를 찾을 수 없습니다"),
+    IMAGE_JOB_ACCESS_DENIED("PA4031", "해당 작업에 권한이 없습니다"),
+    POSTER_GROUP_ACCESS_DENIED("PA4032", "해당 포스터 그룹에 권한이 없습니다"),
+    POSTER_ACCESS_DENIED("PA4033", "해당 포스터에 권한이 없습니다"),
     POSTER_IMAGE_UPLOAD_FAILED("PA5001", "이미지 업로드에 실패했습니다"),
     POSTER_JOB_QUEUE_FAILED("PA5002", "이미지 생성 요청에 실패했습니다"),
     COPY_GENERATION_FAILED("PA5003", "포스터 문구 생성에 실패했습니다"),
+    POSTER_PROMPT_REFINEMENT_FAILED("PA5004", "프롬프트 정제에 실패했습니다"),
+    POSTER_AI_SERVER_FAILED("PA5005", "포스터 생성 서버 처리에 실패했습니다"),
+    POSTER_IMAGE_EMPTY("PA5006", "생성된 이미지가 비어있습니다"),
 
     // Tag
     TAG_ALREADY_EXISTS("TG4001", "이미 존재하는 태그입니다"),

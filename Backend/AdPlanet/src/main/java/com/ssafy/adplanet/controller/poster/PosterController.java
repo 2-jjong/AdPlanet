@@ -53,9 +53,9 @@ public class PosterController {
             @Parameter(description = "포스터 스타일")
             @RequestParam(value = "style", required = false) PosterStyle style,
             @Parameter(description = "요청 정보", required = true)
-            @RequestPart(value = "request") CreatePosterRequest request,
-            @Parameter(description = "배경 이미지")
-            @RequestPart(value = "backgroundImage", required = false) MultipartFile backgroundImage,
+            @Valid @RequestPart(value = "request") CreatePosterRequest request,
+            @Parameter(description = "포즈 이미지")
+            @RequestPart(value = "poseImage", required = false) MultipartFile poseImage,
             @Parameter(description = "제품 이미지")
             @RequestPart(value = "productImage", required = false) MultipartFile productImage,
             @Parameter(description = "모델 이미지")
@@ -64,7 +64,7 @@ public class PosterController {
 
         Long userId = SecurityUtil.getCurrentUserId();
 
-        ImageJobResponse response = posterService.create(userId, style, request, backgroundImage, productImage, modelImage);
+        ImageJobResponse response = posterService.createPoster(userId, style, request, poseImage, productImage, modelImage);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
@@ -80,7 +80,6 @@ public class PosterController {
             @Parameter(description = "작업 id", required = true)
             @PathVariable("jobId") String jobId
     ) {
-
         ImageJobResponse response = posterService.getStatus(jobId);
 
         return ResponseEntity.ok(ResponseDto.ok(response));
@@ -101,7 +100,7 @@ public class PosterController {
     ) {
         Long userId = SecurityUtil.getCurrentUserId();
 
-        ImageJobResponse response = posterService.edit(userId, posterId, request.prompt());
+        ImageJobResponse response = posterService.editPoster(userId, posterId, request.prompt());
 
         return ResponseEntity.ok(ResponseDto.ok(response));
     }
@@ -193,7 +192,7 @@ public class PosterController {
     ) {
         Long userId = SecurityUtil.getCurrentUserId();
 
-        List<PosterGroupResponse> list = posterService.getPosterGroup(userId, order, tagIds);
+        List<PosterGroupResponse> list = posterService.getAllPosterGroup(userId, order, tagIds);
 
         return ResponseEntity.ok(ResponseDto.ok(list));
     }

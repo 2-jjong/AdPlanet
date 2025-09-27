@@ -1,7 +1,8 @@
 package com.ssafy.adplanet.service.poster;
 
 import com.ssafy.adplanet.dto.poster.request.CreatePosterRequest;
-import com.ssafy.adplanet.dto.poster.request.ImageJobMessage;
+import com.ssafy.adplanet.dto.poster.request.EditPosterJobMessage;
+import com.ssafy.adplanet.dto.poster.request.CreatePosterJobMessage;
 import com.ssafy.adplanet.dto.poster.response.CopyResponse;
 import com.ssafy.adplanet.dto.poster.response.ImageJobResponse;
 import com.ssafy.adplanet.dto.poster.response.PosterGroupResponse;
@@ -13,15 +14,17 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 public interface PosterService {
-    ImageJobResponse create(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile backgroundImage, MultipartFile productImage, MultipartFile modelImage);
+    ImageJobResponse createPoster(Long userId, PosterStyle style, CreatePosterRequest request, MultipartFile poseImage, MultipartFile productImage, MultipartFile modelImage);
 
-    ImageJobResponse edit(Long userId, Long posterId, String prompt);
+    ImageJobResponse editPoster(Long userId, Long posterId, String prompt);
 
-    void processJob(ImageJobMessage message) throws Exception;
+    void processCreateJob(CreatePosterJobMessage message) throws Exception;
+
+    void processEditJob(EditPosterJobMessage message) throws Exception;
 
     ImageJobResponse getStatus(String jobId);
 
-    List<PosterGroupResponse> getPosterGroup(Long userId, PosterListOrder order, List<Long> tagIds);
+    List<PosterGroupResponse> getAllPosterGroup(Long userId, PosterListOrder order, List<Long> tagIds);
 
     PosterGroupResponse getPosterGroupDetail(Long groupId);
 
