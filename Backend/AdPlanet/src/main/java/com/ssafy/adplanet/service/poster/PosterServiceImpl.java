@@ -299,11 +299,11 @@ public class PosterServiceImpl implements PosterService {
         ImageJob imageJob = imageJobRepository.findById(jobId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.IMAGE_JOB_NOT_FOUND));
 
-        log.info("[POSTER-GEN] DB 조회 성공: {})", jobId);
+        log.info("[POSTER-EDIT] DB 조회 성공: {})", jobId);
 
         // 2. 상태 체크: 이미 처리중이면 무시
         if (imageJob.getStatus() != JobStatus.QUEUED) {
-            log.warn("[POSTER-GEN] 이미 처리 중인 작업: {} (현재 상태: {})", jobId, imageJob.getStatus().name());
+            log.warn("[POSTER-EDIT] 이미 처리 중인 작업: {} (현재 상태: {})", jobId, imageJob.getStatus().name());
             return;
         }
 
@@ -334,17 +334,17 @@ public class PosterServiceImpl implements PosterService {
         // S3에서 파일 다운로드 및 요청 준비
         byte[] bytes = s3Service.downloadFromUri(message.previousImgUrl());
         String refinedPrompt = gmsService.refinePosterPrompt(message.prompt());
-        log.info("[POSTER-GEN] 정제된 프롬프트: {}", refinedPrompt);
+        log.info("[POSTER-EDIT] 정제된 프롬프트: {}", refinedPrompt);
 
         for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
             try {
-                log.info("[POSTER-GEN] 이미지 생성 시도 {}/{}", attempt, MAX_RETRY);
+                log.info("[POSTER-EDIT] 이미지 생성 시도 {}/{}", attempt, MAX_RETRY);
 
                 byte[] result = aiService.editPoster(refinedPrompt, bytes);
 
                 // 성공 케이스
                 if (result != null) {
-                    log.info("[POSTER-GEN] 이미지 생성 성공");
+                    log.info("[POSTER-EDIT] 이미지 생성 성공");
                     return result;
                 }
 
@@ -384,7 +384,7 @@ public class PosterServiceImpl implements PosterService {
                 .createdAt(LocalDateTime.now())
                 .build();
         posterRepository.saveAndFlush(poster);
-        log.info("[POSTER-GEN] 포스터 저장: {}", poster.getId());
+        log.info("[NEW-POSTER] 포스터 저장: {}", poster.getId());
 
         // 워터마크 삽입
         byte[] watermarkedBytes = watermarkService.insertWatermark(bytes, posterGroup.getUser().getEmail(), posterGroup.getTitle());
@@ -397,7 +397,7 @@ public class PosterServiceImpl implements PosterService {
         // 대표 포스터 변경
         posterGroup.setMainPoster(poster);
         imageJob.setResultPoster(poster);
-        log.info("[POSTER-GEN] 결과 저장 성공: {}", imageJob.getId());
+        log.info("[NEW-POSTER] 결과 저장 성공: {}", imageJob.getId());
     }
 
     @Override

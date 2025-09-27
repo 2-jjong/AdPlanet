@@ -199,7 +199,7 @@ public class AiServiceImpl implements AiService {
 
     @Override
     public byte[] editPoster(String prompt, byte[] previousImage) {
-        log.info("[AI] POST {}", POSTER_GENERATE_PATH);
+        log.info("[AI] POST {}", POSTER_EDIT_PATH);
 
         try {
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
@@ -208,10 +208,10 @@ public class AiServiceImpl implements AiService {
             builder.part("prompt", prompt);
 
             // 이미지 필드
-            builder.part("previous_image", new ByteArrayResource(previousImage) {
+            builder.part("image", new ByteArrayResource(previousImage) {
                 @Override
                 public String getFilename() {
-                    return "previous.png";
+                    return "previousImage.png";
                 }
             }).contentType(MediaType.IMAGE_PNG);
 
@@ -226,22 +226,22 @@ public class AiServiceImpl implements AiService {
 
         } catch (WebClientResponseException ex) {
             // 서버가 4xx/5xx를 정상 응답으로 반환한 경우
-            log.warn("[AI/generate] HTTP {} body={} headers={}",
+            log.warn("[AI/edit] HTTP {} body={} headers={}",
                     ex.getRawStatusCode(), trim(ex.getResponseBodyAsString()), ex.getHeaders());
             throw new BusinessException(ErrorCode.POSTER_AI_SERVER_FAILED, ex);
 
         } catch (WebClientRequestException ex) {
             // 네트워크/연결 오류(Connect, DNS, SSL 등) 모두 여기로 들어옴
-            log.error("[AI/generate] request error: type={} msg={}",
+            log.error("[AI/edit] request error: type={} msg={}",
                     ex.getClass().getSimpleName(), ex.getMessage());
             throw new BusinessException(ErrorCode.POSTER_AI_SERVER_FAILED, ex);
 
         } catch (RuntimeException ex) {
             Throwable root = rootCause(ex);
             if (root instanceof TimeoutException) {
-                log.error("[AI/generate] timeout after {}s", REQ_TIMEOUT.getSeconds());
+                log.error("[AI/edit] timeout after {}s", REQ_TIMEOUT.getSeconds());
             } else {
-                log.error("[AI/generate] unexpected error: {} - {}", root.getClass().getSimpleName(), root.getMessage());
+                log.error("[AI/edit] unexpected error: {} - {}", root.getClass().getSimpleName(), root.getMessage());
             }
             throw new BusinessException(ErrorCode.POSTER_AI_SERVER_FAILED, ex);
         }
@@ -257,7 +257,7 @@ public class AiServiceImpl implements AiService {
         if (status.is2xxSuccessful()) {
             return res.bodyToMono(byte[].class)
                     .switchIfEmpty(Mono.defer(() -> {
-                        log.warn("[AI/generate] empty body with 2xx (ct={})", ct);
+                        log.warn("[AI/edit] empty body with 2xx (ct={})", ct);
                         return Mono.error(new BusinessException(ErrorCode.POSTER_IMAGE_EMPTY));
                     }))
                     .map(bytes -> {
@@ -265,7 +265,7 @@ public class AiServiceImpl implements AiService {
                             throw new BusinessException(ErrorCode.POSTER_IMAGE_EMPTY);
                         }
                         if (ct != null && !isImageLike(ct)) {
-                            log.warn("[AI/generate] suspicious content-type: {}", ct);
+                            log.warn("[AI/edit] suspicious content-type: {}", ct);
                         }
                         return bytes;
                     });
@@ -274,7 +274,7 @@ public class AiServiceImpl implements AiService {
         return res.bodyToMono(String.class)
                 .defaultIfEmpty("")
                 .flatMap(body -> {
-                    log.warn("[AI/generate] non-2xx status={} ct={} body={}",
+                    log.warn("[AI/edit] non-2xx status={} ct={} body={}",
                             status.value(), ct, trim(body));
                     return Mono.error(new BusinessException(ErrorCode.POSTER_AI_SERVER_FAILED));
                 });
