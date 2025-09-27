@@ -16,7 +16,7 @@ public class MessageListener {
 
     private final PosterService posterService;
 
-    @RabbitListener(queues = "${app.queue.poster.create}")
+    @RabbitListener(queues = "${app.queue.poster.create}.${app.server-id}")
     public void receiveCreateJob(CreatePosterJobMessage message) {
         String jobId = message.jobId();
         log.info("🐰 [MQ-RECEIVE] 새로운 포스터 생성 작업: {}", jobId);
@@ -29,7 +29,7 @@ public class MessageListener {
         }
     }
 
-    @RabbitListener(queues = "${app.queue.poster.edit}")
+    @RabbitListener(queues = "${app.queue.poster.edit}.${app.server-id}")
     public void receiveEditJob(EditPosterJobMessage message) {
         String jobId = message.jobId();
         log.info("🐰 [MQ-RECEIVE] 새로운 포스터 수정 작업: {}", jobId);

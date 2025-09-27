@@ -7,6 +7,7 @@ import com.ssafy.adplanet.exception.BusinessException;
 import com.ssafy.adplanet.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +21,12 @@ public class MessagePublisher {
 
     private static final Logger log = LoggerFactory.getLogger(MessagePublisher.class);
 
+    @Value("${app.exchange.poster}")
+    private String posterExchange;
+
+    @Value("${app.server-id}")
+    private String serverId;
+
     public void sendCreateJob(CreatePosterJobMessage message) {
         log.info("📤 [MQ-SEND] 포스터 생성 작업 전송: {}", message.jobId());
 
@@ -28,7 +35,8 @@ public class MessagePublisher {
             readyChecker.waitUntilCreateQueueReady();
 
             // 메시지 발송
-            rabbitTemplate.convertAndSend("poster.exchange", "poster.key", message);
+            String routingKey = "poster.create." + serverId;
+            rabbitTemplate.convertAndSend(posterExchange, routingKey, message);
             log.info("🐰 [MQ-SEND] 메시지 발송 완료: {}", message.jobId());
 
         } catch (Exception e) {
@@ -45,7 +53,8 @@ public class MessagePublisher {
             readyChecker.waitUntilEditQueueReady();
 
             // 메시지 발송
-            rabbitTemplate.convertAndSend("poster.exchange", "poster.key", message);
+            String routingKey = "poster.edit." + serverId;
+            rabbitTemplate.convertAndSend(posterExchange, routingKey, message);
             log.info("🐰 [MQ-SEND] 메시지 발송 완료: {}", message.jobId());
 
         } catch (Exception e) {

@@ -17,35 +17,47 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitConfig {
 
+    @Value("${app.server-id}")
+    private String serverId;
+
+    @Value("${app.exchange.poster}")
+    private String posterExchangeName;
+
     @Value("${app.queue.poster.create}")
-    private String posterCreateQueue;
+    private String posterCreateQueueBase;
 
     @Value("${app.queue.poster.edit}")
-    private String posterEditQueue;
+    private String posterEditQueueBase;
+
+    @Bean
+    public DirectExchange posterExchange() {
+        return new DirectExchange(posterExchangeName, true, false);
+    }
 
     @Bean
     public Queue posterCreateQueue() {
-        return new Queue(posterCreateQueue, true, false, false);
+        return new Queue(posterCreateQueueBase + "." + serverId, true, false, false);
     }
 
     @Bean
     public Queue posterEditQueue() {
-        return new Queue(posterEditQueue, true, false, false);
-    }
-
-    @Bean
-    public DirectExchange posterExchange() {
-        return new DirectExchange("poster.exchange");
+        return new Queue(posterEditQueueBase + "." + serverId, true, false, false);
     }
 
     @Bean
     public Binding bindingPosterCreate(Queue posterCreateQueue, DirectExchange posterExchange) {
-        return BindingBuilder.bind(posterCreateQueue).to(posterExchange).with("poster.create.key");
+        return BindingBuilder
+                .bind(posterCreateQueue)
+                .to(posterExchange)
+                .with("poster.create." + serverId);
     }
 
     @Bean
     public Binding bindingPosterEdit(Queue posterEditQueue, DirectExchange posterExchange) {
-        return BindingBuilder.bind(posterEditQueue).to(posterExchange).with("poster.edit.key");
+        return BindingBuilder
+                .bind(posterEditQueue)
+                .to(posterExchange)
+                .with("poster.edit." + serverId);
     }
 
     @Bean
