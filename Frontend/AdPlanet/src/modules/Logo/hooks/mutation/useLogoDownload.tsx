@@ -5,6 +5,6 @@ import type { AxiosResponse } from "axios";
 
 export function useLogoDownload() {
   return useMutation<AxiosResponse<Blob>, Error, LogoDownloadRequest>({
-    mutationFn: (req) => logoDownload(req),
+    mutationFn: logoDownload,
   });
 }
