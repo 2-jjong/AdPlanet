@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { loginWithAuthCode, extractAuthCode } from "../../../services/authService";
 import type { ApiResponse } from "../../../types/api";
 import { PATHS } from "../../../constants/paths";
+import SuccessMsg from "../components/SuccessMsg";
+import FailMsg from "../components/FailMsg";
 
 const AuthCallbackPage: React.FC = () => {
   const navigate = useNavigate();
@@ -23,8 +25,11 @@ const AuthCallbackPage: React.FC = () => {
 
             // 2초 후 홈페이지로 리다이렉트
             setTimeout(() => {
-              navigate(PATHS.HOME);
-            }, 2000);
+              // navigate(PATHS.HOME);
+              navigate(PATHS.HOME, { state: { from: PATHS.AUTH_CALLBACK } });   // 화면전환 위해 상태 저장
+
+            // }, 2000);
+            }, 3000);
           } else {
             setStatus("error");
             setMessage(res.message || "로그인에 실패했습니다.");
@@ -60,7 +65,9 @@ const AuthCallbackPage: React.FC = () => {
   }, [navigate]);
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 flex items-center justify-center'>
+    <div
+      className='min-h-screen bg-background from-slate-900 via-blue-900 to-indigo-900 flex items-center justify-center'
+    >
       <div className='text-center'>
         {status === "loading" && (
           <>
@@ -71,22 +78,23 @@ const AuthCallbackPage: React.FC = () => {
 
         {status === "success" && (
           <>
-            <div className='text-6xl mb-4'>✅</div>
-            <p className='text-green-400 text-lg font-semibold'>{message}</p>
-            <p className='text-gray-300 text-sm mt-2'>잠시 후 홈페이지로 이동합니다...</p>
+            <div>
+              <SuccessMsg />
+            </div>
           </>
         )}
 
         {status === "error" && (
           <>
-            <div className='text-6xl mb-4'>❌</div>
-            <p className='text-red-400 text-lg font-semibold'>{message}</p>
-            <p className='text-gray-300 text-sm mt-2'>잠시 후 홈페이지로 이동합니다...</p>
+            <div>
+              <FailMsg /> 
+            </div>
           </>
         )}
       </div>
     </div>
   );
 };
+
 
 export default AuthCallbackPage;

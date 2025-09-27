@@ -55,7 +55,9 @@ const routeConfig = [
   },
 ] as RouteObject[];
 // 라우터 설정
-const router = createBrowserRouter(routeConfig);
+const router = createBrowserRouter(
+  routeConfig
+);
 
 const AppRouter = () => {
   return <RouterProvider router={router} />;

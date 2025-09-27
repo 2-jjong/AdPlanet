@@ -21,6 +21,7 @@
     "axios": "^1.12.2",
     "clsx": "^2.1.1",
     "html2canvas": "^1.4.1",
+    "framer-motion": "^12.23.19",
     "gsap": "^3.13.0",
     "install": "^0.13.0",
     "lottie-react": "^2.4.1",
