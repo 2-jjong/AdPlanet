@@ -169,44 +169,131 @@ public class GmsServiceImpl implements GmsService {
     }
 
     @Override
-    public String refinePosterPrompt(String userPrompt) {
+    public String refinePosterCreatePrompt(String userPrompt, boolean hasPose) {
         try {
             String raw   = (userPrompt == null) ? "" : userPrompt.trim();
             if (raw.length() > 2000) raw = raw.substring(0, 2000);
 
-            // 요청 바디 구성 (텍스트 출력)
+            // 1. 기본 프레임 문장
+            String baseFrame;
+            if (hasPose) {
+                baseFrame = "Realistic advertisement photo of the person from image1 " +
+                        "confidently holding, using, or looking at the product from image2, " +
+                        "with the pose shown in image3.";
+            } else {
+                baseFrame = "Realistic advertisement photo of the person from image1 " +
+                        "confidently holding, using, or looking at the product from image2.";
+            }
+
+            // 2. GPT에 줄 instruction
+            String instruction = """
+            You are an expert prompt generator for Qwen-based image generation.
+
+            Task:
+            - Combine the base advertisement prompt and the user's request.
+            - Expand them into a fluent, detailed English sentence suitable for Qwen image generation.
+            - Do not add meta-explanations. Output only the final prompt sentence.
+
+            Base prompt:
+            %s
+
+            User request:
+            %s
+            """.formatted(baseFrame, raw);
+
+            // 3. 요청 바디 구성
             ObjectNode root = om.createObjectNode();
             root.put("model", "gpt-5-nano");
 
             ObjectNode textNode = root.putObject("text");
             ObjectNode format   = textNode.putObject("format");
-            format.put("type", "text"); // 텍스트만 반환
+            format.put("type", "text");
 
             ArrayNode input = root.putArray("input");
             ObjectNode user = input.addObject().put("role", "user");
             ArrayNode content = user.putArray("content");
 
-            // Qwen 모델용 지시문 (구조화된 광고 문장 생성)
+            content.addObject()
+                    .put("type", "input_text")
+                    .put("text", instruction);
+
+            // 4. GMS 호출
+            String respBody = gmsWebClient.post()
+                    .uri("/responses")
+                    .headers(h -> h.setBearerAuth(apiKey))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .bodyValue(root)
+                    .retrieve()
+                    .onStatus(s -> !s.is2xxSuccessful(), res ->
+                            res.bodyToMono(String.class).defaultIfEmpty("")
+                                    .flatMap(b -> Mono.error(new IllegalStateException(
+                                            "GMS 오류 " + res.statusCode().value() + ": " + trim(b)))))
+                    .bodyToMono(String.class)
+                    .timeout(requestTimeout)
+                    .block();
+
+            if (respBody == null || respBody.isBlank()) {
+                throw new IllegalStateException("GMS 빈 응답(프롬프트 정제)");
+            }
+
+            JsonNode rootJson = om.readTree(respBody);
+            String out = extractFirstTextFromGms(rootJson);
+            if (out == null || out.isBlank()) {
+                out = stripCodeFence(respBody).trim();
+            }
+
+            if (out.length() > 800) out = out.substring(0, 800);
+            return out;
+
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.LOGO_PROMPT_REFINEMENT_FAILED, e);
+        }
+    }
+
+    @Override
+    public String refinePosterEditPrompt(String userPrompt) {
+        try {
+            String raw   = (userPrompt == null) ? "" : userPrompt.trim();
+            if (raw.length() > 2000) raw = raw.substring(0, 2000);
+
+            // 1. 기본 프레임
+            String baseFrame = "Edit the base poster image to reflect the following changes, " +
+                    "while keeping the original composition and overall structure.";
+
+            // 2. GPT에 줄 instruction
             String instruction = """
             You are an expert prompt generator for Qwen-based image generation.
-            
+
             Task:
-            - Rewrite the user's request into a clear, structured English sentence for advertisement creation.
-            - The format should be:
-              "Generate an advertisement where the person from image 1 is posing like image 3, with image 2."
-            - Image 1 = model (person)
-            - Image 2 = product
-            - Image 3 = pose reference
-            - Do not add explanations, quotes, or extra words. Just output the single sentence.
-            
-            Original user prompt:
+            - Combine the base advertisement prompt and the user's request.
+            - Expand them into a fluent, detailed English sentence suitable for Qwen image editing.
+            - Do not add meta-explanations. Output only the final prompt sentence.
+
+            Base prompt:
             %s
-            """.formatted(raw);
+
+            User request:
+            %s
+            """.formatted(baseFrame, raw);
+
+            // 3. 요청 바디 구성
+            ObjectNode root = om.createObjectNode();
+            root.put("model", "gpt-5-nano");
+
+            ObjectNode textNode = root.putObject("text");
+            ObjectNode format   = textNode.putObject("format");
+            format.put("type", "text");
+
+            ArrayNode input = root.putArray("input");
+            ObjectNode user = input.addObject().put("role", "user");
+            ArrayNode content = user.putArray("content");
 
             content.addObject()
                     .put("type", "input_text")
                     .put("text", instruction);
 
+            // 4. GMS 호출
             String respBody = gmsWebClient.post()
                     .uri("/responses")
                     .headers(h -> h.setBearerAuth(apiKey))
