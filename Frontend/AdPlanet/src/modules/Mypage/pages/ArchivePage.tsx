@@ -118,16 +118,21 @@ const ArchivePage: React.FC = () => {
   };
 
   return (
-    <section className="relative w-screen h-screen">
-      <Canvas className="absolute inset-0 !w-full !h-full" camera={{ position: [0, 0, 10], fov: 50 }}>
+    <section className="relative w-screen h-screen overflow-hidden">
+      {/* 배경 Canvas (전체 화면 고정) */}
+      <Canvas
+        style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}
+        gl={{ alpha: true }}
+        camera={{ position: [0, 0, 10], fov: 50 }}
+      >
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 10, 5]} />
         <Stars size={3} />
       </Canvas>
 
-    <div className="min-h-screen items-center justify-center absolute inset-0" onWheel={handleWheel}>
+    <div className="h-full items-center justify-center absolute inset-0" style={{ zIndex: 10 }} onWheel={handleWheel}>
       <Navigation />
-      <main className="font-jamsil relative z-10 flex flex-col items-center justify-start min-h-[calc(100vh-80px)] lg:px-12 text-center">
+      <main className="font-jamsil relative z-10 flex flex-col items-center justify-start h-[calc(100vh-80px)] lg:px-12 text-center overflow-hidden">
         <h1 className="text-4xl lg:text-5xl font-bold text-white mt-6">Archive</h1>
 
         <div className="mt-4">
