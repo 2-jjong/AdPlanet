@@ -446,7 +446,7 @@ public class PosterServiceImpl implements PosterService {
         if (tagIds == null || tagIds.isEmpty()) {
             groups = posterGroupRepository.findByUser_UserId(userId, sort);
         } else {
-            List<Long> ids = posterGroupRepository.findIdsByUserIdAndAllTags(userId, tagIds, tagIds.size());
+            List<Long> ids = posterGroupRepository.findIdsByUserIdAndAnyTags(userId, tagIds);
             if (ids.isEmpty()) return List.of();
 
             groups = posterGroupRepository.findAllWithTagsByIdIn(ids);

@@ -25,20 +25,15 @@ public interface PosterGroupRepository extends JpaRepository<PosterGroup, Long> 
     @EntityGraph(attributePaths = "tags")
     List<PosterGroup> findByUser_UserId(Long userId, Sort sort);
 
-    // 태그 AND 필터: 로고 ID만 먼저 뽑기
+    // 태그 OR 필터: 포스터 ID만 먼저 뽑기
     @Query("""
-        SELECT pg.id FROM PosterGroup pg
-          JOIN pg.tags t
-         WHERE pg.user.userId = :userId
-           AND t.id IN :tagIds
-         GROUP BY pg.id
-        HAVING COUNT(DISTINCT t.id) = :tagCount
+        SELECT DISTINCT pg.id
+        FROM PosterGroup pg
+        JOIN pg.tags t
+        WHERE pg.user.userId = :userId
+          AND t.id IN :tagIds
         """)
-    List<Long> findIdsByUserIdAndAllTags(
-            @Param("userId") Long userId,
-            @Param("tagIds") List<Long> tagIds,
-            @Param("tagCount") long tagCount
-    );
+    List<Long> findIdsByUserIdAndAnyTags(@Param("userId") Long userId, @Param("tagIds") List<Long> tagIds);
 
     // 위 ID들로 태그까지 한 번에 가져오기 (fetch join)
     @Query("""
