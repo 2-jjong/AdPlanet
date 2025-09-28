@@ -179,7 +179,6 @@ export default function LogoDetailPage() {
           <div className="font-jamsil mx-auto w-full max-w-7xl px-6 py-8">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-3xl font-extrabold tracking-tight">CI 가이드라인</h2>
-              <RoundButton text="편집" variant="outline" />
             </div>
 
             {ciCreateError && (
@@ -193,10 +192,10 @@ export default function LogoDetailPage() {
             ) : (
               <CiGuidelineUnavailable creating={creatingCi} onCreate={handleCreateGuideline} />
             )}
-
+{/* 
             <div className="mt-6 flex justify-end">
               <RoundButton text="Export" variant="outline" />
-            </div>
+            </div> */}
           </div>
         </FullpageSection>
       </FullpageContainer>
