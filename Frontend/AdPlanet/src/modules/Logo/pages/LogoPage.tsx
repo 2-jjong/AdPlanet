@@ -206,10 +206,10 @@ const LogoPage: React.FC = () => {
           {/* 로고 추천 영역 - 전체 높이 사용 */}
           <aside className="w-full rounded-xl p-3 md:p-4 flex flex-col items-center bg-white/5 border border-white/10 backdrop-blur h-full">
             <h2 className="text-lg font-jamsil text-text-color text-center flex-shrink-0 p-3">
-              Recommend
+              Style
             </h2>
 
-            <div className="flex flex-col gap-4 w-full flex-1 justify-between">
+            <div className="flex flex-col w-full gap-4 mt-5">
               {recommends.map((item, idx) => (
                 <TiltCard
                   key={idx}
