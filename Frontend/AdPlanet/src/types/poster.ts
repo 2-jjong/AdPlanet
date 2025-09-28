@@ -56,6 +56,7 @@ export interface PosterConfig {
 
 export interface GenerationRecord {
   id: string;
+  posterId?: number; // 서버에서 받은 실제 포스터 ID
   timestamp: Date;
   thumbnail: string;
   prompt: string;

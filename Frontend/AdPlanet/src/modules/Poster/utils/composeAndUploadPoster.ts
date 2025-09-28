@@ -13,6 +13,11 @@ export async function composeAndUploadPoster({ groupId, posterId, posterElement 
   try {
     // 1. 서버에서 이미지 바이너리 가져오기 (CORS 우회)
     const imageBlob = await getPosterImage(posterId);
+    
+    if (!(imageBlob instanceof Blob)) {
+      throw new Error(`getPosterImage가 Blob이 아닌 값을 반환했습니다: ${typeof imageBlob}`);
+    }
+    
     localImageUrl = URL.createObjectURL(imageBlob);
     
     // 2. DOM의 이미지 src를 로컬 Blob URL로 임시 변경

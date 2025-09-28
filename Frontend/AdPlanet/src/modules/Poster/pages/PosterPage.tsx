@@ -29,7 +29,6 @@ import {
   posterKeys,
 } from "../hooks/usePosterQueries";
 import { useQueryClient } from "@tanstack/react-query";
-import { defaultSkeletonPose } from "../components/defaultPose";
 import TagDialog from "../components/TagDialog";
 import StatusIndicatorItem from "../components/StatusIndicatorItem";
 import SectionHeader from "../components/SectionHeader";
@@ -116,6 +115,7 @@ const PosterPage: React.FC = () => {
   const doComposeAndUpload = useCallback(
     async (groupId: number) => {
       const posterElement = posterContainerRef.current;
+      
       if (!posterElement || !currentPosterId) {
         throw new Error("Poster container or posterId not found");
       }
@@ -347,6 +347,7 @@ const PosterPage: React.FC = () => {
             updated[i] = {
               ...updated[i],
               status: "completed",
+              posterId: finalPosterId,
               thumbnail: finalUrl || updated[i].thumbnail,
               timestamp: new Date(),
             };
@@ -551,6 +552,7 @@ const PosterPage: React.FC = () => {
       (detail as any).history ?? (detail as any).posters ?? [];
     const mapped = historyItems.map((p: any, idx: number) => ({
       id: String(p.posterId ?? idx),
+      posterId: p.posterId,
       timestamp: new Date(p.createdAt || new Date()),
       thumbnail: p.imgUrl,
       prompt: p.prompt ?? detail.title ?? `생성 ${idx + 1}`,
@@ -583,6 +585,11 @@ const PosterPage: React.FC = () => {
     });
     setGenerationRecords(mapped);
     setSelectedRecordId(undefined);
+    
+    // 마지막 포스터 ID를 current로 설정
+    if (last?.posterId) {
+      setCurrentPosterId(last.posterId);
+    }
   }, [groupDetailQuery.data]);
 
   // 히스토리 선택에 따라 캔버스 이미지 동기화 (선택 없으면 마지막 항목)
@@ -602,10 +609,18 @@ const PosterPage: React.FC = () => {
 
   const handleSelectRecord = useCallback(
     (recordId: string) => {
-      setSelectedRecordId(selectedRecordId === recordId ? undefined : recordId);
+      const isDeselecting = selectedRecordId === recordId;
+      setSelectedRecordId(isDeselecting ? undefined : recordId);
+      
       // 선택된 기록으로 상태 복원
+      if (!isDeselecting) {
+        const selectedRecord = generationRecords.find(r => r.id === recordId);
+        if (selectedRecord?.posterId) {
+          setCurrentPosterId(selectedRecord.posterId);
+        }
+      }
     },
-    [selectedRecordId]
+    [selectedRecordId, generationRecords]
   );
 
   return (
@@ -651,7 +666,14 @@ const PosterPage: React.FC = () => {
           {/* 포스터 생성 영역 */}
           <div
             className="flex-1 flex flex-col p-4 lg:p-6 min-h-0 max-h-full"
-            onClick={handleOutsideClick}
+            onClick={(e) => {
+              // 그룹 사이드바 클릭은 제외
+              const target = e.target as HTMLElement;
+              if (target.closest('[data-group-sidebar]')) {
+                return;
+              }
+              handleOutsideClick();
+            }}
           >
             {/* 가운데: Canvas + 프롬프트 */}
             <main className="relative flex flex-col items-center w-full max-w-[500px] mx-auto flex-1 min-h-0">
