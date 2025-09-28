@@ -37,7 +37,7 @@ export interface TextOverlay {
 }
 
 export interface PosterGenerationState {
-  step: 'upload' | 'generate' | 'edit' | 'text-edit' | 'complete';
+  step: 'upload' | 'generate' | 'edit' | 'text-edit' | 'complete' | 'mode-select';
   uploadedImages: UploadedImage[];
   generatedPoster: string | null;
   currentPose: SkeletonPose | null;

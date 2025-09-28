@@ -4,7 +4,7 @@ import TextEditor from "../../../components/UI/Text/TextEditor";
 import type { SkeletonPose, TextOverlay } from "../../../types/poster";
 
 interface PosterSidebarProps {
-  step: "upload" | "generate" | "edit" | "text-edit" | "complete";
+  step: "upload" | "generate" | "edit" | "text-edit" | "complete" | "mode-select";
   currentPose: SkeletonPose | null;
   isGenerating: boolean;
   textOverlays: TextOverlay[];
@@ -20,6 +20,7 @@ interface PosterSidebarProps {
   onRemoveText: (id: string) => void;
   onSelectText: (id?: string) => void;
   skeletonRef?: React.Ref<SkeletonCanvasHandle>;
+  onModeSelect?: (mode: 'text-edit' | 'upload') => void;
 }
 
 const PosterSidebar: React.FC<PosterSidebarProps> = ({
@@ -37,7 +38,55 @@ const PosterSidebar: React.FC<PosterSidebarProps> = ({
   onRemoveText,
   onSelectText,
   skeletonRef,
+  onModeSelect,
 }) => {
+  if (step === "mode-select") {
+    return (
+      <div className="p-6 flex flex-col gap-6">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-text-color mb-2">작업 모드 선택</h2>
+          <p className="text-sm text-text-color/60">기존 이미지에 문구를 추가하거나 새로운 포스터를 생성하세요</p>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <button
+            onClick={() => onModeSelect?.('text-edit')}
+            className="w-full p-6 rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/15 hover:to-primary/10 hover:border-primary/50 transition-all duration-200 group"
+          >
+            <div className="flex flex-col items-center gap-3">
+              <div className="p-3 bg-primary/20 rounded-xl group-hover:bg-primary/30 transition-colors">
+                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
+              <div className="text-center">
+                <h3 className="font-semibold text-text-color mb-1">광고 문구 추가</h3>
+                <p className="text-sm text-text-color/60">기존 이미지에 텍스트를 추가하고 편집합니다</p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => onModeSelect?.('upload')}
+            className="w-full p-6 rounded-xl border-2 border-white/20 bg-gradient-to-br from-white/5 to-white/2 hover:from-white/10 hover:to-white/5 hover:border-white/30 transition-all duration-200 group"
+          >
+            <div className="flex flex-col items-center gap-3">
+              <div className="p-3 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors">
+                <svg className="w-6 h-6 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              </div>
+              <div className="text-center">
+                <h3 className="font-semibold text-text-color mb-1">파일로 포스터 생성</h3>
+                <p className="text-sm text-text-color/60">새로운 파일을 업로드해서 포스터를 생성합니다</p>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (step === "text-edit") {
     return (
       <div className="p-4 flex flex-col gap-4">
