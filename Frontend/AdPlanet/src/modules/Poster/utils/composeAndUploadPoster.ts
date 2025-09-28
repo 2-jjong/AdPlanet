@@ -14,11 +14,28 @@ export async function composeAndUploadPoster({ groupId, posterId, posterElement 
     // 1. 서버에서 이미지 바이너리 가져오기 (CORS 우회)
     const imageBlob = await getPosterImage(posterId);
     
-    if (!(imageBlob instanceof Blob)) {
-      throw new Error(`getPosterImage가 Blob이 아닌 값을 반환했습니다: ${typeof imageBlob}`);
+    // 프로덕션 환경에서 디버깅을 위한 상세 로그
+    console.log('imageBlob type:', typeof imageBlob);
+    console.log('imageBlob instanceof Blob:', imageBlob instanceof Blob);
+    console.log('imageBlob:', imageBlob);
+    console.log('imageBlob.constructor.name:', imageBlob?.constructor?.name);
+    
+    // Blob이 아닌 경우 강제로 Blob으로 변환 시도
+    let actualBlob: Blob;
+    if (imageBlob instanceof Blob) {
+      actualBlob = imageBlob;
+    } else {
+      console.warn('Response is not a Blob, attempting to convert:', typeof imageBlob);
+      try {
+        // ArrayBuffer나 다른 타입일 경우 Blob으로 변환
+        actualBlob = new Blob([imageBlob], { type: 'image/png' });
+      } catch (conversionError) {
+        console.error('Failed to convert to Blob:', conversionError);
+        throw new Error(`getPosterImage가 Blob이 아닌 값을 반환했고 변환도 실패했습니다: ${typeof imageBlob}, constructor: ${imageBlob?.constructor?.name}`);
+      }
     }
     
-    localImageUrl = URL.createObjectURL(imageBlob);
+    localImageUrl = URL.createObjectURL(actualBlob);
     
     // 2. DOM의 이미지 src를 로컬 Blob URL로 임시 변경
     const imgElement = posterElement.querySelector('img') as HTMLImageElement | null;

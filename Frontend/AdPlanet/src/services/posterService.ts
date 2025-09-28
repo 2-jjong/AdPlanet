@@ -84,6 +84,15 @@ export async function getPoster(
 /** 포스터 바이너리 이미지 가져오기 (image/png) */
 export async function getPosterImage(posterId: number): Promise<Blob> {
   const res = await apiClient.get(`/api/posters/${posterId}/image`, { responseType: 'blob' as any });
+  
+  // 프로덕션 환경에서 디버깅을 위한 상세 로그
+  console.log('getPosterImage response:', res);
+  console.log('res.data type:', typeof res.data);
+  console.log('res.data instanceof Blob:', res.data instanceof Blob);
+  console.log('res.data:', res.data);
+  console.log('res.headers:', res.headers);
+  console.log('res.status:', res.status);
+  
   // axios의 타입 제약 회피를 위해 as any 사용; 응답은 blob
   return res.data as Blob;
 }
