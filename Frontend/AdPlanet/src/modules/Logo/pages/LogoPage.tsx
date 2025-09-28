@@ -155,9 +155,12 @@ const LogoPage: React.FC = () => {
           let filename = "download.png";
           const disposition = res.headers["content-disposition"];
           if (disposition) {
-            const match = disposition.match(/filename="?(.+)"?/);
-            if (match?.[1]) filename = match[1];
+            const match = disposition.match(
+              /filename\*?=(?:UTF-8'')?"?([^\";]+)"?/
+            );
+            if (match?.[1]) filename = decodeURIComponent(match[1]);
           }
+          filename = filename.replace(/_+$/, "");
 
           const url = window.URL.createObjectURL(blob);
           const link = document.createElement("a");
