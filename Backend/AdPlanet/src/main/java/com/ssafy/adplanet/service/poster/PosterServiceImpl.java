@@ -561,6 +561,9 @@ public class PosterServiceImpl implements PosterService {
         s3Service.upload(key, watermarkedBytes, "image/png");
         poster.setImgUrl(s3Service.toS3Uri(key));
 
+        // 대표 포스터 변경
+        posterGroup.setMainPoster(poster);
+
         return new PosterResponse(
                 poster.getId(),
                 s3Service.toHttpUrl(poster.getImgUrl())
