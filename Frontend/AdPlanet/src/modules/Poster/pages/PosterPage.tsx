@@ -519,10 +519,30 @@ const PosterPage: React.FC = () => {
     // 이전 그룹의 진행 중인 작업 정리
     setCurrentJobId(undefined);
     
+    const isSameGroup = currentGroupId === groupId;
+    
     setCurrentGroupId(groupId);
     setIsGroupListOpen(false);
-    // 그룹 변경은 useEffect에서 처리되므로 여기서는 최소한만 설정
-  }, []);
+    
+    // 같은 그룹을 재선택한 경우 강제로 모드 선택 화면으로 이동
+    if (isSameGroup) {
+      // 현재 그룹의 마지막 이미지가 있는지 확인
+      const hasExistingImage = generationRecords.length > 0 && generationRecords[generationRecords.length - 1]?.thumbnail;
+      
+      if (hasExistingImage) {
+        setState((prev) => ({
+          ...prev,
+          step: "mode-select"
+        }));
+      } else {
+        setState((prev) => ({
+          ...prev,
+          step: "upload"
+        }));
+      }
+    }
+    // 다른 그룹 선택은 useEffect에서 처리
+  }, [currentGroupId, generationRecords]);
 
   const handleNewGroup = useCallback(() => {
     // 이전 그룹의 진행 중인 작업 정리
