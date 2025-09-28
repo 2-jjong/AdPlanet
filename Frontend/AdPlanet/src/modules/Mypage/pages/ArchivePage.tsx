@@ -132,49 +132,52 @@ const ArchivePage: React.FC = () => {
 
     <div className="h-full items-center justify-center absolute inset-0" style={{ zIndex: 10 }} onWheel={handleWheel}>
       <Navigation />
-      <main className="font-jamsil relative z-10 flex flex-col items-center justify-start h-[calc(100vh-80px)] lg:px-12 text-center overflow-hidden">
-        <h1 className="text-4xl lg:text-5xl font-bold text-white mt-6">Archive</h1>
-
-        <div className="mt-4">
-          <ArchiveToolbar />
+      <main className="font-jamsil relative z-10 flex flex-col h-screen lg:px-12 text-center overflow-hidden">
+        <div className="pt-6">
+          <h1 className="text-4xl lg:text-5xl font-bold text-white">Archive</h1>
+          <div className="mt-4 flex justify-center">
+            <ArchiveToolbar />
+          </div>
         </div>
 
-        {tagsMode && (
-          <div className="ml-12 w-full max-w-6xl">
-            {tagsLoading ? (
-              <div className="text-slate-400">태그 불러오는 중…</div>
-            ) : tagsError ? (
-              <div className="text-red-300">{tagsError}</div>
+        <div className="flex-1 flex flex-col items-center justify-center mx-14">
+          {tagsMode && (
+            <div className="ml-12 w-full max-w-6xl mb-6">
+              {tagsLoading ? (
+                <div className="text-slate-400">태그 불러오는 중…</div>
+              ) : tagsError ? (
+                <div className="text-red-300">{tagsError}</div>
+              ) : kind === "logo" ? (
+                <LogoTagBar
+                  items={tags}
+                  selectedIds={selectedTagIds}
+                  onToggle={onToggleTag}
+                  onClear={onClearTags}
+                />
+              ) : (
+                <PosterTagBar
+                  items={tags}
+                  selectedIds={selectedTagIds}
+                  onToggle={onToggleTag}
+                  onClear={onClearTags}
+                />
+              )}
+            </div>
+          )}
+
+          <div className="w-full flex flex-col items-center">
+            {tagsMode ? (
+              kind === "logo" ? (
+                <LogoTagGrid tagIds={selectedTagIds} />
+              ) : (
+                <PosterTagGrid tagIds={selectedTagIds} />
+              )
             ) : kind === "logo" ? (
-              <LogoTagBar
-                items={tags}
-                selectedIds={selectedTagIds}
-                onToggle={onToggleTag}
-                onClear={onClearTags}
-              />
+              <LogoCardList ref={logoCardListRef} />
             ) : (
-              <PosterTagBar
-                items={tags}                         
-                selectedIds={selectedTagIds}         
-                onToggle={onToggleTag}
-                onClear={onClearTags}
-              />
+              <PosterCardList />
             )}
           </div>
-        )}
-
-        <div className="w-full flex flex-col items-center">
-          {tagsMode ? (
-            kind === "logo" ? (
-              <LogoTagGrid tagIds={selectedTagIds} />
-            ) : (
-              <PosterTagGrid tagIds={selectedTagIds} />   
-            )
-          ) : kind === "logo" ? (
-            <LogoCardList ref={logoCardListRef} />
-          ) : (
-            <PosterCardList />
-          )}
         </div>
       </main>
     </div>

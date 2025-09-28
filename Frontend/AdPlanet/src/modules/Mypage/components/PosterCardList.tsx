@@ -6,6 +6,7 @@ import { Scrollbar, Mousewheel } from "swiper/modules";
 import { getPosterGroups } from "../../../services/posterService";
 import type { PosterGroupItem } from "../../../services/dto/poster.dto";
 import { PosterCard } from "./PosterCard";
+import NeedLogin from "./NeedLogin";
 
 
 
@@ -13,7 +14,7 @@ import { PosterCard } from "./PosterCard";
 export default function PosterCardList() {
   const [items, setItems] = useState<PosterGroupItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>("");
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
@@ -21,7 +22,6 @@ export default function PosterCardList() {
     let alive = true;
     (async () => {
       try {
-        setError("");
         setLoading(true);
 
         // TODO : ArchiveToolbar 쿼리 반영 (latest -> newest)
@@ -38,7 +38,13 @@ export default function PosterCardList() {
       } catch (e: any) {
         if (!alive) return;
         console.error("[PosterCardList] fetch error:", e?.response || e);
-        setError("포스터 목록을 불러오지 못했어요.");
+
+        // 401 에러 체크
+        if (e?.response?.status === 401 || e?.message?.includes("401")) {
+          setIsUnauthorized(true);
+        } else {
+          setIsUnauthorized(false);
+        }
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -49,19 +55,10 @@ export default function PosterCardList() {
     };
   }, [params]);
 
-  if (error) {
+  if (isUnauthorized) {
     return (
-      <div className="w-full py-10 text-center">
-        <p className="text-red-400 mb-3">{error}</p>
-        {/* <button
-          className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600"
-          onClick={() => {
-            // 간단 리트라이: 쿼리 변경 트리거가 없으니 location.reload로 간단하게 처리
-            location.reload();
-          }}
-        >
-          다시 시도
-        </button> */}
+      <div className="w-full py-5">
+        <NeedLogin />
       </div>
     );
   }
@@ -73,12 +70,14 @@ export default function PosterCardList() {
         mousewheel={{ releaseOnEdges: true }}
         freeMode={{ enabled: false, sticky: true }}
         scrollbar={{ draggable: true }}
-        slidesPerView={1.1}
-        spaceBetween={48}
+        slidesPerView={1.2}
+        spaceBetween={32}
         breakpoints={{
-          640: { slidesPerView: 2, spaceBetween: 48 },
-          1024: { slidesPerView: 3, spaceBetween: 64 },
-          1280: { slidesPerView: 4, spaceBetween: 72 },
+          640: { slidesPerView: 2.2, spaceBetween: 36 },
+          1024: { slidesPerView: 3.2, spaceBetween: 40 },
+          1280: { slidesPerView: 3.8, spaceBetween: 44 },
+          1536: { slidesPerView: 4.5, spaceBetween: 48 },
+          1920: { slidesPerView: 5.2, spaceBetween: 52 },
         }}
         style={
           {
@@ -95,7 +94,7 @@ export default function PosterCardList() {
         {loading
           ? Array.from({ length: 8 }).map((_, i) => (
               <SwiperSlide key={`skeleton-${i}`} className="!h-auto pb-12">
-                <div className="animate-pulse h-72 w-full rounded-2xl bg-slate-800 border border-slate-700/60" />
+                <div className="animate-pulse aspect-[3/4] w-full rounded-2xl bg-slate-800 border border-slate-700/60" />
               </SwiperSlide>
             ))
           : items.map((it) => (

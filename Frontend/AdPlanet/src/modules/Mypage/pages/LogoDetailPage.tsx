@@ -159,13 +159,13 @@ export default function LogoDetailPage() {
               <section className="col-span-12 lg:col-span-6 space-y-8">
                 {detail.slogan && (
                   <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
-                    <h2 className="text-xl font-bold text-primary">슬로건(선택사항)</h2>
+                    <h2 className="text-xl font-bold text-primary">TITLE</h2>
                     <p className="mt-3 text-lg leading-relaxed">{detail.slogan}</p>
                   </div>
                 )}
                 {detail.prompt && (
                   <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
-                    <h2 className="text-xl font-bold text-primary">프롬프트</h2>
+                    <h2 className="text-xl font-bold text-primary">PROMPT</h2>
                     <p className="mt-3 whitespace-pre-wrap leading-relaxed">{detail.prompt}</p>
                   </div>
                 )}
@@ -179,7 +179,6 @@ export default function LogoDetailPage() {
           <div className="font-jamsil mx-auto w-full max-w-7xl px-6 py-8">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-3xl font-extrabold tracking-tight">CI 가이드라인</h2>
-              <RoundButton text="편집" variant="outline" />
             </div>
 
             {ciCreateError && (
@@ -193,10 +192,10 @@ export default function LogoDetailPage() {
             ) : (
               <CiGuidelineUnavailable creating={creatingCi} onCreate={handleCreateGuideline} />
             )}
-
+{/* 
             <div className="mt-6 flex justify-end">
               <RoundButton text="Export" variant="outline" />
-            </div>
+            </div> */}
           </div>
         </FullpageSection>
       </FullpageContainer>
