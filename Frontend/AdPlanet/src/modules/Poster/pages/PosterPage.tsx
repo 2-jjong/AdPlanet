@@ -12,11 +12,22 @@ import PosterTopBar from "../components/PosterTopBar";
 import PosterCanvasView from "../components/PosterCanvasView";
 import PosterSidebar from "../components/PosterSidebar";
 import type { SkeletonCanvasHandle } from "../components/SkeletonCanvas";
-import type { UploadedImage, PosterGenerationState, SkeletonPose, TextOverlay, GenerationRecord } from "../../../types/poster";
+import type {
+  UploadedImage,
+  PosterGenerationState,
+  // SkeletonPose,
+  TextOverlay,
+  GenerationRecord,
+} from "../../../types/poster";
 import { PATHS } from "../../../constants/paths";
 import { useCreatePosterMutation } from "../hooks/usePosterMutations";
 import type { UiPosterStyle } from "../hooks/usePosterMutations";
-import { usePosterGroups, usePosterGroupDetail, usePosterJob, posterKeys } from "../hooks/usePosterQueries";
+import {
+  usePosterGroups,
+  usePosterGroupDetail,
+  usePosterJob,
+  posterKeys,
+} from "../hooks/usePosterQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import { defaultSkeletonPose } from "../components/defaultPose";
 import TagDialog from "../components/TagDialog";
@@ -57,7 +68,7 @@ const PosterPage: React.FC = () => {
 
   // 그룹 목록 사이드바 상태
   const [isGroupListOpen, setIsGroupListOpen] = useState(false);
-  const groupsQuery = usePosterGroups({ order: 'NEWEST' });
+  const groupsQuery = usePosterGroups({ order: "NEWEST" });
   const queryClient = useQueryClient();
 
   // 파일 첨부 아코디언 자동 닫기 핸들러
@@ -83,32 +94,48 @@ const PosterPage: React.FC = () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isImagePreviewOpen]);
-  const [selectedRecordId, setSelectedRecordId] = useState<string | undefined>();
-  const [currentGroupId, setCurrentGroupId] = useState<number | undefined>(undefined);
-  const [currentJobId, setCurrentJobId] = useState<string | undefined>(undefined);
-  const [currentPosterId, setCurrentPosterId] = useState<number | undefined>(undefined);
+  const [selectedRecordId, setSelectedRecordId] = useState<
+    string | undefined
+  >();
+  const [currentGroupId, setCurrentGroupId] = useState<number | undefined>(
+    undefined
+  );
+  const [currentJobId, setCurrentJobId] = useState<string | undefined>(
+    undefined
+  );
+  const [currentPosterId, setCurrentPosterId] = useState<number | undefined>(
+    undefined
+  );
 
   // 생성 히스토리 (그룹 선택 시 서버 데이터로 갱신)
-  const [generationRecords, setGenerationRecords] = useState<GenerationRecord[]>([]);
+  const [generationRecords, setGenerationRecords] = useState<
+    GenerationRecord[]
+  >([]);
 
   // 합성/업로드 호출용 래퍼
-  const doComposeAndUpload = useCallback(async (groupId: number) => {
-    const posterElement = posterContainerRef.current;
-    if (!posterElement || !currentPosterId) {
-      throw new Error('Poster container or posterId not found');
-    }
-    
-    await composeAndUploadPoster({ 
-      groupId, 
-      posterId: currentPosterId,
-      posterElement 
-    });
-  }, [posterContainerRef, currentPosterId]);
+  const doComposeAndUpload = useCallback(
+    async (groupId: number) => {
+      const posterElement = posterContainerRef.current;
+      if (!posterElement || !currentPosterId) {
+        throw new Error("Poster container or posterId not found");
+      }
+
+      await composeAndUploadPoster({
+        groupId,
+        posterId: currentPosterId,
+        posterElement,
+      });
+    },
+    [posterContainerRef, currentPosterId]
+  );
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setState((prev) => ({
       ...prev,
-      uploadedImages: [...prev.uploadedImages.filter((img) => img.type !== image.type), image],
+      uploadedImages: [
+        ...prev.uploadedImages.filter((img) => img.type !== image.type),
+        image,
+      ],
     }));
 
     switch (image.type) {
@@ -124,29 +151,38 @@ const PosterPage: React.FC = () => {
     }
   }, []);
 
-  const handleImageRemove = useCallback((type: "person" | "product" | "sketch") => {
-    setState((prev) => ({
-      ...prev,
-      uploadedImages: prev.uploadedImages.filter((img) => img.type !== type),
-    }));
+  const handleImageRemove = useCallback(
+    (type: "person" | "product" | "sketch") => {
+      setState((prev) => ({
+        ...prev,
+        uploadedImages: prev.uploadedImages.filter((img) => img.type !== type),
+      }));
 
-    switch (type) {
-      case "person":
-        setPersonImage(null);
-        break;
-      case "product":
-        setProductImage(null);
-        break;
-      case "sketch":
-        setSketchImage(null);
-        break;
-    }
-  }, []);
+      switch (type) {
+        case "person":
+          setPersonImage(null);
+          break;
+        case "product":
+          setProductImage(null);
+          break;
+        case "sketch":
+          setSketchImage(null);
+          break;
+      }
+    },
+    []
+  );
 
   const handleGenerate = useCallback(async () => {
     // 첫 생성은 업로드/프롬프트 중 하나가 있어야 하고,
     // 구도 조정(이미 생성본 존재)일 때는 previousImage 로만 생성 허용
-    if (!personImage && !productImage && !sketchImage && !state.prompt.trim() && !state.generatedPoster) {
+    if (
+      !personImage &&
+      !productImage &&
+      !sketchImage &&
+      !state.prompt.trim() &&
+      !state.generatedPoster
+    ) {
       return;
     }
 
@@ -158,28 +194,38 @@ const PosterPage: React.FC = () => {
       {
         id: pendingId,
         timestamp: new Date(),
-        thumbnail: prev.length > 0 ? (prev[prev.length - 1].thumbnail) : (state.generatedPoster ?? ''),
-        prompt: state.prompt || '생성 요청',
-        step: 'generate',
-        status: 'generating',
+        thumbnail:
+          prev.length > 0
+            ? prev[prev.length - 1].thumbnail
+            : state.generatedPoster ?? "",
+        prompt: state.prompt || "생성 요청",
+        step: "generate",
+        status: "generating",
       },
     ]);
 
     try {
       // 첫 생성 여부 판단: 히스토리/현재 이미지가 전혀 없으면 첫 생성으로 간주
-      const lastRecord = generationRecords.length > 0 ? generationRecords[generationRecords.length - 1] : undefined;
+      const lastRecord =
+        generationRecords.length > 0
+          ? generationRecords[generationRecords.length - 1]
+          : undefined;
       const isFirstGeneration = !state.generatedPoster && !lastRecord;
 
       // 구도 조정(첫 생성이 아닌 경우)일 때 캔버스에 보이는 이미지를 previousImage 로 첨부
       let previousFile: File | null = null;
       if (!isFirstGeneration) {
-        const sourceUrl = state.generatedPoster || lastRecord?.thumbnail || '';
+        const sourceUrl = state.generatedPoster || lastRecord?.thumbnail || "";
         if (sourceUrl) {
           try {
-            const res = await fetch(sourceUrl, { mode: 'cors' });
+            const res = await fetch(sourceUrl, { mode: "cors" });
             const blob = await res.blob();
-            const ext = blob.type.includes('jpeg') ? 'jpg' : blob.type.split('/')[1] || 'png';
-            previousFile = new File([blob], `previous.${ext}`, { type: blob.type || 'image/png' });
+            const ext = blob.type.includes("jpeg")
+              ? "jpg"
+              : blob.type.split("/")[1] || "png";
+            previousFile = new File([blob], `previous.${ext}`, {
+              type: blob.type || "image/png",
+            });
           } catch (_) {
             previousFile = null;
           }
@@ -191,17 +237,19 @@ const PosterPage: React.FC = () => {
       if (skeletonCanvasRef.current && state.currentPose) {
         try {
           const blob = await skeletonCanvasRef.current.toBlob();
-          skeletonFile = new File([blob], 'skeleton.png', { type: 'image/png' });
+          skeletonFile = new File([blob], "skeleton.png", {
+            type: "image/png",
+          });
         } catch (_) {
           skeletonFile = null;
         }
       }
 
-      console.log('[handleGenerate] currentStep before request:', state.step);
+      console.log("[handleGenerate] currentStep before request:", state.step);
 
       const res = await createPosterMutation.mutateAsync({
         groupId: currentGroupId, // 없으면 생략되어 서버가 새 그룹을 생성
-        title: state.title || 'Untitled',
+        title: state.title || "Untitled",
         content: state.content || undefined,
         prompt: state.prompt,
         style: uiStyle, // 스타일을 쿼리 파라미터로 전달
@@ -225,7 +273,9 @@ const PosterPage: React.FC = () => {
       setState((prev) => ({ ...prev, isGenerating: false }));
       // 실패로 표시
       setGenerationRecords((prev) =>
-        prev.map((r) => (r.id.startsWith('pending-') ? { ...r, status: 'failed' } : r))
+        prev.map((r) =>
+          r.id.startsWith("pending-") ? { ...r, status: "failed" } : r
+        )
       );
     }
   }, [
@@ -244,37 +294,48 @@ const PosterPage: React.FC = () => {
   ]);
 
   // 3초 간격으로 생성 작업 상태 폴링
-  const jobQuery = usePosterJob(currentJobId as string, { enabled: !!currentJobId, interval: 3000 });
+  const jobQuery = usePosterJob(currentJobId as string, {
+    enabled: !!currentJobId,
+    interval: 3000,
+  });
 
   React.useEffect(() => {
     if (!currentJobId) return;
     const job = jobQuery.data;
     const status = job?.status?.toString().toUpperCase();
     if (!status) return;
-    if (status === 'COMPLETED' && job?.result) {
+    if (status === "COMPLETED" && job?.result) {
       const finalUrl = job.result.imgUrl;
       const finalGroupId = job.result.groupId;
       const finalPosterId = job.result.posterId;
       setState((prev) => {
-        const nextStep = prev.step === 'edit' ? 'text-edit' : 'edit';
+        // const nextStep = prev.step === "edit" ? "text-edit" : "edit";
+        const nextStep = "text-edit";
         if ((import.meta as any)?.env?.DEV) {
           // eslint-disable-next-line no-console
-          console.log('[jobComplete] Transitioning to step:', nextStep);
+          console.log("[jobComplete] Transitioning to step:", nextStep);
         }
         return {
           ...prev,
           step: nextStep,
           generatedPoster: finalUrl ?? prev.generatedPoster,
-          currentPose: nextStep === 'text-edit' ? null : (prev.currentPose ?? defaultSkeletonPose),
+          // currentPose:
+          //   nextStep === "text-edit"
+          //     ? null
+          //     : prev.currentPose ?? defaultSkeletonPose,
+          currentPose: null,
           isGenerating: false,
         };
       });
-      if (typeof finalGroupId === 'number' && Number.isFinite(finalGroupId)) {
+      if (typeof finalGroupId === "number" && Number.isFinite(finalGroupId)) {
         setCurrentGroupId(finalGroupId);
-        if (typeof finalPosterId === 'number') setCurrentPosterId(finalPosterId);
+        if (typeof finalPosterId === "number")
+          setCurrentPosterId(finalPosterId);
         // 그룹/히스토리 데이터 동기화
         queryClient.invalidateQueries({ queryKey: posterKeys.groups() });
-        queryClient.invalidateQueries({ queryKey: posterKeys.groupDetail(finalGroupId) });
+        queryClient.invalidateQueries({
+          queryKey: posterKeys.groupDetail(finalGroupId),
+        });
       } else {
         queryClient.invalidateQueries({ queryKey: posterKeys.groups() });
       }
@@ -282,10 +343,10 @@ const PosterPage: React.FC = () => {
       setGenerationRecords((prev) => {
         const updated = [...prev];
         for (let i = updated.length - 1; i >= 0; i--) {
-          if (updated[i].status === 'generating') {
+          if (updated[i].status === "generating") {
             updated[i] = {
               ...updated[i],
-              status: 'completed',
+              status: "completed",
               thumbnail: finalUrl || updated[i].thumbnail,
               timestamp: new Date(),
             };
@@ -295,18 +356,20 @@ const PosterPage: React.FC = () => {
         return updated;
       });
       setCurrentJobId(undefined);
-    } else if (status === 'FAILED') {
+    } else if (status === "FAILED") {
       setState((prev) => ({ ...prev, isGenerating: false }));
       setGenerationRecords((prev) =>
-        prev.map((r) => (r.status === 'generating' ? { ...r, status: 'failed' } : r))
+        prev.map((r) =>
+          r.status === "generating" ? { ...r, status: "failed" } : r
+        )
       );
       setCurrentJobId(undefined);
     }
   }, [currentJobId, jobQuery.data, queryClient]);
 
-  const handlePoseChange = useCallback((pose: SkeletonPose) => {
-    setState((prev) => ({ ...prev, currentPose: pose }));
-  }, []);
+  // const handlePoseChange = useCallback((pose: SkeletonPose) => {
+  //   setState((prev) => ({ ...prev, currentPose: pose }));
+  // }, []);
 
   const handleComplete = useCallback(() => {
     navigate(PATHS.HOME);
@@ -326,7 +389,7 @@ const PosterPage: React.FC = () => {
       setState((prev) => ({ ...prev, textOverlays: [] }));
       setIsTagDialogOpen(true);
     } catch (e) {
-      console.error('[handleSave] composeAndUploadPoster failed:', e);
+      console.error("[handleSave] composeAndUploadPoster failed:", e);
       setIsTagDialogOpen(true);
     }
   }, [currentGroupId, doComposeAndUpload]);
@@ -340,14 +403,17 @@ const PosterPage: React.FC = () => {
     }));
   }, []);
 
-  const handleUpdateText = useCallback((id: string, updates: Partial<TextOverlay>) => {
-    setState((prev) => ({
-      ...prev,
-      textOverlays: prev.textOverlays.map((text) =>
-        text.id === id ? { ...text, ...updates } : text
-      ),
-    }));
-  }, []);
+  const handleUpdateText = useCallback(
+    (id: string, updates: Partial<TextOverlay>) => {
+      setState((prev) => ({
+        ...prev,
+        textOverlays: prev.textOverlays.map((text) =>
+          text.id === id ? { ...text, ...updates } : text
+        ),
+      }));
+    },
+    []
+  );
 
   const handleRemoveText = useCallback((id: string) => {
     setState((prev) => ({
@@ -365,20 +431,28 @@ const PosterPage: React.FC = () => {
 
   // 텍스트 드래그 시작 핸들러
   const handleTextDragStart = useCallback(
-    (e: React.MouseEvent, textId: string, currentX: number, currentY: number) => {
+    (
+      e: React.MouseEvent,
+      textId: string,
+      currentX: number,
+      currentY: number
+    ) => {
       e.stopPropagation();
-      const host = posterContainerRef.current ?? e.currentTarget.parentElement!.parentElement!;
+      const host =
+        posterContainerRef.current ??
+        e.currentTarget.parentElement!.parentElement!;
       const rect = host.getBoundingClientRect();
-      
+
       // 이미지가 object-contain이므로 실제 표시 영역의 padding을 반영
-      const imgEl = host.querySelector('img');
-      let effectiveWidth = rect.width, effectiveHeight = rect.height;
+      const imgEl = host.querySelector("img");
+      let effectiveWidth = rect.width,
+        effectiveHeight = rect.height;
       if (imgEl) {
         const imgRect = (imgEl as HTMLElement).getBoundingClientRect();
         effectiveWidth = imgRect.width;
         effectiveHeight = imgRect.height;
       }
-      
+
       const startX = e.clientX;
       const startY = e.clientY;
       const startLeft = currentX;
@@ -408,11 +482,11 @@ const PosterPage: React.FC = () => {
     (e: React.MouseEvent, textId: string, startWidth: number) => {
       e.stopPropagation();
       const startX = e.clientX;
-      
+
       const handleMouseMove = (e: MouseEvent) => {
         const deltaX = e.clientX - startX;
         const newWidth = Math.max(50, Math.min(400, startWidth + deltaX)); // 최소 50px, 최대 400px
-        
+
         setState((prev) => ({
           ...prev,
           textOverlays: prev.textOverlays.map((t) =>
@@ -420,12 +494,12 @@ const PosterPage: React.FC = () => {
           ),
         }));
       };
-      
+
       const handleMouseUp = () => {
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
       };
-      
+
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
@@ -439,8 +513,9 @@ const PosterPage: React.FC = () => {
     setSelectedRecordId(undefined);
     setState((prev) => ({
       ...prev,
-      step: 'edit',
-      currentPose: prev.currentPose ?? defaultSkeletonPose,
+      step: "edit",
+      // currentPose: prev.currentPose ?? defaultSkeletonPose,
+      currentPose: null,
     }));
   }, []);
 
@@ -453,15 +528,15 @@ const PosterPage: React.FC = () => {
     setProductImage(null);
     setSketchImage(null);
     setState({
-      step: 'upload',
+      step: "upload",
       uploadedImages: [],
       generatedPoster: null,
       currentPose: null,
-      prompt: '',
+      prompt: "",
       isGenerating: false,
       textOverlays: [],
-      title: '',
-      content: '',
+      title: "",
+      content: "",
     });
   }, []);
 
@@ -472,29 +547,38 @@ const PosterPage: React.FC = () => {
     const detail = groupDetailQuery.data;
     if (!detail) return;
     // 히스토리 변환: 서버 포스터 목록(history 또는 posters)을 UI 레코드로 맵핑
-    const historyItems = (detail as any).history ?? (detail as any).posters ?? [];
+    const historyItems =
+      (detail as any).history ?? (detail as any).posters ?? [];
     const mapped = historyItems.map((p: any, idx: number) => ({
       id: String(p.posterId ?? idx),
       timestamp: new Date(p.createdAt || new Date()),
       thumbnail: p.imgUrl,
       prompt: p.prompt ?? detail.title ?? `생성 ${idx + 1}`,
-      step: 'generate' as const,
-      status: 'completed' as const,
+      step: "generate" as const,
+      status: "completed" as const,
     }));
     // 최신 이미지로 캔버스 업데이트: history 마지막
-    const last = historyItems.length > 0 ? historyItems[historyItems.length - 1] : undefined;
+    const last =
+      historyItems.length > 0
+        ? historyItems[historyItems.length - 1]
+        : undefined;
     setState((prev) => {
       // 그룹 동기화 시 초기 진입(upload)일 때만 'edit'로 전환하고 현재 단계를 보존
-      const shouldInitializeToEdit = prev.step === 'upload';
-      const nextStep = shouldInitializeToEdit ? 'edit' : prev.step;
+      const shouldInitializeToEdit = prev.step === "upload";
+      // const nextStep = shouldInitializeToEdit ? "edit" : prev.step;
+      const nextStep = shouldInitializeToEdit ? "text-edit" : prev.step;
       // eslint-disable-next-line no-console
-      console.log('[groupSync] step preserved:', prev.step, '->', nextStep);
+      console.log("[groupSync] step preserved:", prev.step, "->", nextStep);
 
       return {
         ...prev,
         generatedPoster: last?.imgUrl ?? prev.generatedPoster,
         step: nextStep,
-        currentPose: nextStep === 'text-edit' ? null : (prev.currentPose ?? defaultSkeletonPose),
+        // currentPose:
+        //   nextStep === "text-edit"
+        //     ? null
+        //     : prev.currentPose ?? defaultSkeletonPose,
+        currentPose: null,
       };
     });
     setGenerationRecords(mapped);
@@ -504,11 +588,15 @@ const PosterPage: React.FC = () => {
   // 히스토리 선택에 따라 캔버스 이미지 동기화 (선택 없으면 마지막 항목)
   React.useEffect(() => {
     const selected = generationRecords.find((r) => r.id === selectedRecordId);
-    const last = generationRecords.length > 0 ? generationRecords[generationRecords.length - 1] : undefined;
+    const last =
+      generationRecords.length > 0
+        ? generationRecords[generationRecords.length - 1]
+        : undefined;
     if (!selected && !last) return;
     setState((prev) => ({
       ...prev,
-      generatedPoster: selected?.thumbnail ?? last?.thumbnail ?? prev.generatedPoster,
+      generatedPoster:
+        selected?.thumbnail ?? last?.thumbnail ?? prev.generatedPoster,
     }));
   }, [selectedRecordId, generationRecords]);
 
@@ -521,7 +609,7 @@ const PosterPage: React.FC = () => {
   );
 
   return (
-    <div className='w-full h-screen bg-background overflow-hidden flex flex-col'>
+    <div className="w-full h-screen bg-background overflow-hidden flex flex-col">
       <StyleSelectionDialog
         isOpen={isStyleDialogOpen}
         onStyleSelect={(styleId) => {
@@ -548,7 +636,7 @@ const PosterPage: React.FC = () => {
       />
 
       {/* Body - Header 아래 전체 영역 */}
-      <div className='flex-1 flex flex-row min-h-0 overflow-hidden'>
+      <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
         {/* 그룹 목록 사이드바 */}
         <GroupList
           groups={groupsQuery.data ?? []}
@@ -559,15 +647,20 @@ const PosterPage: React.FC = () => {
           onToggle={() => setIsGroupListOpen(!isGroupListOpen)}
         />
 
-        <div className='flex-1 flex flex-row min-h-0'>
+        <div className="flex-1 flex flex-row min-h-0">
           {/* 포스터 생성 영역 */}
           <div
-            className='flex-1 flex flex-col p-4 lg:p-6 min-h-0 max-h-full'
+            className="flex-1 flex flex-col p-4 lg:p-6 min-h-0 max-h-full"
             onClick={handleOutsideClick}
           >
             {/* 가운데: Canvas + 프롬프트 */}
-            <main className='relative flex flex-col items-center w-full max-w-[500px] mx-auto flex-1 min-h-0'>
-              <PosterCanvasView generatedPoster={state.generatedPoster} onOpenPreview={() => setIsImagePreviewOpen(true)} isGenerating={state.isGenerating} containerRef={posterContainerRef}>
+            <main className="relative flex flex-col items-center w-full max-w-[500px] mx-auto flex-1 min-h-0">
+              <PosterCanvasView
+                generatedPoster={state.generatedPoster}
+                onOpenPreview={() => setIsImagePreviewOpen(true)}
+                isGenerating={state.isGenerating}
+                containerRef={posterContainerRef}
+              >
                 {/* 텍스트 오버레이들 */}
                 {state.textOverlays.map((text) => (
                   <TextOverlayItem
@@ -576,7 +669,9 @@ const PosterPage: React.FC = () => {
                     isSelected={selectedTextId === text.id}
                     onTextClick={(e, textId) => {
                       e.stopPropagation();
-                      setSelectedTextId(selectedTextId === textId ? undefined : textId);
+                      setSelectedTextId(
+                        selectedTextId === textId ? undefined : textId
+                      );
                     }}
                     onTextDragStart={handleTextDragStart}
                     onResizeStart={handleTextResizeStart}
@@ -585,11 +680,13 @@ const PosterPage: React.FC = () => {
               </PosterCanvasView>
 
               {/* 하단 프롬프트 영역 - 고정 위치 */}
-              <div className='w-full flex-shrink-0 mt-4'>
-                <div className='bg-background/80 backdrop-blur-xl rounded-xl border border-white/10 p-4 shadow-xl'>
+              <div className="w-full flex-shrink-0 mt-4">
+                <div className="bg-background/80 backdrop-blur-xl rounded-xl border border-white/10 p-4 shadow-xl">
                   <PromptInput
                     value={state.prompt}
-                    onChange={(value) => setState((prev) => ({ ...prev, prompt: value }))}
+                    onChange={(value) =>
+                      setState((prev) => ({ ...prev, prompt: value }))
+                    }
                     onGenerate={handleGenerate}
                     isGenerating={state.isGenerating}
                     allowEmptyPrompt={!!state.generatedPoster}
@@ -600,15 +697,33 @@ const PosterPage: React.FC = () => {
           </div>
 
           {/* 오른쪽: 통합 사이드바 */}
-          <aside className={`${state.step === "edit" && state.currentPose ? "w-[400px] lg:w-[480px]" : "w-[300px] lg:w-[340px]"} border-l border-white/5 bg-background/50 backdrop-blur-xl overflow-y-auto scrollbar-hidden transition-all duration-300`} style={{ height: "100%" }}>
+          {/* <aside
+            className={`${
+              state.step === "edit" && state.currentPose
+                ? "w-[400px] lg:w-[480px]"
+                : "w-[300px] lg:w-[340px]"
+            } border-l border-white/5 bg-background/50 backdrop-blur-xl overflow-y-auto scrollbar-hidden transition-all duration-300`}
+            style={{ height: "100%" }}
+          > */}
+          <aside
+            className="w-[300px] lg:w-[340px] border-l border-white/5 bg-background/50 backdrop-blur-xl overflow-y-auto scrollbar-hidden transition-all duration-300"
+            style={{ height: "100%" }}
+          >
             <PosterSidebar
               step={state.step}
               currentPose={state.currentPose}
               isGenerating={state.isGenerating}
               textOverlays={state.textOverlays}
               selectedTextId={selectedTextId}
-              onPoseChange={handlePoseChange}
-              onBackToEdit={() => setState((prev) => ({ ...prev, step: "edit", currentPose: prev.currentPose ?? defaultSkeletonPose }))}
+              onPoseChange={() => {}}
+              onBackToEdit={() =>
+                setState((prev) => ({
+                  ...prev,
+                  step: "edit",
+                  // currentPose: prev.currentPose ?? defaultSkeletonPose,
+                  currentPose: null,
+                }))
+              }
               onComplete={handleComplete}
               onSave={handleSave}
               onGenerateCopy={async () => {
@@ -628,13 +743,17 @@ const PosterPage: React.FC = () => {
                       fontWeight: "bold",
                       fontFamily: "The Jamsil 5 Bold",
                     };
-                    setState((prev) => ({ ...prev, textOverlays: [...prev.textOverlays, newOverlay] }));
+                    setState((prev) => ({
+                      ...prev,
+                      textOverlays: [...prev.textOverlays, newOverlay],
+                    }));
                   }
                 } catch (e) {
                   // eslint-disable-next-line no-console
-                  console.error('[onGenerateCopy] failed:', e);
+                  console.error("[onGenerateCopy] failed:", e);
+                } finally {
+                  setIsGeneratingCopy(false);
                 }
-                finally { setIsGeneratingCopy(false); }
               }}
               isGeneratingCopy={isGeneratingCopy}
               onAddText={handleAddText}
@@ -643,16 +762,19 @@ const PosterPage: React.FC = () => {
               onSelectText={setSelectedTextId}
               skeletonRef={skeletonCanvasRef}
             />
-            <div className='p-4 flex flex-col gap-4'>
-              {!(state.step === 'text-edit' || (state.step === 'edit' && state.currentPose)) && (
-                <div className='flex flex-col gap-4'>
+            <div className="p-4 flex flex-col gap-4">
+              {!(
+                state.step === "text-edit" ||
+                (state.step === "edit" && state.currentPose)
+              ) && (
+                <div className="flex flex-col gap-4">
                   {/* 파일 첨부 */}
                   <section
-                    className='bg-background/50 rounded-xl border border-white/10 overflow-hidden flex-shrink-0'
+                    className="bg-background/50 rounded-xl border border-white/10 overflow-hidden flex-shrink-0"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Accordion
-                      title='파일 첨부하기'
+                      title="파일 첨부하기"
                       isOpen={isFileAccordionOpen}
                       onToggle={(isOpen) => setIsFileAccordionOpen(isOpen)}
                     >
@@ -673,43 +795,53 @@ const PosterPage: React.FC = () => {
 
                   {/* 기본 정보 입력 */}
                   <section
-                    className='flex flex-col gap-3 flex-shrink-0'
+                    className="flex flex-col gap-3 flex-shrink-0"
                     onClick={handleOutsideClick}
                   >
                     <SectionHeader
                       title="기본 정보"
                       icon={
                         <svg
-                          className='w-4 h-4 text-primary'
-                          fill='none'
-                          stroke='currentColor'
-                          viewBox='0 0 24 24'
+                          className="w-4 h-4 text-primary"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
                           <path
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                             strokeWidth={2}
-                            d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                           />
                         </svg>
                       }
                     />
-                    <div className='space-y-3'>
+                    <div className="space-y-3">
                       <input
-                        type='text'
-                        placeholder='포스터 제목'
+                        type="text"
+                        placeholder="포스터 제목"
                         value={state.title}
-                        onChange={(e) => setState((prev) => ({ ...prev, title: e.target.value }))}
-                        className='w-full rounded-lg bg-background/50 border border-primary/20 px-3 py-2 text-sm text-text-color placeholder-text-color/60 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all'
+                        onChange={(e) =>
+                          setState((prev) => ({
+                            ...prev,
+                            title: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-lg bg-background/50 border border-primary/20 px-3 py-2 text-sm text-text-color placeholder-text-color/60 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                       />
                       <textarea
-                        placeholder='포스터 내용 (선택사항)'
+                        placeholder="포스터 내용 (선택사항)"
                         value={state.content}
-                        onChange={(e) => setState((prev) => ({ ...prev, content: e.target.value }))}
-                        className='w-full h-16 resize-none rounded-lg bg-background/50 border border-primary/20 px-3 py-2 text-sm text-text-color placeholder-text-color/60 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all'
+                        onChange={(e) =>
+                          setState((prev) => ({
+                            ...prev,
+                            content: e.target.value,
+                          }))
+                        }
+                        className="w-full h-16 resize-none rounded-lg bg-background/50 border border-primary/20 px-3 py-2 text-sm text-text-color placeholder-text-color/60 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all"
                         maxLength={200}
                       />
-                      <div className='flex justify-end text-xs text-text-color/60'>
+                      <div className="flex justify-end text-xs text-text-color/60">
                         <span>{state.content.length} / 200</span>
                       </div>
                     </div>
@@ -718,52 +850,54 @@ const PosterPage: React.FC = () => {
                   {/* 현재 상태 - 아코디언이 닫혀있을 때만 표시 */}
                   {!isFileAccordionOpen && (
                     <section
-                      className='flex flex-col gap-3 flex-shrink-0'
+                      className="flex flex-col gap-3 flex-shrink-0"
                       onClick={handleOutsideClick}
                     >
                       <SectionHeader
                         title="현재 상태"
                         icon={
                           <svg
-                            className='w-4 h-4 text-primary'
-                            fill='none'
-                            stroke='currentColor'
-                            viewBox='0 0 24 24'
+                            className="w-4 h-4 text-primary"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                           >
                             <path
-                              strokeLinecap='round'
-                              strokeLinejoin='round'
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                               strokeWidth={2}
-                              d='M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'
+                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
                             />
                           </svg>
                         }
                       />
-                      <div className='bg-background/30 rounded-xl p-4 space-y-3'>
+                      <div className="bg-background/30 rounded-xl p-4 space-y-3">
                         <StatusIndicatorItem
                           label="제목"
                           isCompleted={!!state.title.trim()}
                           statusText={state.title.trim() ? "완료" : "대기중"}
                         />
-                        
+
                         <StatusIndicatorItem
                           label="내용"
                           isCompleted={!!state.content.trim()}
-                          statusText={state.content.trim() ? "완료" : "선택사항"}
+                          statusText={
+                            state.content.trim() ? "완료" : "선택사항"
+                          }
                         />
-                        
+
                         <StatusIndicatorItem
                           label="인물 사진"
                           isCompleted={!!personImage}
                           statusText={personImage ? "업로드됨" : "대기중"}
                         />
-                        
+
                         <StatusIndicatorItem
                           label="상품 사진"
                           isCompleted={!!productImage}
                           statusText={productImage ? "업로드됨" : "대기중"}
                         />
-                        
+
                         <StatusIndicatorItem
                           label="프롬프트"
                           isCompleted={!!state.prompt.trim()}
@@ -782,11 +916,11 @@ const PosterPage: React.FC = () => {
       {/* 이미지 프리뷰 오버레이 */}
       {isImagePreviewOpen && state.generatedPoster && (
         <div
-          className='fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center transition-all duration-300 ease-out opacity-100'
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center transition-all duration-300 ease-out opacity-100"
           onClick={() => setIsImagePreviewOpen(false)}
         >
           <div
-            className='relative rounded-2xl shadow-2xl transform transition-all duration-300 ease-out scale-100 translate-y-0 opacity-100'
+            className="relative rounded-2xl shadow-2xl transform transition-all duration-300 ease-out scale-100 translate-y-0 opacity-100"
             onClick={(e) => e.stopPropagation()}
             style={{
               maxWidth: "95vw",
@@ -798,8 +932,8 @@ const PosterPage: React.FC = () => {
           >
             <img
               src={state.generatedPoster}
-              alt='포스터 원본'
-              className='max-w-full max-h-full object-contain rounded-2xl'
+              alt="포스터 원본"
+              className="max-w-full max-h-full object-contain rounded-2xl"
               style={{
                 maxWidth: "95vw",
                 maxHeight: "95vh",
@@ -809,21 +943,26 @@ const PosterPage: React.FC = () => {
             />
 
             {/* 안내 텍스트 */}
-            <div className='absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-2 rounded-lg text-sm font-medium'>
+            <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-2 rounded-lg text-sm font-medium">
               ESC 키나 배경 클릭으로 닫기
             </div>
 
             {/* 닫기 버튼 */}
             <button
               onClick={() => setIsImagePreviewOpen(false)}
-              className='absolute top-4 left-4 bg-black/70 backdrop-blur-sm text-white p-2 rounded-lg hover:bg-black/90 transition-all'
+              className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm text-white p-2 rounded-lg hover:bg-black/90 transition-all"
             >
-              <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                   strokeWidth={2}
-                  d='M6 18L18 6M6 6l12 12'
+                  d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
             </button>
@@ -836,8 +975,8 @@ const PosterPage: React.FC = () => {
           groupId={currentGroupId}
           onClose={() => setIsTagDialogOpen(false)}
           onSaved={() => handleNewGroup()}
-        />)
-      }
+        />
+      )}
     </div>
   );
 };
