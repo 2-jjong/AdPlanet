@@ -39,6 +39,4 @@ public interface LogoRepository extends JpaRepository<Logo, Long> {
     List<Logo> findAllWithTagsByIdIn(@Param("ids") List<Long> ids);
 
     Optional<Logo> findByIdAndUser_UserId(Long id, Long userId);
-
-    Long user(User user);
 }
