@@ -324,14 +324,14 @@ const LogoPage: React.FC = () => {
           </h3>
           <input
             type="text"
-            placeholder="회사/브랜드 명"
+            placeholder="제목"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="w-full rounded-md bg-transparent border border-primary px-3 py-2 text-sm"
           />
           <input
             type="text"
-            placeholder="슬로건 (선택사항)"
+            placeholder="내용"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="w-full rounded-md bg-transparent border border-primary px-3 py-2 text-sm"
