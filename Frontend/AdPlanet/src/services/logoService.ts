@@ -109,11 +109,6 @@ export async function getLogoDetail(
 export async function logoDownload(
   req: LogoDownloadRequest
 ): Promise<AxiosResponse<Blob>> {
-  const res = await apiClient.get(`/api/logos/${req.logoId}/download`, {
-    params: { format: "png" },
-    responseType: "blob",
-  });
-  console.log("다운로드 응답", res);
   return await apiClient.get<Blob>(`/api/logos/${req.logoId}/download`, {
     params: { format: req.format },
     responseType: "blob",
