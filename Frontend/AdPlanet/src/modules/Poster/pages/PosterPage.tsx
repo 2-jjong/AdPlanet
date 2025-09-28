@@ -521,6 +521,14 @@ const PosterPage: React.FC = () => {
     
     const isSameGroup = currentGroupId === groupId;
     
+    // 다른 그룹으로 이동하는 경우 생성 상태 즉시 초기화
+    if (!isSameGroup) {
+      setState((prev) => ({
+        ...prev,
+        isGenerating: false,
+      }));
+    }
+    
     setCurrentGroupId(groupId);
     setIsGroupListOpen(false);
     
@@ -532,12 +540,14 @@ const PosterPage: React.FC = () => {
       if (hasExistingImage) {
         setState((prev) => ({
           ...prev,
-          step: "mode-select"
+          step: "mode-select",
+          isGenerating: false, // 같은 그룹 재선택 시 생성 상태 초기화
         }));
       } else {
         setState((prev) => ({
           ...prev,
-          step: "upload"
+          step: "upload",
+          isGenerating: false, // 같은 그룹 재선택 시 생성 상태 초기화
         }));
       }
     }
