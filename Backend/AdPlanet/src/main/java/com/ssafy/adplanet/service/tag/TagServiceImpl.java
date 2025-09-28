@@ -10,6 +10,7 @@ import com.ssafy.adplanet.repository.LogoRepository;
 import com.ssafy.adplanet.repository.PosterGroupRepository;
 import com.ssafy.adplanet.repository.TagRepository;
 import com.ssafy.adplanet.service.poster.MessageListener;
+import com.ssafy.adplanet.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,11 +75,12 @@ public class TagServiceImpl implements TagService {
     @Override
     @Transactional(readOnly = true)
     public List<TagDto> search(String q) {
+        Long userId = SecurityUtil.getCurrentUserId();
         String keyword = normalize(q);
 
-        List<Tag> tags = keyword.isEmpty()
-                ? tagRepository.findAllByOrderByNameAsc()
-                : tagRepository.findByNameContainingIgnoreCaseOrderByNameAsc(keyword);
+        List<Tag> tags = (keyword.isEmpty())
+                ? tagRepository.findDistinctByUserId(userId)
+                : tagRepository.findDistinctByUserIdAndKeyword(userId, keyword);
 
         return tags.stream()
                 .map(t -> new TagDto(t.getId(), t.getName()))
