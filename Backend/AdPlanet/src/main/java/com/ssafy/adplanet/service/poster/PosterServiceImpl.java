@@ -267,9 +267,11 @@ public class PosterServiceImpl implements PosterService {
         byte[] poseImage = null;
         byte[] productImage = null;
         byte[] modelImage = null;
+        boolean hasPose = false;
 
         if (message.poseKey() != null) {
             poseImage = s3Service.download(message.poseKey());
+            hasPose = true;
         }
         if (message.productKey() != null) {
             productImage = s3Service.download(message.productKey());
@@ -278,7 +280,7 @@ public class PosterServiceImpl implements PosterService {
             modelImage = s3Service.download(message.modelKey());
         }
 
-        String refinedPrompt = gmsService.refinePosterPrompt(message.prompt());
+        String refinedPrompt = gmsService.refinePosterCreatePrompt(message.prompt(), hasPose);
         log.info("[POSTER-GEN] 정제된 프롬프트: {}", refinedPrompt);
 
         return GeneratePosterRequest.builder()
@@ -333,7 +335,7 @@ public class PosterServiceImpl implements PosterService {
 
         // S3에서 파일 다운로드 및 요청 준비
         byte[] bytes = s3Service.downloadFromUri(message.previousImgUrl());
-        String refinedPrompt = gmsService.refinePosterPrompt(message.prompt());
+        String refinedPrompt = gmsService.refinePosterEditPrompt(message.prompt());
         log.info("[POSTER-EDIT] 정제된 프롬프트: {}", refinedPrompt);
 
         for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
@@ -444,7 +446,7 @@ public class PosterServiceImpl implements PosterService {
         if (tagIds == null || tagIds.isEmpty()) {
             groups = posterGroupRepository.findByUser_UserId(userId, sort);
         } else {
-            List<Long> ids = posterGroupRepository.findIdsByUserIdAndAllTags(userId, tagIds, tagIds.size());
+            List<Long> ids = posterGroupRepository.findIdsByUserIdAndAnyTags(userId, tagIds);
             if (ids.isEmpty()) return List.of();
 
             groups = posterGroupRepository.findAllWithTagsByIdIn(ids);
@@ -558,6 +560,9 @@ public class PosterServiceImpl implements PosterService {
         String key = s3Service.buildKey("poster_" + poster.getId() + ".png");
         s3Service.upload(key, watermarkedBytes, "image/png");
         poster.setImgUrl(s3Service.toS3Uri(key));
+
+        // 대표 포스터 변경
+        posterGroup.setMainPoster(poster);
 
         return new PosterResponse(
                 poster.getId(),
