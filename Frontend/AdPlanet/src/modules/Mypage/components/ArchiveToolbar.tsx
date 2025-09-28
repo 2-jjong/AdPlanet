@@ -4,7 +4,7 @@ import SortTabs from "./SortTabs";
 
 export default function ArchiveToolbar() {
   return (
-    <div className="w-full max-w-6xl md:px-6 pt-10 pb-10">
+    <div className="w-full max-w-6xl md:px-6 pt-10 pb-26">
       <div
         className="
           grid grid-cols-3 items-center

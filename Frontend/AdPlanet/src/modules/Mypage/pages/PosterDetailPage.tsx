@@ -19,6 +19,10 @@ import { Navigation as SwNav, Keyboard, Mousewheel } from "swiper/modules";
 // 모달
 import PosterPreviewModal from "../components/PosterPreviewModal";
 
+// Canvas
+import { Canvas } from '@react-three/fiber';
+import Stars from "../../Home/components/Stars";
+
 export default function PosterDetailPage() {
   const { id } = useParams();
   const groupId = useMemo(() => Number(id), [id]);
@@ -140,8 +144,21 @@ export default function PosterDetailPage() {
 
   return (
     <div className="min-h-screen bg-background text-slate-200">
-      <Navigation />
-      <FullpageContainer activeIndex={activeIndex} setActiveIndex={setActiveIndex}>
+      {/* 배경 Canvas (전체 화면 고정) */}
+      <Canvas
+        style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}
+        gl={{ alpha: true }}
+        camera={{ position: [0, 0, 10], fov: 50 }}
+      >
+        <ambientLight intensity={0.5} />
+        <directionalLight position={[10, 10, 5]} />
+        <Stars size={3} />
+      </Canvas>
+
+      <div style={{ position: "relative", zIndex: 10 }}>
+        <Navigation />
+      </div>
+      <FullpageContainer activeIndex={activeIndex} setActiveIndex={setActiveIndex} style={{ position: "relative", zIndex: 10 }}>
         {/* SECTION 1: 히어로 + 우측 정보 */}
         <FullpageSection>
           <div className="font-jamsil mx-auto w-full max-w-7xl px-6 py-8">
@@ -154,9 +171,9 @@ export default function PosterDetailPage() {
 
             <div className="grid grid-cols-12 gap-10 items-start">
               {/* 좌: 히어로 */}
-              <section className="col-span-12 lg:col-span-7">
-                <div className="rounded-[36px] bg-slate-900/40 border border-slate-800 p-6">
-                  <div className="w-full overflow-hidden rounded-[28px] bg-slate-950 aspect-[3/4]">
+              <section className="col-span-12 lg:col-span-7 flex justify-center">
+                <div className="rounded-[24px] bg-slate-900/40 border border-slate-800 p-4 max-w-md">
+                  <div className="w-full overflow-hidden rounded-[16px] bg-slate-950 aspect-[3/4]">
                     {heroUrl ? (
                       <img src={heroUrl} alt={data.title || "포스터"} className="w-full h-full object-cover" />
                     ) : <div className="w-full h-full" />}
@@ -168,12 +185,12 @@ export default function PosterDetailPage() {
               <section className="col-span-12 lg:col-span-5 space-y-8">
                 {!!data.content && (
                   <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
-                    <h2 className="text-xl font-bold text-primary">슬로건(선택사항)</h2>
+                    <h2 className="text-xl font-bold text-primary">TITLE</h2>
                     <p className="mt-3 text-lg leading-relaxed whitespace-pre-wrap">{data.content}</p>
                   </div>
                 )}
                 <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6">
-                  <h2 className="text-xl font-bold text-primary">프롬프트</h2>
+                  <h2 className="text-xl font-bold text-primary">PROMPT</h2>
                   <p className="mt-3 whitespace-pre-wrap leading-relaxed">
                     {selectedPoster?.prompt ?? "선택된 포스터의 프롬프트가 없습니다."}
                   </p>

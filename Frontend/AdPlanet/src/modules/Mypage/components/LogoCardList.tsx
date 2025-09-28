@@ -4,13 +4,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Mousewheel, Scrollbar } from "swiper/modules";
 import { LogoCard } from "./LogoCard";
-import { getLogoList, getLogoDetail } from "../../../services/logoService"; 
+import { getLogoList, getLogoDetail } from "../../../services/logoService";
 import type {
   LogoListItem as LogoCardType,
   LogoListQuery,
   LogoDetail as DetailDto, // 상세 DTO 타입
 } from "../../../services/dto/logo.dto";
 import FlipCard from "./FlipCard";
+import NeedLogin from "./NeedLogin";
 
 /** 정렬 */
 function parseOrder(v: string | null): LogoListQuery["order"] {
@@ -32,7 +33,8 @@ const LogoCardList = forwardRef<LogoCardListHandle>((props, ref) => {
 
   const [items, setItems] = useState<LogoCardType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
 
   const [sp] = useSearchParams();
 
@@ -58,7 +60,15 @@ const LogoCardList = forwardRef<LogoCardListHandle>((props, ref) => {
       } catch (e: any) {
         if (!alive) return;
         console.error("[LogoCardList] fetch error:", e?.message ?? e);
-        setError(e instanceof Error ? e.message : "Failed to load logos");
+
+        // 401 에러 체크
+        if (e?.response?.status === 401 || e?.message?.includes("401")) {
+          setIsUnauthorized(true);
+          setError(null);
+        } else {
+          setError(e instanceof Error ? e.message : "Failed to load logos");
+          setIsUnauthorized(false);
+        }
         setItems([]);
       } finally {
         if (!alive) return;
@@ -78,8 +88,8 @@ const LogoCardList = forwardRef<LogoCardListHandle>((props, ref) => {
   }, [items.length, active]);
 
   // ===== 치수/스택 =====
-  const WRAP_W = 480, WRAP_H = 420, STACK_W = 400;
-  const OFFSET = 28, SCALE_STEP = 0.055, OP_STEP = 0.2, LAYERS = 4;
+  const WRAP_W = 560, WRAP_H = 480, STACK_W = 450;
+  const OFFSET = 20, SCALE_STEP = 0.055, OP_STEP = 0.2, LAYERS = 4;
 
   const stack = useMemo(() => {
     const out: { item: LogoCardType; layer: number }[] = [];
@@ -178,7 +188,7 @@ const LogoCardList = forwardRef<LogoCardListHandle>((props, ref) => {
         <div className="text-left w-full">
           {detail?.slogan && (
             <>
-              <p className="text-xs uppercase tracking-widest text-primary mb-2">Slogan</p>
+              <p className="text-xs uppercase tracking-widest text-primary mb-2">Title</p>
               <h3 className="text-xl font-semibold mb-4 leading-snug line-clamp-2 text-white">
                 {detail.slogan}
               </h3>
@@ -243,8 +253,13 @@ const LogoCardList = forwardRef<LogoCardListHandle>((props, ref) => {
         <div className="animate-pulse text-slate-300">로딩 중…</div>
       </div>
     );
+    if (isUnauthorized) return (
+      <div className="absolute inset-0 z-30 flex items-center justify-center">
+        <NeedLogin />
+      </div>
+    );
     if (error) return (
-      <div className="absolute inset-0 z-30 flex	items-center justify-center">
+      <div className="absolute inset-0 z-30 flex items-center justify-center">
         <div className="text-red-300 text-sm bg-red-900/30 px-3 py-2 rounded-lg border border-red-800">{error}</div>
       </div>
     );
@@ -339,6 +354,7 @@ const LogoCardList = forwardRef<LogoCardListHandle>((props, ref) => {
           scrollbar={{ draggable: true }}
           slidesPerView={1}
           speed={380}
+          onSlideChange={(sw) => setActive(sw.activeIndex)}
           onSlideChangeTransitionStart={(sw) => handleSlideChangeStart(sw.activeIndex)}
           onSwiper={(sw) => (swiperRef.current = sw)}   // Swiper 인스턴스 보관
           className="absolute top-0 left-0 h-full w-full z-10"
