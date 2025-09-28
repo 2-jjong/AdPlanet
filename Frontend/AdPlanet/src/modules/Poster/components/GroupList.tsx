@@ -36,10 +36,11 @@ const GroupList: React.FC<GroupListProps> = ({
 
   return (
     <>
-      {isOpen && <div className='fixed inset-0 bg-black/20 z-20 lg:hidden' onClick={onToggle} />}
+      {isOpen && <div className='fixed inset-0 bg-black/20 z-10 lg:hidden' onClick={onToggle} />}
 
       <div
-        className={`relative bg-background/95 backdrop-blur-xl border-r border-white/10 transform transition-all duration-300 ease-in-out flex flex-col h-full ${
+        data-group-sidebar
+        className={`relative z-20 bg-background/95 backdrop-blur-xl border-r border-white/10 transform transition-all duration-300 ease-in-out flex flex-col h-full ${
           isOpen ? "w-80 lg:w-72" : "w-16"
         } lg:bg-background`}
       >
@@ -69,7 +70,10 @@ const GroupList: React.FC<GroupListProps> = ({
         {isOpen && (
           <div className='p-4'>
             <button
-              onClick={onNewGroup}
+              onClick={(e) => {
+                e.stopPropagation();
+                onNewGroup();
+              }}
               className='w-full flex items-center gap-3 p-4 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-xl text-primary hover:from-primary/20 hover:to-primary/10 hover:border-primary/30 transition-all duration-200 group'
             >
               <div className='p-1 bg-primary/20 rounded-lg group-hover:bg-primary/30 transition-colors'>
@@ -101,7 +105,10 @@ const GroupList: React.FC<GroupListProps> = ({
                   return (
                   <button
                     key={g.posterGroupId}
-                    onClick={() => onSelectGroup(g.posterGroupId)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectGroup(g.posterGroupId);
+                    }}
                     className={`w-full block p-3 rounded-xl text-left transition-all duration-200 group ${
                       currentGroupId === g.posterGroupId
                         ? "bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/30 shadow-lg shadow-primary/10"

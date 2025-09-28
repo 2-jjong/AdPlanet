@@ -67,6 +67,7 @@ export async function savePosterToGroup(groupId: number, image: File): Promise<A
       headers: { 'Content-Type': 'multipart/form-data' },
     }
   );
+  
   return data;
 }
 
@@ -84,7 +85,7 @@ export async function getPoster(
 export async function getPosterImage(posterId: number): Promise<Blob> {
   const res = await apiClient.get(`/api/posters/${posterId}/image`, { responseType: 'blob' as any });
   // axios의 타입 제약 회피를 위해 as any 사용; 응답은 blob
-  return res as unknown as Blob;
+  return res.data as Blob;
 }
 
 /** 포스터 다운로드 */
