@@ -386,6 +386,13 @@ const PosterPage: React.FC = () => {
     }
     try {
       await doComposeAndUpload(currentGroupId);
+      
+      // 저장 성공 후 그룹 목록과 그룹 상세 갱신
+      queryClient.invalidateQueries({ queryKey: posterKeys.groups() });
+      queryClient.invalidateQueries({
+        queryKey: posterKeys.groupDetail(currentGroupId),
+      });
+      
       // 저장 성공 후 텍스트 오버레이 초기화
       setState((prev) => ({ ...prev, textOverlays: [] }));
       setIsTagDialogOpen(true);
@@ -393,7 +400,7 @@ const PosterPage: React.FC = () => {
       console.error("[handleSave] composeAndUploadPoster failed:", e);
       setIsTagDialogOpen(true);
     }
-  }, [currentGroupId, doComposeAndUpload]);
+  }, [currentGroupId, doComposeAndUpload, queryClient]);
 
   // 텍스트 관련 핸들러들
   const handleAddText = useCallback((textOverlay: TextOverlay) => {
@@ -509,18 +516,18 @@ const PosterPage: React.FC = () => {
 
   // 그룹 선택/신규
   const handleSelectGroup = useCallback((groupId: number) => {
+    // 이전 그룹의 진행 중인 작업 정리
+    setCurrentJobId(undefined);
+    
     setCurrentGroupId(groupId);
     setIsGroupListOpen(false);
-    setSelectedRecordId(undefined);
-    setState((prev) => ({
-      ...prev,
-      step: "edit",
-      // currentPose: prev.currentPose ?? defaultSkeletonPose,
-      currentPose: null,
-    }));
+    // 그룹 변경은 useEffect에서 처리되므로 여기서는 최소한만 설정
   }, []);
 
   const handleNewGroup = useCallback(() => {
+    // 이전 그룹의 진행 중인 작업 정리
+    setCurrentJobId(undefined);
+    
     setCurrentGroupId(undefined);
     setIsGroupListOpen(false);
     setGenerationRecords([]);
@@ -541,12 +548,38 @@ const PosterPage: React.FC = () => {
     });
   }, []);
 
+  // 모드 선택 핸들러
+  const handleModeSelect = useCallback((mode: 'text-edit' | 'upload') => {
+    if (mode === 'text-edit') {
+      // 기존 이미지에 문구 추가 모드
+      setState((prev) => ({ ...prev, step: 'text-edit' }));
+    } else {
+      // 새로운 파일로 포스터 생성 모드 - 기존 상태 초기화
+      setState((prev) => ({ 
+        ...prev, 
+        step: 'upload',
+        generatedPoster: null, // 기존 이미지 제거
+        textOverlays: [] // 텍스트 오버레이도 초기화
+      }));
+      // 업로드된 파일들도 초기화
+      setPersonImage(null);
+      setProductImage(null);
+      setSketchImage(null);
+      setSelectedRecordId(undefined); // 히스토리 선택 해제
+    }
+  }, []);
+
   // 현재 그룹 상세를 불러와 히스토리와 캔버스를 동기화
   const groupDetailQuery = usePosterGroupDetail(currentGroupId as number);
+  
+  // 그룹 변경 시에만 실행되는 초기화 로직
+  const [lastGroupId, setLastGroupId] = React.useState<number | undefined>();
+  const isGroupChanged = currentGroupId !== lastGroupId;
 
   React.useEffect(() => {
     const detail = groupDetailQuery.data;
     if (!detail) return;
+    
     // 히스토리 변환: 서버 포스터 목록(history 또는 posters)을 UI 레코드로 맵핑
     const historyItems =
       (detail as any).history ?? (detail as any).posters ?? [];
@@ -559,38 +592,49 @@ const PosterPage: React.FC = () => {
       step: "generate" as const,
       status: "completed" as const,
     }));
+    
     // 최신 이미지로 캔버스 업데이트: history 마지막
     const last =
       historyItems.length > 0
         ? historyItems[historyItems.length - 1]
         : undefined;
-    setState((prev) => {
-      // 그룹 동기화 시 초기 진입(upload)일 때만 'edit'로 전환하고 현재 단계를 보존
-      const shouldInitializeToEdit = prev.step === "upload";
-      // const nextStep = shouldInitializeToEdit ? "edit" : prev.step;
-      const nextStep = shouldInitializeToEdit ? "text-edit" : prev.step;
-      // eslint-disable-next-line no-console
-      console.log("[groupSync] step preserved:", prev.step, "->", nextStep);
+    
+    // 히스토리 업데이트 (항상 실행)
+    setGenerationRecords(mapped);
+    
+    // 그룹이 변경되었을 때만 상태 초기화
+    if (isGroupChanged) {
+      setLastGroupId(currentGroupId);
+      setSelectedRecordId(undefined);
+      
+      setState((prev) => {
+        // 기존 이미지가 있으면 mode-select로, 없으면 upload로
+        const nextStep = last?.imgUrl ? "mode-select" : "upload";
 
-      return {
+        return {
+          ...prev,
+          generatedPoster: last?.imgUrl ?? null,
+          step: nextStep,
+          currentPose: null,
+          isGenerating: false,
+          textOverlays: [], // 그룹 변경 시 텍스트 오버레이 초기화
+        };
+      });
+      
+      // 마지막 포스터 ID 설정
+      if (last?.posterId) {
+        setCurrentPosterId(last.posterId);
+      } else {
+        setCurrentPosterId(undefined);
+      }
+    } else {
+      // 같은 그룹에서 데이터만 업데이트 (캔버스 이미지만 동기화)
+      setState((prev) => ({
         ...prev,
         generatedPoster: last?.imgUrl ?? prev.generatedPoster,
-        step: nextStep,
-        // currentPose:
-        //   nextStep === "text-edit"
-        //     ? null
-        //     : prev.currentPose ?? defaultSkeletonPose,
-        currentPose: null,
-      };
-    });
-    setGenerationRecords(mapped);
-    setSelectedRecordId(undefined);
-    
-    // 마지막 포스터 ID를 current로 설정
-    if (last?.posterId) {
-      setCurrentPosterId(last.posterId);
+      }));
     }
-  }, [groupDetailQuery.data]);
+  }, [groupDetailQuery.data, currentGroupId, isGroupChanged]);
 
   // 히스토리 선택에 따라 캔버스 이미지 동기화 (선택 없으면 마지막 항목)
   React.useEffect(() => {
@@ -618,6 +662,16 @@ const PosterPage: React.FC = () => {
         if (selectedRecord?.posterId) {
           setCurrentPosterId(selectedRecord.posterId);
         }
+        
+        // 히스토리 이미지 선택 시 모드 선택 화면으로 이동
+        setState((prev) => ({
+          ...prev,
+          step: "mode-select"
+        }));
+        
+        // 히스토리 화면 닫기
+        const closeEvent = new CustomEvent("closeGenerationHistory");
+        window.dispatchEvent(closeEvent);
       }
     },
     [selectedRecordId, generationRecords]
@@ -783,10 +837,12 @@ const PosterPage: React.FC = () => {
               onRemoveText={handleRemoveText}
               onSelectText={setSelectedTextId}
               skeletonRef={skeletonCanvasRef}
+              onModeSelect={handleModeSelect}
             />
             <div className="p-4 flex flex-col gap-4">
               {!(
                 state.step === "text-edit" ||
+                state.step === "mode-select" ||
                 (state.step === "edit" && state.currentPose)
               ) && (
                 <div className="flex flex-col gap-4">

@@ -21,9 +21,16 @@ const GenerationHistory: React.FC<GenerationHistoryProps> = ({
       setIsCollapsed(false);
     };
 
+    const handleCloseHistory = () => {
+      setIsCollapsed(true);
+    };
+
     window.addEventListener("openGenerationHistory", handleOpenHistory);
+    window.addEventListener("closeGenerationHistory", handleCloseHistory);
+    
     return () => {
       window.removeEventListener("openGenerationHistory", handleOpenHistory);
+      window.removeEventListener("closeGenerationHistory", handleCloseHistory);
     };
   }, []);
   const getStepLabel = (step: string) => {
