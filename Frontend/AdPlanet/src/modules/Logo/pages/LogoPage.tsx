@@ -265,13 +265,50 @@ const LogoPage: React.FC = () => {
           <main className="relative overflow-hidden h-full">
             <div className="h-full w-full flex items-center justify-center rounded-2xl overflow-hidden relative bg-white/5 border border-white/10">
               {error && <p className="text-red-500 text-sm">{error.message}</p>}
+
+              {/* 로딩 상태 */}
               {(isPending || showLoader) && <Loading />}
+
+              {/* 로고 이미지 */}
               {imageUrl && (
                 <img
                   src={imageUrl}
                   alt="Generated Logo"
                   className="max-h-full max-w-full rounded-xl"
                 />
+              )}
+
+              {/* 초기 안내 메시지 - 로고가 없고 로딩 중이 아닐 때만 표시 */}
+              {!imageUrl && !isPending && !showLoader && (
+                <div className="text-center text-text-color/60 transition-colors max-w-md mx-auto px-6">
+                  <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-primary/20 to-primary/5 rounded-3xl flex items-center justify-center transition-transform duration-300">
+                    <svg
+                      className="w-10 h-10 text-primary/60"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold mb-3 text-white">
+                    로고를 만들어보세요
+                  </h3>
+                  <p className="text-sm text-text-color/70 leading-relaxed mb-2">
+                    브랜드명과 원하는 스타일을 입력하고 설명을 작성하여
+                  </p>
+                  <p className="text-sm text-text-color/70 leading-relaxed mb-4">
+                    생성 버튼을 눌러주세요
+                  </p>
+                  <div className="text-xs text-primary/80 bg-primary/10 rounded-lg px-3 py-2 border border-primary/20">
+                    AI가 몇 초 만에 전문적인 로고를 디자인해드립니다
+                  </div>
+                </div>
               )}
             </div>
           </main>
