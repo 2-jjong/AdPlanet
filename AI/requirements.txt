@@ -4,10 +4,13 @@ python-multipart
 Pillow
 pydantic
 transformers
-diffusers
+git+https://github.com/huggingface/diffusers
 accelerate
 peft
 huggingface_hub
+nunchaku-installer
+controlnet_aux
+matplotlib
 
 # --- 고속 다운로드를 위한 추가 기능 (Optional) ---
 hf_xet
