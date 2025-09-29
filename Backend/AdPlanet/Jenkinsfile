@@ -1,0 +1,186 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "adplanet-app"
+        CONTAINER_NAME = "adplanet-container"
+        COMPOSE_PROJECT_NAME = "adplanet"
+        SECRETS_DIR = "/opt/app/secrets"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Check GitLab Info') {
+            steps {
+                sh '''
+                    echo "gitlabActionType=$gitlabActionType"
+                    echo "gitlabBranch=$gitlabBranch"
+                    echo "gitlabMergeRequestState=$gitlabMergeRequestState"
+                '''
+            }
+        }
+
+        stage('Build') {
+            steps {
+                script {
+                    updateGitlabCommitStatus name: 'build', state: 'pending'
+                    try {
+                        sh """
+                            cd Backend/AdPlanet
+                            docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} .
+                            docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_NAME}:latest
+                        """
+                        updateGitlabCommitStatus name: 'build', state: 'success'
+                    } catch (Exception e) {
+                        updateGitlabCommitStatus name: 'build', state: 'failed'
+                        throw e
+                    }
+                }
+            }
+        }
+
+        stage('Prepare Secrets') {
+            when {
+                anyOf {
+                    expression { env.gitlabActionType == 'PUSH' }
+                    expression { env.gitlabActionType == null || env.gitlabActionType == '' }
+                }
+            }
+            steps {
+                script {
+                    updateGitlabCommitStatus name: 'prepare-secrets', state: 'pending'
+                    try {
+                        withCredentials([
+                            sshUserPrivateKey(credentialsId: 'rds-ssh-key', keyFileVariable: 'SSH_KEY'),
+                            file(credentialsId: 'app-env-file', variable: 'ENV_FILE')
+                        ]) {
+                            sh """
+                                cp \${SSH_KEY} ${SECRETS_DIR}/ssh-key.pem
+                                cp \${ENV_FILE} ${SECRETS_DIR}/adplanet.env
+                                chmod 644 ${SECRETS_DIR}/ssh-key.pem
+                                chmod 644 ${SECRETS_DIR}/adplanet.env
+                            """
+                        }
+                        updateGitlabCommitStatus name: 'prepare-secrets', state: 'success'
+                    } catch (Exception e) {
+                        updateGitlabCommitStatus name: 'prepare-secrets', state: 'failed'
+                        throw e
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                anyOf {
+                    expression { env.gitlabActionType == 'PUSH' }
+                    expression { env.gitlabActionType == null || env.gitlabActionType == '' }
+                }
+            }
+            steps {
+                script {
+                    updateGitlabCommitStatus name: 'deploy', state: 'pending'
+                    try {
+                        sh """
+                            cd Backend/AdPlanet
+
+                            export IMAGE_NAME=${IMAGE_NAME}
+                            export BUILD_NUMBER=${BUILD_NUMBER}
+                            export CONTAINER_NAME=${CONTAINER_NAME}
+                            export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+                            export SECRETS_DIR=${SECRETS_DIR}
+
+                            docker compose down || true
+                            docker compose up -d
+                        """
+                        updateGitlabCommitStatus name: 'deploy', state: 'success'
+                    } catch (Exception e) {
+                        updateGitlabCommitStatus name: 'deploy', state: 'failed'
+                        throw e
+                    }
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            when {
+                anyOf {
+                    expression { env.gitlabActionType == 'PUSH' }
+                    expression { env.gitlabActionType == null || env.gitlabActionType == '' }
+                }
+            }
+            steps {
+                script {
+                    updateGitlabCommitStatus name: 'verify', state: 'pending'
+                    try {
+                        sh '''
+                            cd Backend/AdPlanet
+
+                            docker compose ps
+
+                            docker exec ${CONTAINER_NAME} ls -la /app/secrets/ || echo "시크릿 파일 확인 실패"
+                        '''
+                        updateGitlabCommitStatus name: 'verify', state: 'success'
+                    } catch (Exception e) {
+                        updateGitlabCommitStatus name: 'verify', state: 'failed'
+                        throw e
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                if (env.gitlabActionType == 'PUSH' || env.gitlabActionType == null || env.gitlabActionType == '') {
+                    echo "✅ 배포 성공!"
+                } else {
+                    echo "✅ 빌드 성공!"
+                }
+                updateGitlabCommitStatus name: 'pipeline', state: 'success'
+            }
+            sh '''
+                echo "=== Docker 컨테이너 정보 ==="
+                cd Backend/AdPlanet
+                docker compose ps
+            '''
+        }
+        failure {
+            script {
+                if (env.gitlabActionType == 'PUSH' || env.gitlabActionType == null || env.gitlabActionType == '') {
+                    echo "❌ 배포 실패"
+                } else {
+                    echo "❌ 빌드 실패"
+                }
+                updateGitlabCommitStatus name: 'pipeline', state: 'failed'
+            }
+            sh '''
+                echo "=== 실패 시 디버깅 정보 ==="
+                cd Backend/AdPlanet
+                echo "컨테이너 상태:"
+                docker compose ps || true
+                echo "애플리케이션 로그:"
+                docker compose logs --tail=100 || true
+                echo "시크릿 파일 상태:"
+                ls -la /opt/app/secrets/ || true
+                echo "시스템 리소스:"
+                df -h
+                free -h
+            '''
+        }
+        always {
+            sh '''
+                echo "=== 정리 작업 ==="
+                echo "현재 실행 중인 컨테이너:"
+                cd Backend/AdPlanet
+                docker compose ps || true
+            '''
+        }
+    }
+}

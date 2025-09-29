@@ -1,0 +1,158 @@
+package com.ssafy.adplanet.service.ci;
+
+import com.ssafy.adplanet.dto.ci.CiGuidelineDefaults;
+import com.ssafy.adplanet.dto.ci.CiGuidelineResponse;
+import com.ssafy.adplanet.entity.CiGuideline;
+import com.ssafy.adplanet.entity.CiGuidelineTemplate;
+import com.ssafy.adplanet.entity.Logo;
+import com.ssafy.adplanet.exception.BusinessException;
+import com.ssafy.adplanet.exception.ErrorCode;
+import com.ssafy.adplanet.mapper.CiGuidelineMapper;
+import com.ssafy.adplanet.repository.CiGuidelineRepository;
+import com.ssafy.adplanet.repository.CiGuidelineTemplateRepository;
+import com.ssafy.adplanet.repository.LogoRepository;
+import com.ssafy.adplanet.service.gms.GmsService;
+import com.ssafy.adplanet.service.gms.GmsService.PalettePayload;
+import com.ssafy.adplanet.service.gms.GmsService.PalettePayload.ColorGuide;
+import com.ssafy.adplanet.service.s3.S3Service;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
+import java.util.Optional;
+
+import static com.ssafy.adplanet.exception.ErrorCode.*;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class CiGuidelineServiceImpl implements CiGuidelineService {
+
+    private final CiGuidelineRepository ciRepo;
+    private final CiGuidelineTemplateRepository tplRepo;
+    private final LogoRepository logoRepo;
+    private final S3Service s3Service;
+    private final GmsService gms;
+
+    @Transactional
+    public CiGuidelineResponse createWithImageAi(Long logoId) {
+        // 0) 요청 검증
+        if (logoId == null || logoId <= 0) {
+            throw new BusinessException(LOGO_INVALID_REQUEST);
+        }
+
+        // 1) 로고 조회
+        Logo logo = logoRepo.findById(logoId)
+                .orElseThrow(() -> new BusinessException(LOGO_NOT_FOUND));
+
+        // 2) 중복 생성 방지
+        if (ciRepo.existsByLogoId(logoId)) {
+            throw new BusinessException(LOGO_CI_CONFLICT);
+        }
+
+        // 3) 로고 이미지 프리사인 URL (20분)
+        String imageUrl;
+        try {
+            imageUrl = s3Service.presignFromUri(logo.getImgUrl(), Duration.ofMinutes(20));
+        } catch (Exception e) {
+            // presign 실패는 내부 오류로 처리
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e);
+        }
+
+        // 4) GMS로 팔레트 요청 (실패 시 기본값 폴백)
+        PalettePayload p;
+        try {
+            log.info("[CI] GMS 요청 시작: brand='{}', slogan='{}', img='{}'",
+                    logo.getName(), logo.getSlogan(), imageUrl);
+
+            p = gms.generatePaletteByImage(logo.getName(), logo.getSlogan(), imageUrl);
+
+            log.info("[CI] GMS 응답 수신: primary={}, secondary={}, neutral={}",
+                    p.getPrimaryColor(), p.getSecondaryColor(), p.getNeutralColor());
+        } catch (Exception e) {
+
+            log.warn("[CI] GMS 실패로 기본값 사용: {} (cause: {})",
+                    e.getMessage(), (e.getCause() != null ? e.getCause().getClass().getSimpleName() : "-"));
+
+            p = new PalettePayload();
+            p.setPrimaryColor(CiGuidelineDefaults.PRIMARY_COLOR);
+            p.setSecondaryColor(CiGuidelineDefaults.SECONDARY_COLOR);
+            p.setNeutralColor(CiGuidelineDefaults.NEUTRAL_COLOR);
+
+            ColorGuide pg = new ColorGuide();
+            pg.setHex("#4FB1BA"); pg.setRgb("79, 177, 186"); pg.setCMYK("65, 10, 25, 0"); pg.setMainUsage("로고, 주요 버튼, 강조 요소");
+            p.setPrimaryGuide(pg);
+
+            ColorGuide sg = new ColorGuide();
+            sg.setHex("#193747"); sg.setRgb("25, 55, 71"); sg.setCMYK("90, 65, 50, 40"); sg.setMainUsage("텍스트, 배경, 보조 그래픽");
+            p.setSecondaryGuide(sg);
+
+            p.setNeutralGuide(CiGuidelineDefaults.NEUTRAL_GUIDE);
+        }
+
+        // 5) 최신 템플릿
+        CiGuidelineTemplate tpl = tplRepo.findTopByOrderByIdDesc()
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR));
+
+        // 6) 엔티티 저장
+        CiGuideline entity = CiGuideline.builder()
+                .logo(logo)
+                .template(tpl)
+                .primaryColor(fixHex(p.getPrimaryColor()))
+                .secondaryColor(fixHex(p.getSecondaryColor()))
+                .neutralColor(fixHex(p.getNeutralColor()))
+                .primaryGuide(guideToBlock(p.getPrimaryGuide()))
+                .secondaryGuide(guideToBlock(p.getSecondaryGuide()))
+                .neutralGuide(p.getNeutralGuide())
+                .build();
+
+        try {
+            return CiGuidelineMapper.toResponse(ciRepo.save(entity));
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, e);
+        }
+    }
+
+    /**
+     * 로고 ID로 CI 가이드라인 조회
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<CiGuidelineResponse> getByLogoId(Long logoId) {
+        if (logoId == null || logoId <= 0) {
+            throw new BusinessException(LOGO_INVALID_REQUEST);
+        }
+        return ciRepo.findByLogoIdWithTemplate(logoId)
+                .map(CiGuidelineMapper::toResponse);
+    }
+
+    // ----------------- helpers -----------------
+
+    private static String fixHex(String hex) {
+        if (hex == null) return null;
+        String h = hex.trim().toUpperCase();
+        if (!h.startsWith("#")) h = "#" + h;
+        return h;
+    }
+
+    /** ColorGuide → 저장용 문자열 블록 */
+    private static String guideToBlock(ColorGuide g) {
+        if (g == null) return null;
+        String hex   = safe(g.getHex());
+        String rgb   = safe(g.getRgb());
+        String cmyk  = safe(g.getCMYK());
+        String usage = safe(g.getMainUsage());
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Hex\n- ").append(hex.isBlank() ? "#000000" : hex).append('\n')
+                .append("RGB\n- ").append(rgb.isBlank() ? "0, 0, 0" : rgb).append('\n')
+                .append("CMYK\n- ").append(cmyk.isBlank() ? "0, 0, 0, 100" : cmyk).append('\n')
+                .append("주 사용처\n- ").append(usage.isBlank() ? "로고, 주요 버튼, 강조 요소" : usage);
+        return sb.toString();
+    }
+
+    private static String safe(String s) { return s == null ? "" : s.trim(); }
+}

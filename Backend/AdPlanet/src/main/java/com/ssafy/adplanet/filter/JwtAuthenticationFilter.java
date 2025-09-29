@@ -1,0 +1,77 @@
+package com.ssafy.adplanet.filter;
+
+import com.ssafy.adplanet.exception.ErrorCode;
+import com.ssafy.adplanet.security.JwtUserPrincipal;
+import com.ssafy.adplanet.util.JwtUtil;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.ArrayList;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private final JwtUtil jwtUtil;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                  FilterChain filterChain) throws ServletException, IOException {
+
+        String token = getTokenFromRequest(request);
+
+        if (StringUtils.hasText(token)) {
+            try {
+                // 토큰 검증
+                if (!jwtUtil.validateToken(token)) {
+                    log.debug("유효하지 않은 토큰 - Token: {}", token.substring(0, Math.min(token.length(), 20)) + "...");
+                    request.setAttribute("jwt_error", ErrorCode.INVALID_TOKEN);
+                } else if (jwtUtil.isTokenExpired(token)) {
+                    log.debug("만료된 토큰 - Token: {}", token.substring(0, Math.min(token.length(), 20)) + "...");
+                    request.setAttribute("jwt_error", ErrorCode.TOKEN_EXPIRED);
+                } else {
+                    // 토큰이 유효한 경우
+                    Long userId = jwtUtil.getUserIdFromToken(token);
+                    String userEmail = jwtUtil.getUserEmailFromToken(token);
+                    String tokenType = jwtUtil.getTokenTypeFromToken(token);
+
+                    // ACCESS 토큰만 인증 처리
+                    if ("ACCESS".equals(tokenType)) {
+                        JwtUserPrincipal principal = new JwtUserPrincipal(userId, userEmail);
+                        UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(principal, null, new ArrayList<>());
+
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    } else {
+                        log.debug("Access 토큰이 아님 - TokenType: {}", tokenType);
+                        request.setAttribute("jwt_error", ErrorCode.INVALID_TOKEN);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("JWT 인증 처리 중 오류 발생", e);
+                request.setAttribute("jwt_error", ErrorCode.INVALID_TOKEN);
+            }
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    private String getTokenFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
+    }
+}

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  adplanet-app:
+    image: ${IMAGE_NAME:-adplanet-app}:${BUILD_NUMBER:-latest}
+    container_name: ${CONTAINER_NAME:-adplanet-container}
+    ports:
+      - "8081:8081"
+    volumes:
+      - /opt/app/secrets:/app/secrets:ro
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - TZ=Asia/Seoul
+    env_file:
+      - /opt/app/secrets/adplanet.env
+    restart: unless-stopped
+    networks:
+      - adplanet
+
+networks:
+  adplanet:
+    external: true
