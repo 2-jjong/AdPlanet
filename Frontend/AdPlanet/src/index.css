@@ -1,0 +1,134 @@
+@font-face {
+  font-family: "Kravo";
+  src:
+    url("./assets/fonts/KravoRegular-8OBR2.otf") format("opentype"),
+    url("./assets/fonts/KravoRegular-R98Ao.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Kravo";
+  src:
+    url("./assets/fonts/KravoOblique-BLmq3.otf") format("opentype"),
+    url("./assets/fonts/KravoOblique-1jy9e.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  /* Oblique → italic로 지정 */
+  font-display: swap;
+}
+
+/* === The Jamsil (가중치별) === */
+@font-face {
+  font-family: "The Jamsil";
+  src: url("./assets/fonts/The Jamsil 1 Thin.ttf") format("truetype");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "The Jamsil";
+  src: url("./assets/fonts/The Jamsil 2 Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "The Jamsil";
+  src: url("./assets/fonts/The Jamsil 3 Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "The Jamsil";
+  src: url("./assets/fonts/The Jamsil 4 Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "The Jamsil";
+  src: url("./assets/fonts/The Jamsil 5 Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "The Jamsil";
+  src: url("./assets/fonts/The Jamsil 6 ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base{
+  html, body{
+    @apply bg-background text-text-color;
+  }
+}
+:root {
+  line-height: 1.5;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* 스크롤바 스타일 */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thumb-primary\/20::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thumb-primary\/20::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thumb-primary\/20::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--primary-rgb), 0.2);
+  border-radius: 2px;
+}
+
+.scrollbar-thumb-primary\/20::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(var(--primary-rgb), 0.3);
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 숨겨진 스크롤바 */
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}

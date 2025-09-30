@@ -1,0 +1,119 @@
+// src/modules/Mypage/components/PosterCardList.tsx
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Scrollbar, Mousewheel } from "swiper/modules";
+import { getPosterGroups } from "../../../services/posterService";
+import type { PosterGroupItem } from "../../../services/dto/poster.dto";
+import { PosterCard } from "./PosterCard";
+import NeedLogin from "./NeedLogin";
+
+
+
+
+export default function PosterCardList() {
+  const [items, setItems] = useState<PosterGroupItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+
+        // TODO : ArchiveToolbar 쿼리 반영 (latest -> newest)
+        const orderParam = (params.get("order") || "NEWEST") as "NEWEST" | "OLDEST";
+        const tagIdParam = params.get("tagId");
+
+        const res = await getPosterGroups({
+          order: orderParam,
+          tagId: tagIdParam ? Number(tagIdParam) : undefined,
+        });
+
+        if (!alive) return;
+        setItems(res.data ?? []);
+      } catch (e: any) {
+        if (!alive) return;
+        console.error("[PosterCardList] fetch error:", e?.response || e);
+
+        // 401 에러 체크
+        if (e?.response?.status === 401 || e?.message?.includes("401")) {
+          setIsUnauthorized(true);
+        } else {
+          setIsUnauthorized(false);
+        }
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [params]);
+
+  if (isUnauthorized) {
+    return (
+      <div className="w-full py-5">
+        <NeedLogin />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full">
+      <Swiper
+        modules={[Scrollbar, Mousewheel]}
+        mousewheel={{ releaseOnEdges: true }}
+        freeMode={{ enabled: false, sticky: true }}
+        scrollbar={{ draggable: true }}
+        slidesPerView={1.2}
+        spaceBetween={32}
+        breakpoints={{
+          640: { slidesPerView: 2.2, spaceBetween: 36 },
+          1024: { slidesPerView: 3.2, spaceBetween: 40 },
+          1280: { slidesPerView: 3.8, spaceBetween: 44 },
+          1536: { slidesPerView: 4.5, spaceBetween: 48 },
+          1920: { slidesPerView: 5.2, spaceBetween: 52 },
+        }}
+        style={
+          {
+            // @ts-ignore – CSS 변수 전달
+            "--swiper-scrollbar-size": "10px",
+            "--swiper-scrollbar-bottom": "8px",
+            "--swiper-scrollbar-sides-offset": "2.5%",
+          } as React.CSSProperties
+        }
+        observer
+        observeParents
+        resizeObserver
+      >
+        {loading
+          ? Array.from({ length: 8 }).map((_, i) => (
+              <SwiperSlide key={`skeleton-${i}`} className="!h-auto pb-12">
+                <div className="animate-pulse aspect-[3/4] w-full rounded-2xl bg-slate-800 border border-slate-700/60" />
+              </SwiperSlide>
+            ))
+          : items.map((it) => (
+              <SwiperSlide key={it.posterGroupId} className="!h-auto pb-14">
+                {/* 카드 전체 클릭시 상세로 이동 */}
+                <button
+                  type="button"
+                  onClick={() => navigate(`/archive/poster/${it.posterGroupId}`)}
+                  className="block w-full text-left cursor-pointer focus:outline-none"
+                  title={it.title}
+                >
+                  <PosterCard
+                    title={it.title}
+                    imgUrl={it.imgUrl}
+                  />
+                </button>
+              </SwiperSlide>
+            ))}
+      </Swiper>
+    </div>
+  );
+}
